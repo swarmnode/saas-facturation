@@ -5,6 +5,12 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix: bouton Enregistrer commence en '✓ Enregistré' pour les docs existants
+
+
+## [2.1.81] — 2026-05-30
+
 ### Ajouté
 - Feat: statut devis 'accepte' + bouton ✔ Accepté + BL prioritaire
 
@@ -114,6 +120,7 @@ Après le premier save d'un nouveau document :
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
@@ -333,6 +340,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.1.81]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.1.81
 [2.0.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.9
 [2.0.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.8
 [1.0.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v1.0.0

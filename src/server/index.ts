@@ -18,6 +18,7 @@ import backupRouter       from './routes/backup';
 import utilisateursRouter from './routes/utilisateurs';
 import { loadAndSchedule } from './services/BackupScheduler';
 import searchRouter        from './routes/search';
+import sepaRouter          from './routes/sepa';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/bons-livraison',  bonLivraisonRouter);
 app.use('/api/backup',          backupRouter);
 app.use('/api/utilisateurs',    utilisateursRouter);
 app.use('/api/search',          searchRouter);
+app.use('/api/sepa',            sepaRouter);
 
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.resolve(__dirname, '../client/index.html'));

@@ -96,6 +96,7 @@ const DOC_CONFIGS = {
       <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
+      <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
     headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement'],
     sortKeys: [null,'numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null],
@@ -1872,10 +1873,71 @@ async function _showBLFromFactureFormOld(factureId) {
 
 function updateSelCount() {
   const checked = document.querySelectorAll('.fac-sel:checked');
-  const btn = document.getElementById('btnEnvoiGroupe');
+  const n = checked.length;
+  const btn  = document.getElementById('btnEnvoiGroupe');
   const span = document.getElementById('selCount');
-  if (btn) btn.style.display = checked.length > 0 ? '' : 'none';
-  if (span) span.textContent = checked.length;
+  const btnS = document.getElementById('btnSepaGroupe');
+  const spanS = document.getElementById('selCountSepa');
+  if (btn)  btn.style.display  = n > 0 ? '' : 'none';
+  if (span) span.textContent   = n;
+  if (btnS)  btnS.style.display  = n > 0 ? '' : 'none';
+  if (spanS) spanS.textContent   = n;
+}
+
+async function genererSepa() {
+  const checked = [...document.querySelectorAll('.fac-sel:checked')];
+  if (!checked.length) return;
+  const ids = checked.map(cb => parseInt(cb.dataset.id));
+  const nums = checked.map(cb => cb.dataset.num).join(', ');
+  const today = new Date(Date.now() + 2*86400000).toISOString().slice(0,10); // J+2 par défaut
+
+  modal.show('Générer un fichier SEPA', `
+    <p style="margin-bottom:12px">Prélèvement de <strong>${ids.length}</strong> facture(s) :</p>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">${nums}</p>
+    <div class="form-row">
+      <div class="form-group"><label>Date d'exécution</label>
+        <input id="sepaDate" type="date" value="${today}"/>
+        <small style="color:var(--text-muted)">J+1 min pour B2B, J+1 pour CORE (RCUR), J+5 pour CORE (FRST)</small>
+      </div>
+      <div class="form-group"><label>Séquence</label>
+        <select id="sepaSeq">
+          <option value="FRST">FRST — Premier prélèvement</option>
+          <option value="RCUR" selected>RCUR — Récurrent</option>
+          <option value="FNAL">FNAL — Dernier de la série</option>
+          <option value="OOFF">OOFF — Unique (ponctuel)</option>
+        </select>
+      </div>
+    </div>
+    <div id="sepaError" style="color:var(--danger);font-size:13px;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+      <button class="btn btn-primary" id="btnSepaGenerer">⬇ Générer pain.008</button>
+    </div>`, body => {
+    body.querySelector('#btnSepaGenerer').onclick = async () => {
+      const date_execution = body.querySelector('#sepaDate').value;
+      const sequence       = body.querySelector('#sepaSeq').value;
+      const errEl          = body.querySelector('#sepaError');
+      if (!date_execution) { errEl.textContent = 'Date requise'; return; }
+      errEl.textContent = '';
+      try {
+        const token = localStorage.getItem('jwt');
+        const r = await fetch('/api/sepa/generer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ facture_ids: ids, date_execution, sequence }),
+        });
+        if (!r.ok) { const e = await r.json(); errEl.textContent = e.error || 'Erreur'; return; }
+        const blob = await r.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `SEPA_${date_execution}_${ids.length}tx.xml`;
+        a.click();
+        URL.revokeObjectURL(url);
+        modal.hide();
+      } catch(e) { errEl.textContent = 'Erreur réseau'; }
+    };
+  });
 }
 
 async function envoyerGroupeFactures() {
@@ -3467,6 +3529,28 @@ async function renderParametres(el) {
       </form>
     </div>
 
+    <div class="card" style="margin-top:24px">
+      <h2 class="section-title">🏦 Prélèvement SEPA</h2>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
+        Informations de votre société en tant que créancier SEPA. L'ICS vous est fourni par votre banque.
+      </p>
+      <form id="sepaEntrepriseForm">
+        <div class="form-row">
+          <div class="form-group"><label>IBAN de votre société</label>
+            <input name="iban" value="${entreprise.iban || ''}" placeholder="FR76 0000 0000 0000 0000 0000 000" style="font-family:monospace"/>
+          </div>
+          <div class="form-group"><label>BIC de votre banque</label>
+            <input name="bic" value="${entreprise.bic || ''}" placeholder="BNPAFRPPXXX"/>
+          </div>
+        </div>
+        <div class="form-group"><label>ICS — Identifiant Créancier SEPA</label>
+          <input name="ics" value="${entreprise.ics || ''}" placeholder="FR12ZZZ123456" style="font-family:monospace"/>
+          <small style="color:var(--text-muted)">Fourni par votre banque. Format : 2 lettres pays + 2 chiffres + 3 lettres + 6 chiffres</small>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+      </form>
+    </div>
+
     ${currentUser?.is_super_admin ? `
     <div class="card" style="margin-top:24px">
       <h2 class="section-title">Sauvegarde &amp; Restauration</h2>
@@ -3551,6 +3635,14 @@ async function renderParametres(el) {
       '<div class="alert alert-success" style="margin-top:12px">Configuration enregistrée.</div>';
     setTimeout(() => { el.querySelector('#smtpAlert').innerHTML = ''; }, 3000);
   };
+
+  // ── SEPA entreprise ──
+  el.querySelector('#sepaEntrepriseForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    await api.put('/api/entreprise', data);
+    alert('Informations SEPA enregistrées.');
+  });
 
   // ── Sauvegarde (super_admin uniquement) ──
   if (!currentUser?.is_super_admin) return; // les sections suivantes sont SA only

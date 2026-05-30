@@ -35,6 +35,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - CSS .ss-* propre et isolé
 - Chargé avant app.js dans index.html
 - Feat: devis gratuit coché par défaut à la création
+- Feat: adresse2 client + alignement gauche + PDF unifié
+
+- Formulaire client : champ 'Complément d'adresse' (adresse2)
+- renderClientPreview : adresse2 sur sa propre ligne, vide = supprimé
+- e-client-preview : text-align:left (lignes alignées à gauche)
+- PDF : helper drawClientBlock() → adresse2 dans les 5 générateurs PDF
+  (facture, avoir, acompte, devis, BL)
 
 
 ### Corrigé
@@ -107,6 +114,7 @@ Après le premier save d'un nouveau document :
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

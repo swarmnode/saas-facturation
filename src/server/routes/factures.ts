@@ -82,6 +82,22 @@ router.get('/:id/apercu', requirePerm('factures:r'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+// Envoi automatique (récupère l'email du client) — utilisé par l'envoi groupé
+router.post('/:id/envoyer', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const { EmailService } = await import('../services/EmailService');
+    const { query } = await import('../db/database');
+    const id  = Number(req.params.id);
+    const fr  = await FactureService.obtenir(id);
+    if (!fr) return res.status(404).json({ error: 'Introuvable' });
+    const cr  = await query('SELECT email FROM clients WHERE id=$1', [fr.client_id]);
+    const email = cr.rows[0]?.email;
+    if (!email) return res.status(400).json({ error: `Aucun email pour ce client` });
+    const result = await EmailService.envoyerFacture(id, email);
+    res.json({ ok: true, preview_url: result.previewUrl ?? null });
+  } catch(e: any) { next(e); }
+});
+
 router.post('/:id/envoyer-email', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const { EmailService } = await import('../services/EmailService');

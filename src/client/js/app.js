@@ -88,11 +88,13 @@ const DOC_CONFIGS = {
     topbar:   () => `
       <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
+      <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
-    headers:  ['N°','Client','HT','TTC','Statut','Émise le','Règlement'],
-    sortKeys: ['numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null],
+    headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement'],
+    sortKeys: [null,'numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null],
     rowOpen:  f => `DocEditor.openFacture(${f.id})`,
     cells:    f => [
+      ['emise','payee'].includes(f.statut) ? `<input type="checkbox" class="fac-sel" data-id="${f.id}" data-num="${f.numero}" onclick="event.stopPropagation();updateSelCount()">` : '',
       `<strong>${f.numero}</strong>${f.type_facture==='avoir'?' <span class="badge badge-avoir">Avoir</span>':''}`,
       f.client_nom||f.client_nom_part||'—',
       `<span class="text-right">${fmt.money(f.montant_ht)}</span>`,
@@ -1839,6 +1841,58 @@ async function _showBLFromFactureFormOld(factureId) {
       if (r?.error) return alert(r.error);
       modal.hide();
       navigate('bons-livraison');
+    };
+  });
+}
+
+function updateSelCount() {
+  const checked = document.querySelectorAll('.fac-sel:checked');
+  const btn = document.getElementById('btnEnvoiGroupe');
+  const span = document.getElementById('selCount');
+  if (btn) btn.style.display = checked.length > 0 ? '' : 'none';
+  if (span) span.textContent = checked.length;
+}
+
+async function envoyerGroupeFactures() {
+  const checked = [...document.querySelectorAll('.fac-sel:checked')];
+  if (!checked.length) return;
+
+  const factures = checked.map(cb => ({ id: parseInt(cb.dataset.id), numero: cb.dataset.num }));
+  const list = factures.map(f => `<li><strong>${f.numero}</strong></li>`).join('');
+
+  modal.show('Envoi groupé', `
+    <p style="margin-bottom:12px">Envoi de <strong>${factures.length}</strong> facture(s) :</p>
+    <ul style="margin-bottom:16px;padding-left:20px;font-size:13px">${list}</ul>
+    <div class="form-group"><label>Mode d'envoi</label>
+      <select id="groupeMode">
+        <option value="smtp">SMTP — Envoi automatique (recommandé)</option>
+        <option value="mapi">MAPI — Client mail Windows</option>
+        <option value="mailto">mailto: — Application mail</option>
+      </select>
+    </div>
+    <div id="groupeProgress" style="margin-top:12px;font-size:13px;color:var(--text-muted)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+      <button class="btn btn-primary" id="btnGroupeEnvoyer">✉ Envoyer tout</button>
+    </div>`, body => {
+    body.querySelector('#btnGroupeEnvoyer').onclick = async () => {
+      const mode = body.querySelector('#groupeMode').value;
+      const progress = body.querySelector('#groupeProgress');
+      const envoyerBtn = body.querySelector('#btnGroupeEnvoyer');
+      envoyerBtn.disabled = true;
+      let ok = 0, err = 0;
+      for (const f of factures) {
+        progress.textContent = `Envoi en cours : ${f.numero}…`;
+        try {
+          const r = await api.post(`/api/factures/${f.id}/envoyer`, { mode });
+          if (r?.error) { err++; progress.textContent += ` ❌`; }
+          else { ok++; }
+        } catch(e) { err++; }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      progress.innerHTML = `✅ ${ok} envoyée(s)${err ? ` — ❌ ${err} erreur(s)` : ''}`;
+      envoyerBtn.textContent = 'Terminé';
+      setTimeout(() => { modal.hide(); tabMgr.openViewTab('factures'); }, 1500);
     };
   });
 }

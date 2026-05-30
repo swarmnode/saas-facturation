@@ -19,6 +19,7 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - DOC_CONFIGS BL : bouton '🧾 → Facture' pour statut emis ou livre (pas seulement les liés)
 - factureFromBL(blId) : charge le BL, ouvre l'éditeur facture pré-rempli (client + lignes sans prix)
 - DocEditor.openFacture(id, prefill) : accepte maintenant un prefill pour les lignes
+- Feat: bouton '🧾 → Facture' dans l'éditeur WYSIWYG des BL (émis et livré)
 
 
 ### Corrigé
@@ -42,6 +43,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

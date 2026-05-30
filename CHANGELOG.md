@@ -58,10 +58,16 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: sauvegarde draft forcée au beforeunload (rafraîchissement immédiat)
 - Fix: champ de recherche client correctement rendu dans l'éditeur
 - Fix: </div> parasite dans e-client-block cassait le layout A4
+- Fix: autocomplete flottant + badges statuts acompte/BL manquants
+
+- Autocomplete article : fermeture sur clic extérieur et visibilitychange
+- Badges CSS ajoutés : en_attente, encaisse, emis, livre
+- fmt.badge() : labels lisibles (En attente, Encaissé, Émis, Livré…)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

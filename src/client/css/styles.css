@@ -456,7 +456,7 @@ tr.row-actions:hover td { background: transparent; }
 .e-th-desig { text-align:left;   padding:7px 8px; font-size:8pt; width:36%; }
 .e-th-num   { text-align:right;  padding:7px 6px; font-size:8pt; width:9%; }
 .e-th-tva   { text-align:right;  padding:7px 6px; font-size:8pt; width:14%; }
-.e-th-total { text-align:right;  padding:7px 8px; font-size:8pt; width:12%; }
+.e-th-total { text-align:right;  padding:7px 8px; font-size:8pt; width:14%; min-width:90px; }
 .e-th-del   { width:3%; }
 
 .e-ligne-row:nth-child(even) { background:#f7f8fa; }

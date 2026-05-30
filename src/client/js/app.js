@@ -65,6 +65,7 @@ const DOC_CONFIGS = {
     api:      '/api/devis',
     topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`,
     headers:  ['N°','Client','Objet','HT','TTC','Statut','Créé le'],
+    sortKeys: ['numero','client_nom','objet','montant_ht','montant_ttc','statut','created_at'],
     rowOpen:  d => `DocEditor.openDevis(${d.id})`,
     cells:    d => [
       `<strong>${d.numero}</strong>`,
@@ -89,6 +90,7 @@ const DOC_CONFIGS = {
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
     headers:  ['N°','Client','HT','TTC','Statut','Émise le','Règlement'],
+    sortKeys: ['numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null],
     rowOpen:  f => `DocEditor.openFacture(${f.id})`,
     cells:    f => [
       `<strong>${f.numero}</strong>${f.type_facture==='avoir'?' <span class="badge badge-avoir">Avoir</span>':''}`,
@@ -113,6 +115,7 @@ const DOC_CONFIGS = {
     api:      '/api/factures/avoirs/liste',
     topbar:   () => '',
     headers:  ['N°','Facture d\'origine','Client','HT','TTC','Statut','Date'],
+    sortKeys: ['numero','facture_origine_numero','client_nom','montant_ht','montant_ttc','statut','date_emission'],
     rowOpen:  a => `DocEditor.openFacture(${a.id})`,
     cells:    a => [
       `<strong>${a.numero}</strong>`,
@@ -135,6 +138,7 @@ const DOC_CONFIGS = {
     api:      '/api/acomptes',
     topbar:   () => `<button class="btn btn-primary" onclick="showAcompteForm()">+ Nouvel acompte</button>`,
     headers:  ['N°','Client','HT','TVA','TTC','Statut','Encaissé le'],
+    sortKeys: ['numero','client_nom','montant_ht','montant_tva','montant_ttc','statut','date_encaissement'],
     rowOpen:  a => `DocEditor.openAcompte(${a.id})`,
     cells:    a => [
       `<strong>${a.numero}</strong>`,
@@ -157,6 +161,7 @@ const DOC_CONFIGS = {
     api:      '/api/bons-livraison',
     topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button>`,
     headers:  ['N°','Client','Date émission','Lieu','Statut'],
+    sortKeys: ['numero','client_nom','date_emission','lieu_livraison','statut'],
     rowOpen:  b => `DocEditor.openBL(${b.id})`,
     cells:    b => [
       `<strong>${b.numero}</strong>`,
@@ -177,6 +182,9 @@ const DOC_CONFIGS = {
 };
 
 // Rendu unifié des listes de documents
+// État de tri par type de liste
+const _listSort = {};
+
 async function renderDocList(type, el) {
   const cfg  = DOC_CONFIGS[type];
   const docs = await api.get(cfg.api);
@@ -186,17 +194,64 @@ async function renderDocList(type, el) {
     el.innerHTML = `<div class="card"><div class="empty">Aucun document</div></div>`;
     return;
   }
+
+  if (!_listSort[type]) _listSort[type] = { col: null, dir: -1 };
+
   const colSpan = cfg.headers.length + 1;
-  el.innerHTML = `<div class="card"><div class="table-wrap"><table>
-    <thead><tr>${cfg.headers.map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead>
-    <tbody>${docs.map(doc => {
+  const keys = cfg.sortKeys || [];
+
+  function sortedDocs(list) {
+    const { col, dir } = _listSort[type];
+    if (!col) return list;
+    return [...list].sort((a, b) => {
+      const va = (a[col] ?? '') + '', vb = (b[col] ?? '') + '';
+      // Tenter comparaison numérique
+      const na = parseFloat(va), nb = parseFloat(vb);
+      if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+  }
+
+  function renderTbody(list) {
+    const tbody = el.querySelector('tbody');
+    if (!tbody) return;
+    tbody.innerHTML = sortedDocs(list).map(doc => {
       const cells   = cfg.cells(doc).map(c=>`<td>${c}</td>`).join('');
       const actions = cfg.actions(doc).filter(Boolean).join('');
       return `
         <tr class="data-row" onclick="${cfg.rowOpen(doc)}" style="cursor:pointer">${cells}<td></td></tr>
         <tr class="row-actions"><td colspan="${colSpan}"><div class="btn-row">${actions}</div></td></tr>`;
-    }).join('')}
-    </tbody></table></div></div>`;
+    }).join('');
+    // Indicateurs de tri
+    el.querySelectorAll('.list-th[data-key]').forEach(th => {
+      const k = th.dataset.key;
+      th.innerHTML = th.dataset.label + (_listSort[type].col === k ? (_listSort[type].dir > 0 ? ' ▲' : ' ▼') : '');
+    });
+  }
+
+  const thHtml = cfg.headers.map((h, i) => {
+    const k = keys[i];
+    return k
+      ? `<th class="list-th" data-key="${k}" data-label="${h}" style="cursor:pointer">${h}</th>`
+      : `<th>${h}</th>`;
+  }).join('');
+
+  el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+    <thead><tr>${thHtml}<th></th></tr></thead>
+    <tbody></tbody>
+  </table></div></div>`;
+
+  renderTbody(docs);
+
+  // Brancher les clics de tri
+  el.querySelectorAll('.list-th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.key;
+      const s = _listSort[type];
+      _listSort[type] = { col: k, dir: s.col === k ? -s.dir : -1 };
+      renderTbody(docs);
+    });
+  });
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────

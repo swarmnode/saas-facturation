@@ -146,6 +146,8 @@ thead th {
   background: var(--primary); color: #fff; padding: 10px 14px;
   text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
 }
+thead th.list-th { cursor: pointer; user-select: none; }
+thead th.list-th:hover { background: var(--primary-light); }
 tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 tbody tr:hover { background: #F8FAFC; }
 tbody td { padding: 10px 14px; color: var(--text); font-size: 13.5px; }

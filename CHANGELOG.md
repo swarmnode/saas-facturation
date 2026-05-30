@@ -52,6 +52,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -59,6 +60,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Ci: fix git-cliff install (Debian Buster EOL, use binary)
 - Ci: fix git-cliff URL (resolve version dynamically)
 - Ci: fix cliff.toml footer template (null version guard)
+- Ux: Accepter reste sur la page, toolbar se met à jour en place
 
 
 ### Refactoring

@@ -34,6 +34,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Remplace initClientSearch dans l'éditeur
 - CSS .ss-* propre et isolé
 - Chargé avant app.js dans index.html
+- Feat: devis gratuit coché par défaut à la création
 
 
 ### Corrigé
@@ -61,6 +62,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

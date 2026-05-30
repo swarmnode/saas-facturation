@@ -102,10 +102,12 @@ Après le premier save d'un nouveau document :
 - Totaux dessinés de bas en haut : TTC en bas, TVA+HT au-dessus
 - Séparateur horizontal à 44pt au-dessus du TTC
 - Même logique que pour les factures (BOTTOM fixe)
+- Fix: PDF devis 1 page — bottomY=660, lineBreak:false, TTC en bas du cadre sig
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

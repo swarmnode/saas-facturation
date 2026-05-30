@@ -866,6 +866,24 @@ async function showClientForm(id) {
           <option value="exonere"         ${client.tva_mode === 'exonere'         ? 'selected' : ''}>Exonéré</option>
         </select>
       </div>
+      <details style="margin-top:16px;border:1px solid var(--border);border-radius:6px;padding:12px">
+        <summary style="font-weight:600;cursor:pointer;font-size:13px">🏦 Mandat SEPA (prélèvement automatique)</summary>
+        <div style="margin-top:12px">
+          <div class="form-row">
+            <div class="form-group"><label>IBAN</label><input name="iban" value="${client.iban || ''}" placeholder="FR76 0000 0000 0000 0000 0000 000" style="font-family:monospace"/></div>
+            <div class="form-group"><label>BIC</label><input name="bic" value="${client.bic || ''}" placeholder="BNPAFRPPXXX" style="text-transform:uppercase"/></div>
+          </div>
+          <div class="form-group"><label>Titulaire du compte <small style="font-weight:normal;color:var(--text-muted)">(si différent du client)</small></label><input name="titulaire_compte" value="${client.titulaire_compte || ''}"/></div>
+          <div class="form-row">
+            <div class="form-group"><label>Référence mandat (RUM)</label><input name="mandat_rum" value="${client.mandat_rum || ''}" placeholder="Générée automatiquement"/></div>
+            <div class="form-group"><label>Date de signature</label><input name="mandat_date" type="date" value="${client.mandat_date || ''}"/></div>
+          </div>
+          <div class="form-group"><label>Type de mandat</label><select name="mandat_type">
+            <option value="CORE" ${(client.mandat_type||'CORE')==='CORE'?'selected':''}>CORE — Particuliers et entreprises (standard)</option>
+            <option value="B2B"  ${client.mandat_type==='B2B'?'selected':''}>B2B — Entreprises uniquement (irrévocable)</option>
+          </select></div>
+        </div>
+      </details>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
         <button type="submit" class="btn btn-primary">${id ? 'Enregistrer' : 'Créer'}</button>

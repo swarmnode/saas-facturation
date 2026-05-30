@@ -34,6 +34,14 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Migration 006 : colonnes iban, bic, titulaire_compte, mandat_rum, mandat_date, mandat_type
 - Formulaire client : section <details> 'Mandat SEPA' collapsible
 - Sauvegarde automatique via FormData (PUT/POST déjà en place)
+- Feat: génération fichier SEPA pain.008.001.02
+
+- Migration 007 : iban, bic, ics sur entreprise
+- Route POST /api/sepa/generer → XML pain.008.001.02 téléchargeable
+- Paramètres → section '🏦 Prélèvement SEPA' (ICS, IBAN, BIC société)
+- Liste factures → bouton '🏦 Prélèvement SEPA' sur sélection cochée
+- Modal : date d'exécution + séquence FRST/RCUR/FNAL/OOFF
+- Vérifications : ICS requis, clients avec IBAN/BIC/RUM/date mandat
 
 
 ### Corrigé
@@ -62,6 +70,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

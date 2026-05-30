@@ -63,10 +63,17 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Autocomplete article : fermeture sur clic extérieur et visibilitychange
 - Badges CSS ajoutés : en_attente, encaisse, emis, livre
 - fmt.badge() : labels lisibles (En attente, Encaissé, Émis, Livré…)
+- Fix: prix ligne = 1 par défaut, N° doc mis à jour après save, calcul immédiat
+
+- makeLigneRow : prix unitaire ?? 1 (au lieu de vide) pour les nouvelles lignes
+- Calcul immédiat (calcLigne + calcTotaux) à l'ajout d'une ligne
+- saveDoc : met à jour e-doc-numero et titre onglet après enregistrement
+- Badges manquants corrigés, autocomplete flottant corrigé
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

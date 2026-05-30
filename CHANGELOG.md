@@ -1,108 +1,157 @@
 # Changelog
 
-Toutes les modifications notables de ce projet sont documentées dans ce fichier.
+Toutes les modifications notables sont documentées ici.
+Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
-Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre total de commits sur `main`).
+## [Non publié]
 
----
+### Documentation
+- Docs: link CHANGELOG in README, mention v2.0.9
+
+
+### Modifications
+- Ci: auto-generate CHANGELOG.md with git-cliff on each push
+- Ci: fix git-cliff install (Debian Buster EOL, use binary)
+- Ci: fix git-cliff URL (resolve version dynamically)
+- Ci: fix cliff.toml footer template (null version guard)
+
+
+## [2.0.9] — 2026-05-30
+
+### Ajouté
+- Feat: embed Factur-X XML inside PDF (pdf-lib post-processing)
+
+- Install pdf-lib 1.17.1
+- embedFacturXML() : attache factur-x.xml dans le PDF avec AFRelationship=Alternative
+- Métadonnées XMP PDF/A-3b + profil MINIMUM Factur-X
+- Entrée /AF dans le catalogue PDF
+- PDFs existants migrés (FAC-2026-0001 à 0007)
+- Suppression du fichier _facturx.xml séparé
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: add CHANGELOG.md for v1.0.0 and v2.0.8
+
 
 ## [2.0.8] — 2026-05-30
 
 ### Ajouté
+- Feat: v2.0 — WYSIWYG editor, avoirs, stock, N° série, persistence session
 
-**Éditeur WYSIWYG**
-- Nouveau fichier `src/client/js/editor.js` : éditeur A4 inline pour devis, factures, avoirs et BL
-- Vue lecture seule pour les documents verrouillés (émis/signés/payés) avec boutons d'action contextuels
-- Cadre de signature avec ligne de date intégré, ancré en bas de page (position fixe, indépendante du contenu)
-- Totaux toujours positionnés en bas à droite (même logique dans le PDF)
-- Auto-sauvegarde des brouillons non enregistrés dans `localStorage` (600 ms après chaque frappe)
+- Editeur WYSIWYG A4 pour devis, factures, avoirs et BL (editor.js)
+- Avoirs : numerotation AV-, lien facture_origine, vue dédiée sidebar
+- Stock articles (quantite_stock) + N° de série sur lignes facture/BL
+- Unité article : select avec unités courantes + champ libre
+- Suppression sécurisée : devis, acomptes, avoirs, BL, clients (contrôle de chaînage)
+- Persistance session : onglets + brouillons non sauvegardés (localStorage + auto-save)
+- Tableau de bord : liste chronologique unifiée triable (type/client/montant/statut/date)
+- Sidebar collapsible avec bouton toggle persisté
+- Navigation onglets : flèches gauche/droite + scroll molette
+- Impression et PDF : totaux et signature ancrés en bas de page
+- Migrations 003 (avoir) et 004 (stock/série)
 
-**Avoirs**
-- Type de document dédié `type_facture = 'avoir'`, numérotation `AV-YYYY-NNNN`
-- Lien vers la facture d'origine (`facture_origine_id`, affiché dans l'éditeur et le PDF)
-- Entrée « Avoirs » dans la sidebar et vue liste dédiée
-- Bouton « Avoir » sur les factures émises et payées (pas sur les avoirs eux-mêmes)
-- Migration `003` : colonne `facture_origine_id` sur `factures`
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
-**Stock et traçabilité**
-- Champ `quantite_stock` sur `articles` : badge stock visible dans l'éditeur, limitation du champ quantité au max du stock disponible lors de la saisie via l'autocomplete
-- Champ `numero_serie` sur les lignes de facture et de BL : saisie inline sous la désignation
-- Unité article : sélecteur avec 16 unités courantes (heure, jour, forfait, m², kg…) + option « Autre… » avec saisie libre
-- Migration `004` : colonnes `quantite_stock`, `numero_serie`
 
-**Persistence de session**
-- Onglets ouverts restaurés automatiquement après rechargement (vue + documents)
-- Brouillons non sauvegardés restaurés intégralement (client, lignes, dates, conditions, notes)
-- État effacé proprement à la déconnexion ou après enregistrement
+### Dépendances
+- Bump the dev-dependencies group with 2 updates
 
-**Tableau de bord**
-- Liste chronologique unifiée (devis, factures, avoirs, acomptes, BL) avec badges colorés par type
-- Tri cliquable sur les colonnes : Type, Client, Montant TTC, Statut, Date (▲/▼)
-- Boutons d'action identiques aux rubriques (Émettre, Payer, Signer, Encaisser, Dupliquer, BL, Avoir, 🗑️…)
+Bumps the dev-dependencies group with 2 updates: [@types/node](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/node) and [typescript](https://github.com/microsoft/TypeScript).
 
-**Navigation**
-- Sidebar collapsible : bouton `‹`/`›` sur le bord, état mémorisé dans `localStorage`
-- Barre d'onglets : flèches `‹` `›` (44 px, cible large) apparaissant en cas de débordement + scroll à la molette
-- Onglet actif scrollé dans la vue automatiquement à chaque activation
 
-**Suppression sécurisée**
-- Devis : supprimable si non signé ET sans facture/acompte/BL lié
-- Acomptes : supprimables si non encaissés
-- Avoirs : supprimables si non émis
-- BL : supprimables si brouillon non clôturé
-- Clients : supprimables si aucun document associé
-- Boutons poubelle 🗑️ (icône grise, rouge au survol) remplaçant les boutons « Supprimer » rouges
+Updates `@types/node` from 20.19.41 to 25.9.1
+- [Release notes](https://github.com/DefinitelyTyped/DefinitelyTyped/releases)
+- [Commits](https://github.com/DefinitelyTyped/DefinitelyTyped/commits/HEAD/types/node)
 
-**PDF et impression**
-- Totaux ancrés à position fixe en bas de page (y ≈ 700–742 pt selon le type)
-- Cadre de signature avec ligne de date sur devis et BL
-- Suppression du pied de page légal (était en bas de chaque PDF)
-- CSS `@media print` : masquage de l'interface, préservation de la zone signature/totaux
-- Devis PDF : signature « Bon pour accord » gauche + totaux droite
-
-**Acomptes**
-- Ouverture en vue WYSIWYG A4 lecture seule (depuis le tableau de bord et la liste)
-- Restauration des onglets acompte après rechargement
-
-### Modifié
-
-- `FactureService.creer` : numérotation `AVOIR` vs `FACTURE` selon `type_facture`
-- `FactureService.lister` : filtre les avoirs hors de la liste factures standard
-- `FacturXService` : titre « AVOIR » sur le PDF, référence à la facture d'origine
-- `ArticleService` : `creer` et `mettreAJour` gèrent `quantite_stock`
-- `BonLivraisonService` : `numero_serie` sur les lignes, date de livraison retirée (saisie manuelle dans le cadre de signature)
-- Icônes sidebar agrandies (26 px) et items distribuées sur toute la hauteur via `justify-content: space-evenly`
-- Icône « Clients » remplacée par 🧑 (meilleure lisibilité à grande taille)
-- TVA dans le sélecteur de lignes : libellé abrégé (« 20 % », « Exo. », « Autoliq. »)
-- Échéance facture masquée en lecture seule si non renseignée
-
-### Infrastructure
-
-- Workflow GitHub Actions `build-installer.yml` : build automatique du `.exe` sur push de tag `v*`
-- `installer/scripts/Configure.ps1` et `Uninstall.ps1` ajoutés au dépôt (corrigé l'exclusion `.gitignore`)
-- Dépendances npm mises à jour (Dependabot PRs #1 et #2)
+Updates `typescript` from 5.9.3 to 6.0.3
+- [Release notes](https://github.com/microsoft/TypeScript/releases)
+- [Commits](https://github.com/microsoft/TypeScript/compare/v5.9.3...v6.0.3)
 
 ---
+updated-dependencies:
+- dependency-name: "@types/node"
+  dependency-version: 25.9.1
+  dependency-type: direct:development
+  update-type: version-update:semver-major
+  dependency-group: dev-dependencies
+- dependency-name: typescript
+  dependency-version: 6.0.3
+  dependency-type: direct:development
+  update-type: version-update:semver-major
+  dependency-group: dev-dependencies
+...
 
-## [1.0.0] — 2026-05-30 (commit `ddd2a19`)
+Signed-off-by: dependabot[bot] <support@github.com>
+- Merge pull request #1 from swarmnode/dependabot/npm_and_yarn/dev-dependencies-6cf85894ce
+- Bump the production-dependencies group with 4 updates
 
-### Ajouté
+Bumps the production-dependencies group with 4 updates: [dotenv](https://github.com/motdotla/dotenv), [express](https://github.com/expressjs/express), [nodemailer](https://github.com/nodemailer/nodemailer) and [pdfkit](https://github.com/foliojs/pdfkit).
 
-- Stack initiale : TypeScript / Express / PostgreSQL 17
-- Schéma SQL complet avec triggers d'inaltérabilité (loi anti-fraude TVA 2018)
-- Authentification JWT, rôles (`admin`, `comptable`, `commercial`, `lecteur`), multi-société
-- Modules : devis, factures, acomptes, bons de livraison, avenants, archives, articles, clients
-- `NumerotationService` : séquences atomiques `FAC-`, `DEV-`, `AC-`, `BL-`, `AV-`
-- `ScelleService` : chaîne SHA-256 (`journal_scellement`, immuable)
-- `FacturXService` : PDF PDFKit + XML ZUGFeRD EN 16931 embarqué
-- `FecExportService` : export DGFiP au format tabulé
-- `BackupScheduler` : sauvegardes planifiées via `pg_dump`
-- `EmailService` : Nodemailer avec fallback Ethereal
-- Frontend SPA Vanilla JS, interface onglets
-- Installeur Windows autonome (Inno Setup 6 + Node.js portable + NSSM)
-- README, CLAUDE.md, manuel utilisateur (Markdown + DOCX via pandoc)
-- CI GitHub Actions (build TypeScript), issue templates, Dependabot
 
-[2.0.8]: https://github.com/swarmnode/saas-facturation/compare/v1.0.0...v2.0.8
+Updates `dotenv` from 16.6.1 to 17.4.2
+- [Changelog](https://github.com/motdotla/dotenv/blob/master/CHANGELOG.md)
+- [Commits](https://github.com/motdotla/dotenv/compare/v16.6.1...v17.4.2)
+
+Updates `express` from 4.22.2 to 5.2.1
+- [Release notes](https://github.com/expressjs/express/releases)
+- [Changelog](https://github.com/expressjs/express/blob/master/History.md)
+- [Commits](https://github.com/expressjs/express/compare/v4.22.2...v5.2.1)
+
+Updates `nodemailer` from 8.0.8 to 8.0.10
+- [Release notes](https://github.com/nodemailer/nodemailer/releases)
+- [Changelog](https://github.com/nodemailer/nodemailer/blob/master/CHANGELOG.md)
+- [Commits](https://github.com/nodemailer/nodemailer/compare/v8.0.8...v8.0.10)
+
+Updates `pdfkit` from 0.15.2 to 0.18.0
+- [Release notes](https://github.com/foliojs/pdfkit/releases)
+- [Changelog](https://github.com/foliojs/pdfkit/blob/master/CHANGELOG.md)
+- [Commits](https://github.com/foliojs/pdfkit/compare/v0.15.2...v0.18.0)
+
+---
+updated-dependencies:
+- dependency-name: dotenv
+  dependency-version: 17.4.2
+  dependency-type: direct:production
+  update-type: version-update:semver-major
+  dependency-group: production-dependencies
+- dependency-name: express
+  dependency-version: 5.2.1
+  dependency-type: direct:production
+  update-type: version-update:semver-major
+  dependency-group: production-dependencies
+- dependency-name: nodemailer
+  dependency-version: 8.0.10
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+  dependency-group: production-dependencies
+- dependency-name: pdfkit
+  dependency-version: 0.18.0
+  dependency-type: direct:production
+  update-type: version-update:semver-minor
+  dependency-group: production-dependencies
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+- Merge pull request #2 from swarmnode/dependabot/npm_and_yarn/production-dependencies-ff7444bb64
+
+
+### Modifications
+- Add installer build workflow + installer scripts (fix gitignore)
+
+
+## [1.0.0] — 2026-05-30
+
+### Dépendances
+- Add README, CI workflow, issue templates, dependabot
+
+
+### Modifications
+- Initial commit — FacturPro SaaS devis/facturation France
+
+
+[2.0.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.9
+[2.0.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.8
 [1.0.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v1.0.0
+

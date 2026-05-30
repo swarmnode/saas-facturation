@@ -5,6 +5,25 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Documentation
+- Docs: mise à jour manuel utilisateur v2.0-v2.2
+
+Couvre toutes les fonctionnalités ajoutées depuis v2.0 :
+- Interface WYSIWYG (éditeur A4, onglets persistants, tableau de bord)
+- Avoirs (création, émission, règles comptables)
+- Flux devis : accepté → BL → facture, passage prospect→client
+- Prélèvements SEPA (pain.008.001.02, prérequis ICS, workflow)
+- Clients : adresse2, mode règlement par défaut, section SEPA
+- Entreprise : coordonnées bancaires SEPA (IBAN/BIC/ICS)
+- Articles : stock et numéro de série
+- Envoi groupé de factures, création facture depuis BL
+- Factur-X EN 16931 explicité en section conformité
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+## [2.2.129] — 2026-05-30
+
 ### Ajouté
 - Feat: boutons Émettre + Envoyer dans l'éditeur WYSIWYG pour les factures brouillon
 - Feat: tri sur les en-têtes de colonnes dans toutes les listes de documents
@@ -78,6 +97,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
@@ -445,6 +465,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.2.129]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.2.129
 [2.1.81]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.1.81
 [2.0.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.9
 [2.0.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.8

@@ -288,7 +288,7 @@ const DocEditor = (() => {
         </select>
       </div>` : `
       <div class="e-meta-row e-meta-row-check">
-        <label><input type="checkbox" name="is_free" ${doc?.is_free?'checked':''}> Devis gratuit</label>
+        <label><input type="checkbox" name="is_free" ${(doc?.is_free || !doc?.id) ? 'checked' : ''}> Devis gratuit</label>
       </div>`;
 
     const dateFields = isFacture ? `

@@ -476,46 +476,53 @@ const DocEditor = (() => {
         previewBtn.onclick = () => openPdf(`/api/${route}/${id}/apercu`);
       }
 
-      // Boutons contextuels devis dans la toolbar (selon statut)
+      // Boutons contextuels devis dans la toolbar
       if (type === 'devis' && id) {
         const tbRight = el.querySelector('.e-tb-right');
         const saveBtn = tbRight.querySelector('.e-save-btn');
-        const addCtx  = (label, cls, fn) => {
+        const ins = (b) => tbRight.insertBefore(b, saveBtn);
+        const btn = (label, cls, fn, disabled = false) => {
           const b = document.createElement('button');
           b.className = `btn ${cls} btn-sm`;
           b.textContent = label;
-          b.onclick = fn;
-          tbRight.insertBefore(b, saveBtn);
+          if (disabled) { b.disabled = true; b.style.cursor = 'default'; b.style.opacity = '1'; }
+          else b.onclick = fn;
+          return b;
         };
         const s = doc?.statut;
-        if (s === 'envoye') {
-          addCtx('✔ Accepté', 'btn-success', async () => {
+
+        // Bouton Accepter/Accepté — toujours présent
+        if (s === 'accepte') {
+          // Accepté : vert, non cliquable
+          ins(btn('✓ Accepté', 'btn-success', null, true));
+          // → BL prioritaire
+          ins(btn('🚚 → BL', 'btn-primary', () => showBLFromDevisForm(id)));
+          ins(btn('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id)));
+          ins(btn('Signer', 'btn-outline', async () => {
+            if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;
+            await api.post(`/api/devis/${id}/signer`);
+            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
+          }));
+        } else if (s === 'signe') {
+          ins(btn('✓ Accepté', 'btn-success', null, true));
+          ins(btn('📝 Avenant', 'btn-warning', () => showAvenantForm(id)));
+          ins(btn('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id)));
+          ins(btn('🚚 BL', 'btn-outline', () => showBLFromDevisForm(id)));
+        } else {
+          // brouillon ou envoye : bouton Accepter blanc cliquable
+          ins(btn('Accepter', 'btn-outline', async () => {
             const r = await api.post(`/api/devis/${id}/accepter`);
             if (r?.error) return alert(r.error);
             tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
-          });
-          addCtx('Signer', 'btn-outline', async () => {
-            if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;
-            await api.post(`/api/devis/${id}/signer`);
-            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
-          });
-        }
-        if (s === 'accepte') {
-          addCtx('🚚 → BL', 'btn-primary', () => showBLFromDevisForm(id));
-          addCtx('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id));
-          addCtx('Signer', 'btn-outline', async () => {
-            if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;
-            await api.post(`/api/devis/${id}/signer`);
-            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
-          });
-        }
-        if (s === 'signe') {
-          addCtx('📝 Avenant', 'btn-warning', () => showAvenantForm(id));
-          addCtx('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id));
-          addCtx('🚚 BL', 'btn-outline', () => showBLFromDevisForm(id));
-        }
-        if (['brouillon','envoye'].includes(s)) {
-          addCtx('✉ Envoyer', 'btn-outline', () => envoyerDevis(id));
+          }));
+          if (s === 'envoye') {
+            ins(btn('Signer', 'btn-outline', async () => {
+              if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;
+              await api.post(`/api/devis/${id}/signer`);
+              tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
+            }));
+          }
+          ins(btn('✉ Envoyer', 'btn-outline', () => envoyerDevis(id)));
         }
       }
 

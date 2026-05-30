@@ -75,10 +75,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - id mutable via page.dataset.docId : le 2ème save fait un PUT, pas un POST
 - N° et titre onglet mis à jour après enregistrement
 - Total HT lignes en gras sur une ligne
+- Fix: Total HT sur une ligne (NBSP + colonne 14%)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

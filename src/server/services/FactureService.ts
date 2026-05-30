@@ -95,6 +95,7 @@ export class FactureService {
     const typeFilter = type ? `AND f.type_facture = '${type}'` : `AND f.type_facture != 'avoir'`;
     const r = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             c.mode_reglement_defaut,
              fo.numero AS facture_origine_numero
       FROM factures f
       LEFT JOIN clients c ON f.client_id = c.id
@@ -111,6 +112,7 @@ export class FactureService {
   static async obtenir(id: number) {
     const fr = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             c.mode_reglement_defaut,
              fo.numero AS facture_origine_numero
       FROM factures f
       LEFT JOIN clients c ON f.client_id = c.id

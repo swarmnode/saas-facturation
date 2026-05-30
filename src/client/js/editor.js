@@ -188,7 +188,14 @@ const DocEditor = (() => {
       align:        'right',
       createLabel:  '+ Nouveau client',
       onCreate:     () => showClientForm(),
-      onSelect:     client => renderClientPreview(client, preview),
+      onSelect:     client => {
+        renderClientPreview(client, preview);
+        // Pré-remplir le mode de règlement depuis le défaut client
+        if (client.mode_reglement_defaut) {
+          const modeEl = wrap.closest('.a4-page')?.querySelector('[name=mode_paiement]');
+          if (modeEl && !modeEl.value) modeEl.value = client.mode_reglement_defaut;
+        }
+      },
     });
     sel.hidden.name = 'client_id';
     if (initVal) {

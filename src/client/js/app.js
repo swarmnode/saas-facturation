@@ -96,13 +96,14 @@ const DOC_CONFIGS = {
       <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
+      <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
       <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
     headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement'],
     sortKeys: [null,'numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null],
     rowOpen:  f => `DocEditor.openFacture(${f.id})`,
     cells:    f => [
-      ['emise','payee'].includes(f.statut) ? `<input type="checkbox" class="fac-sel" data-id="${f.id}" data-num="${f.numero}" onclick="event.stopPropagation();updateSelCount()">` : '',
+      ['emise','payee'].includes(f.statut) ? `<input type="checkbox" class="fac-sel" data-id="${f.id}" data-num="${f.numero}" data-mode="${f.mode_reglement_defaut||''}" onclick="event.stopPropagation();updateSelCount()">` : '',
       `<strong>${f.numero}</strong>${f.type_facture==='avoir'?' <span class="badge badge-avoir">Avoir</span>':''}`,
       f.client_nom||f.client_nom_part||'—',
       `<span class="text-right">${fmt.money(f.montant_ht)}</span>`,
@@ -860,12 +861,26 @@ async function showClientForm(id) {
         <div class="form-group"><label>SIRET</label><input name="siret" value="${client.siret || ''}"/></div>
         <div class="form-group"><label>TVA Intracom</label><input name="tva_intracom" value="${client.tva_intracom || ''}"/></div>
       </div>
-      <div class="form-group"><label>Mode TVA</label>
-        <select name="tva_mode">
-          <option value="normal"          ${client.tva_mode === 'normal'          ? 'selected' : ''}>Normal</option>
-          <option value="autoliquidation" ${client.tva_mode === 'autoliquidation' ? 'selected' : ''}>Autoliquidation</option>
-          <option value="exonere"         ${client.tva_mode === 'exonere'         ? 'selected' : ''}>Exonéré</option>
-        </select>
+      <div class="form-row">
+        <div class="form-group"><label>Mode TVA</label>
+          <select name="tva_mode">
+            <option value="normal"          ${client.tva_mode === 'normal'          ? 'selected' : ''}>Normal</option>
+            <option value="autoliquidation" ${client.tva_mode === 'autoliquidation' ? 'selected' : ''}>Autoliquidation</option>
+            <option value="exonere"         ${client.tva_mode === 'exonere'         ? 'selected' : ''}>Exonéré</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Mode de règlement par défaut</label>
+          <select name="mode_reglement_defaut">
+            <option value="">— Non précisé —</option>
+            <option value="virement"          ${client.mode_reglement_defaut==='virement'         ?'selected':''}>Virement bancaire</option>
+            <option value="virement_sepa"     ${client.mode_reglement_defaut==='virement_sepa'    ?'selected':''}>Virement SEPA</option>
+            <option value="prelevement_sepa"  ${client.mode_reglement_defaut==='prelevement_sepa' ?'selected':''}>Prélèvement SEPA ★</option>
+            <option value="cheque"            ${client.mode_reglement_defaut==='cheque'           ?'selected':''}>Chèque</option>
+            <option value="carte"             ${client.mode_reglement_defaut==='carte'            ?'selected':''}>Carte bancaire</option>
+            <option value="especes"           ${client.mode_reglement_defaut==='especes'          ?'selected':''}>Espèces</option>
+            <option value="paypal"            ${client.mode_reglement_defaut==='paypal'           ?'selected':''}>PayPal</option>
+          </select>
+        </div>
       </div>
       <details style="margin-top:16px;border:1px solid var(--border);border-radius:6px;padding:12px">
         <summary style="font-weight:600;cursor:pointer;font-size:13px">🏦 Mandat SEPA (prélèvement automatique)</summary>
@@ -1882,6 +1897,17 @@ function updateSelCount() {
   if (span) span.textContent   = n;
   if (btnS)  btnS.style.display  = n > 0 ? '' : 'none';
   if (spanS) spanS.textContent   = n;
+}
+
+function selectionnerClientsSepa() {
+  // Cocher uniquement les factures des clients avec prélèvement SEPA par défaut
+  let found = 0;
+  document.querySelectorAll('.fac-sel').forEach(cb => {
+    cb.checked = cb.dataset.mode === 'prelevement_sepa';
+    if (cb.checked) found++;
+  });
+  updateSelCount();
+  if (!found) alert('Aucune facture dont le client a "Prélèvement SEPA" comme mode de règlement par défaut.\nVérifiez les fiches clients.');
 }
 
 async function genererSepa() {

@@ -76,10 +76,16 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - N° et titre onglet mis à jour après enregistrement
 - Total HT lignes en gras sur une ligne
 - Fix: Total HT sur une ligne (NBSP + colonne 14%)
+- Fix: alignement droite colonnes numériques + calcul auto après autocomplete article
+
+- En-têtes Qté/PU/Remise/TVA en nowrap (plus de coupure sur 2 lignes)
+- inputs numériques text-align:right dans leurs cellules
+- Autocomplete article : dispatchEvent input sur puInput et tvaSelect → calcul immédiat du Total HT
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

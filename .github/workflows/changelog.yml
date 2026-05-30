@@ -1,0 +1,35 @@
+name: Changelog
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - CHANGELOG.md   # évite la boucle infinie
+
+jobs:
+  changelog:
+    name: Régénérer CHANGELOG.md
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # historique complet requis par git-cliff
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Générer le changelog
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: .github/cliff.toml
+          args: --verbose --output CHANGELOG.md
+
+      - name: Commit si modifié
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet && echo "Aucun changement" && exit 0
+          git commit -m "docs: update CHANGELOG.md [skip ci]"
+          git push

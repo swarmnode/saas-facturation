@@ -49,7 +49,20 @@ router.post('/:id/envoyer', requirePerm('devis:w'), async (req, res, next) => {
 });
 
 router.post('/:id/accepter', requirePerm('devis:w'), async (req, res, next) => {
-  try { res.json(await DevisService.changerStatut(Number(req.params.id), 'accepte')); } catch(e) { next(e); }
+  try {
+    const devis = await DevisService.changerStatut(Number(req.params.id), 'accepte');
+    // Passer le client de "prospect" à "client" si c'est encore un prospect
+    if ((devis as any)?.client_id) {
+      await query(
+        `UPDATE clients
+            SET statut_rgpd = 'client',
+                date_derniere_activite = to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+          WHERE id = $1 AND statut_rgpd = 'prospect'`,
+        [(devis as any).client_id]
+      );
+    }
+    res.json(devis);
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/signer', requirePerm('devis:w'), async (req, res, next) => {

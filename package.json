@@ -4,7 +4,7 @@
   "description": "SaaS Devis & Facturation France — Loi anti-fraude TVA, Factur-X",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server/index.ts",
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('fs'),path=require('path');function cp(s,d){if(!fs.existsSync(d))fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const sp=path.join(s,f),dp=path.join(d,f);fs.statSync(sp).isDirectory()?cp(sp,dp):fs.copyFileSync(sp,dp)}}cp('src/client','dist/client')\"",
     "start": "node dist/server/index.js"
   },
   "dependencies": {

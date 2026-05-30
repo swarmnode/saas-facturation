@@ -41,6 +41,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -48,6 +49,18 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Ci: fix git-cliff install (Debian Buster EOL, use binary)
 - Ci: fix git-cliff URL (resolve version dynamically)
 - Ci: fix cliff.toml footer template (null version guard)
+
+
+### Refactoring
+- Refactor: boutons contextuels devis dans toolbar WYSIWYG, listes simplifiées
+
+Listes (dashboard, devis, détail) : Voir/Modifier · PDF · Envoyer · 🗑️ uniquement
+Éditeur WYSIWYG :
+  - brouillon/envoyé (edit) : ✔ Accepté · Signer · ✉ Envoyer
+  - accepté (edit) : 🚚 → BL · 🧾 Facturer · Signer
+  - signé (lecture) : 📝 Avenant · 🧾 Facturer · 🚚 BL
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.0.9] — 2026-05-30

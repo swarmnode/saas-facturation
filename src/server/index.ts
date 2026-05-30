@@ -49,7 +49,7 @@ app.use('/api/backup',          backupRouter);
 app.use('/api/utilisateurs',    utilisateursRouter);
 app.use('/api/search',          searchRouter);
 
-app.get('*', (_req, res) => {
+app.get('/{*path}', (_req, res) => {
   res.sendFile(path.resolve(__dirname, '../client/index.html'));
 });
 

@@ -278,6 +278,7 @@ const DocEditor = (() => {
       </div>
       <div class="e-tb-right">
         ${doc?.id ? `<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
         <button class="btn btn-primary btn-sm e-save-btn">Enregistrer</button>
       </div>
     </div>
@@ -436,6 +437,7 @@ const DocEditor = (() => {
       const toolbar = el.querySelector('.e-tb-right');
       toolbar.innerHTML = `
         <button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
         ${doc?.statut === 'emise' ? `<button class="btn btn-primary btn-sm e-pay-btn">💳 Payer</button>` : ''}
         ${['emise','payee'].includes(doc?.statut) && !isAvoir ? `<button class="btn btn-outline btn-sm e-avoir-btn">Avoir</button>` : ''}
@@ -606,6 +608,7 @@ const DocEditor = (() => {
       </div>
       <div class="e-tb-right">
         ${bl?.id ? `<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
         <button class="btn btn-primary btn-sm e-save-btn">Enregistrer</button>
       </div>
     </div>
@@ -871,6 +874,7 @@ const DocEditor = (() => {
           </div>
           <div class="e-tb-right">
             <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${id}/apercu')">👁 Aperçu PDF</button>
+            <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
             ${ac.statut === 'en_attente' ? `<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${id})">Encaisser</button>` : ''}
           </div>
         </div>

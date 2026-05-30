@@ -438,16 +438,30 @@ const DocEditor = (() => {
       toolbar.innerHTML = `
         <button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>
         <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
-        <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
-        ${doc?.statut === 'emise' ? `<button class="btn btn-primary btn-sm e-pay-btn">💳 Payer</button>` : ''}
-        ${['emise','payee'].includes(doc?.statut) && !isAvoir ? `<button class="btn btn-outline btn-sm e-avoir-btn">Avoir</button>` : ''}
+        ${type === 'devis' ? `
+          <button class="btn btn-outline btn-sm e-send-devis-btn">✉ Envoyer</button>
+          ${doc?.statut === 'signe' ? `<button class="btn btn-warning btn-sm e-avenant-btn">📝 Avenant</button>` : ''}
+          ${doc?.statut === 'signe' ? `<button class="btn btn-outline btn-sm e-facturer-btn">🧾 Facturer</button>` : ''}
+          ${doc?.statut === 'signe' ? `<button class="btn btn-outline btn-sm e-bl-btn">🚚 BL</button>` : ''}
+        ` : `
+          <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
+          ${doc?.statut === 'emise' ? `<button class="btn btn-primary btn-sm e-pay-btn">💳 Payer</button>` : ''}
+          ${['emise','payee'].includes(doc?.statut) && !isAvoir ? `<button class="btn btn-outline btn-sm e-avoir-btn">Avoir</button>` : ''}
+        `}
       `;
 
       const route = (type === 'avoir' || type === 'facture') ? 'factures' : 'devis';
       toolbar.querySelector('.e-preview-btn').onclick = () => openPdf(`/api/${route}/${id}/apercu`);
-      toolbar.querySelector('.e-send-btn').onclick    = () => envoyerFacture(id);
-      toolbar.querySelector('.e-pay-btn')?.addEventListener('click', () => payerFacture(id));
-      toolbar.querySelector('.e-avoir-btn')?.addEventListener('click', () => DocEditor.openAvoir(id));
+      if (type === 'devis') {
+        toolbar.querySelector('.e-send-devis-btn')?.addEventListener('click', () => envoyerDevis(id));
+        toolbar.querySelector('.e-avenant-btn')?.addEventListener('click', () => showAvenantForm(id));
+        toolbar.querySelector('.e-facturer-btn')?.addEventListener('click', () => showFactureFromDevisForm(id));
+        toolbar.querySelector('.e-bl-btn')?.addEventListener('click', () => showBLFromDevisForm(id));
+      } else {
+        toolbar.querySelector('.e-send-btn').onclick    = () => envoyerFacture(id);
+        toolbar.querySelector('.e-pay-btn')?.addEventListener('click', () => payerFacture(id));
+        toolbar.querySelector('.e-avoir-btn')?.addEventListener('click', () => DocEditor.openAvoir(id));
+      }
     } else {
       // ── Edit mode ───────────────────────────────────────────────────────
       el.querySelector('.e-add-btn').onclick = () => {
@@ -462,19 +476,47 @@ const DocEditor = (() => {
         previewBtn.onclick = () => openPdf(`/api/${route}/${id}/apercu`);
       }
 
-      // Bouton Accepté pour devis envoyé
-      if (type === 'devis' && id && doc?.statut === 'envoye') {
+      // Boutons contextuels devis dans la toolbar (selon statut)
+      if (type === 'devis' && id) {
         const tbRight = el.querySelector('.e-tb-right');
-        const acceptBtn = document.createElement('button');
-        acceptBtn.className = 'btn btn-success btn-sm';
-        acceptBtn.textContent = '✔ Accepté';
-        acceptBtn.onclick = async () => {
-          const r = await api.post(`/api/devis/${id}/accepter`);
-          if (r?.error) return alert(r.error);
-          tabMgr.closeTab(el.dataset.tid);
-          tabMgr.openViewTab('devis');
+        const saveBtn = tbRight.querySelector('.e-save-btn');
+        const addCtx  = (label, cls, fn) => {
+          const b = document.createElement('button');
+          b.className = `btn ${cls} btn-sm`;
+          b.textContent = label;
+          b.onclick = fn;
+          tbRight.insertBefore(b, saveBtn);
         };
-        tbRight.insertBefore(acceptBtn, tbRight.querySelector('.e-save-btn'));
+        const s = doc?.statut;
+        if (s === 'envoye') {
+          addCtx('✔ Accepté', 'btn-success', async () => {
+            const r = await api.post(`/api/devis/${id}/accepter`);
+            if (r?.error) return alert(r.error);
+            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
+          });
+          addCtx('Signer', 'btn-outline', async () => {
+            if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;
+            await api.post(`/api/devis/${id}/signer`);
+            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
+          });
+        }
+        if (s === 'accepte') {
+          addCtx('🚚 → BL', 'btn-primary', () => showBLFromDevisForm(id));
+          addCtx('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id));
+          addCtx('Signer', 'btn-outline', async () => {
+            if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;
+            await api.post(`/api/devis/${id}/signer`);
+            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
+          });
+        }
+        if (s === 'signe') {
+          addCtx('📝 Avenant', 'btn-warning', () => showAvenantForm(id));
+          addCtx('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id));
+          addCtx('🚚 BL', 'btn-outline', () => showBLFromDevisForm(id));
+        }
+        if (['brouillon','envoye'].includes(s)) {
+          addCtx('✉ Envoyer', 'btn-outline', () => envoyerDevis(id));
+        }
       }
 
       el.querySelector('.e-save-btn').onclick = () => saveDoc(type, id, el, page);

@@ -472,15 +472,9 @@ async function renderDashboard(el) {
       if (type === 'devis') {
         const d = doc;
         btns = `
-          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
           <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
+          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
-          ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="accepterDevis(${d.id})">✔ Accepté</button>` : ''}
-          ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
-          ${d.statut === 'signe'  ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
-          ${['envoye','accepte','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
-          ${d.statut === 'accepte' ? `<button class="btn btn-primary btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 → BL</button>` : ((['brouillon','envoye','signe'].includes(d.statut)) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : '')}
           ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer">🗑️</button>` : ''}`;
       } else if (type === 'facture') {
         const f = doc;
@@ -725,16 +719,10 @@ function tableDevis(list, withActions = false) {
       ${withActions ? `<tr class="row-actions">
         <td colspan="7"><div class="btn-row">
           
-          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 Aperçu PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
           <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
+          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
-          ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="accepterDevis(${d.id})">✔ Accepté</button>` : ''}
-          ${d.statut === 'envoye'   ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
-          ${d.statut === 'signe'    ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
-          ${['envoye','accepte','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
-          ${d.statut === 'accepte' ? `<button class="btn btn-primary btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 → BL</button>` : ((['brouillon','envoye','signe'].includes(d.statut)) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : '')}
-          ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer ce devis">🗑️</button>` : ''}
+          ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer">🗑️</button>` : ''}
         </div></td>
       </tr>` : ''}`).join('')}
     </tbody></table>`;
@@ -1114,15 +1102,9 @@ async function showDevisDetail(id) {
             ${d.date_validite ? `<div><span class="card-title">Valable jusqu'au</span><br/>${fmt.date(d.date_validite)}</div>` : ''}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 Aperçu PDF</button>
-            <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
             <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
+            <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
             <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉️ Envoyer</button>
-            ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="accepterDevis(${d.id})">✔ Accepté</button>` : ''}
-            ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">✅ Signer</button>` : ''}
-            ${d.statut === 'signe' ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">📝 Avenant</button>` : ''}
-            ${['envoye','accepte','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
-            ${d.statut === 'accepte' ? `<button class="btn btn-primary btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 → BL</button>` : ((['brouillon','envoye','signe'].includes(d.statut)) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : '')}
           </div>
         </div>
         <table class="lignes-table">

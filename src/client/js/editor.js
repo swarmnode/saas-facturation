@@ -462,6 +462,21 @@ const DocEditor = (() => {
         previewBtn.onclick = () => openPdf(`/api/${route}/${id}/apercu`);
       }
 
+      // Bouton Accepté pour devis envoyé
+      if (type === 'devis' && id && doc?.statut === 'envoye') {
+        const tbRight = el.querySelector('.e-tb-right');
+        const acceptBtn = document.createElement('button');
+        acceptBtn.className = 'btn btn-success btn-sm';
+        acceptBtn.textContent = '✔ Accepté';
+        acceptBtn.onclick = async () => {
+          const r = await api.post(`/api/devis/${id}/accepter`);
+          if (r?.error) return alert(r.error);
+          tabMgr.closeTab(el.dataset.tid);
+          tabMgr.openViewTab('devis');
+        };
+        tbRight.insertBefore(acceptBtn, tbRight.querySelector('.e-save-btn'));
+      }
+
       el.querySelector('.e-save-btn').onclick = () => saveDoc(type, id, el, page);
     }
 

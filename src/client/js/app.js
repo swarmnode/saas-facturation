@@ -4081,11 +4081,14 @@ async function restoreTabState(state) {
     const { tabs: saved } = state;
     if (!saved?.length) return;
 
-    // Ouvrir l'onglet actif en premier pour que l'utilisateur voie quelque chose
-    const sorted = [...saved].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
-
-    for (const t of sorted) {
-      try { await _openSavedTab(t); } catch(e) { /* tab introuvable, on ignore */ }
+    // Ouvrir les inactifs d'abord, l'actif EN DERNIER pour qu'il garde le focus
+    const nonActifs = saved.filter(t => !t.active);
+    const actif     = saved.find(t => t.active);
+    for (const t of nonActifs) {
+      try { await _openSavedTab(t); } catch(e) {}
+    }
+    if (actif) {
+      try { await _openSavedTab(actif); } catch(e) {}
     }
   } catch(e) { console.warn('Restauration session échouée', e); }
 }

@@ -25,8 +25,9 @@ body = """
 """
 footer = """
 {% for release in releases -%}
-[{{ release.version | trim_start_matches(pat="v") }}]: \
-  https://github.com/swarmnode/saas-facturation/releases/tag/{{ release.version }}
+{% if release.version -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/swarmnode/saas-facturation/releases/tag/{{ release.version }}
+{% endif -%}
 {% endfor %}
 """
 trim = true

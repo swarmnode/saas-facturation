@@ -297,24 +297,22 @@ export class FacturXService {
         y += 20;
       });
 
-      // ── Totaux ancrés en bas à droite (marge basse ~50pt) ───────────────
-      const BOTTOM = 742; // position Y du bas de zone (marge basse 50pt + 50pt espace)
-      let ty = BOTTOM;
-      // Dessiner de bas en haut
-      const totLine = (label: string, val: string, bold = false, yOff: number) => {
+      // ── Totaux ancrés en bas à droite — même position que le devis ──────
+      const BOTTOM = 744; // = sigBotY du devis (660 + 14 + 70)
+      const drawTot = (label: string, val: string, bold: boolean, yOff: number) => {
         doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
-           .text(label, 340, BOTTOM - yOff, { width: 126, align: 'left' })
-           .text(val,   470, BOTTOM - yOff, { width:  70, align: 'right' });
+           .text(label, 340, BOTTOM - yOff, { width: 126, align: 'left',  lineBreak: false })
+           .text(val,   470, BOTTOM - yOff, { width:  70, align: 'right', lineBreak: false });
       };
-      totLine('Total TTC', formatMontant(facture.montant_ttc), true, 0);
-      totLine('Total TVA', formatMontant(facture.montant_tva), false, 18);
-      totLine('Total HT',  formatMontant(facture.montant_ht),  false, 36);
+      drawTot('Total HT',  formatMontant(facture.montant_ht),  false, 36);
+      drawTot('Total TVA', formatMontant(facture.montant_tva), false, 18);
+      drawTot('Total TTC', formatMontant(facture.montant_ttc), true,   0);
       doc.moveTo(340, BOTTOM - 44).lineTo(545, BOTTOM - 44).strokeColor('#CCCCCC').stroke();
 
       // ── Mention TVA spéciale ─────────────────────────────────────────
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - 44, { width: 260 });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - 44, { width: 260, lineBreak: false });
       }
 
       // ── Mention acquittée ────────────────────────────────────────────
@@ -325,9 +323,11 @@ export class FacturXService {
         };
         const modeLabel = facture.mode_paiement ? (modesLabel[facture.mode_paiement] ?? facture.mode_paiement) : null;
         doc.rect(50, BOTTOM - 60, 260, 22).fillColor('#E8F5E9').stroke();
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#2E7D32').text('ACQUITTÉE', 58, BOTTOM - 55);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#2E7D32')
+           .text('ACQUITTÉE', 58, BOTTOM - 55, { lineBreak: false });
         doc.fontSize(8).font('Helvetica').fillColor('#2E7D32')
-           .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`, 120, BOTTOM - 55, { width: 180 });
+           .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
+                 120, BOTTOM - 55, { width: 180, lineBreak: false });
         doc.fillColor('#000000');
       }
 
@@ -655,21 +655,21 @@ export class FacturXService {
         y += 20;
       });
 
-      doc.moveTo(50, y + 4).lineTo(545, y + 4).strokeColor('#CCCCCC').stroke();
-      y += 14;
-      const totY = (label: string, val: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-           .text(label, 340, y, { width: 126, align: 'left' })
-           .text(val,   470, y, { width:  70, align: 'right' });
-        y += 16;
+      // Totaux ancrés — même position que devis/facture
+      const BOTTOM_FS = 744;
+      const drawTotFS = (label: string, val: string, bold: boolean, yOff: number) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
+           .text(label, 340, BOTTOM_FS - yOff, { width: 126, align: 'left',  lineBreak: false })
+           .text(val,   470, BOTTOM_FS - yOff, { width:  70, align: 'right', lineBreak: false });
       };
-      totY('Total HT', formatMontant(facture.montant_ht));
-      totY('Total TVA', formatMontant(facture.montant_tva));
-      totY('Total TTC', formatMontant(facture.montant_ttc), true);
+      drawTotFS('Total HT',  formatMontant(facture.montant_ht),  false, 36);
+      drawTotFS('Total TVA', formatMontant(facture.montant_tva), false, 18);
+      drawTotFS('Total TTC', formatMontant(facture.montant_ttc), true,   0);
+      doc.moveTo(340, BOTTOM_FS - 44).lineTo(545, BOTTOM_FS - 44).strokeColor('#CCCCCC').stroke();
 
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, y + 10, { width: W });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM_FS - 44, { width: 260, lineBreak: false });
       }
 
       if (facture.statut === 'payee' && facture.date_paiement) {
@@ -770,17 +770,17 @@ export class FacturXService {
          .text(formatMontant(acompte.montant_ttc), colX[3], y, { width: 75, align: 'left' });
       y += 28;
 
-      doc.moveTo(50, y).lineTo(545, y).strokeColor('#CCCCCC').stroke();
-      y += 14;
-      const totY = (label: string, val: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-           .text(label, 340, y, { width: 126, align: 'left' })
-           .text(val,   470, y, { width:  70, align: 'right' });
-        y += 16;
+      // Totaux ancrés — même position que devis/facture
+      const BOTTOM_AC = 744;
+      const drawTotAC = (label: string, val: string, bold: boolean, yOff: number) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
+           .text(label, 340, BOTTOM_AC - yOff, { width: 126, align: 'left',  lineBreak: false })
+           .text(val,   470, BOTTOM_AC - yOff, { width:  70, align: 'right', lineBreak: false });
       };
-      totY('Montant HT',  formatMontant(acompte.montant_ht));
-      totY('TVA',         formatMontant(acompte.montant_tva));
-      totY('Montant TTC', formatMontant(acompte.montant_ttc), true);
+      drawTotAC('Montant HT',  formatMontant(acompte.montant_ht),  false, 36);
+      drawTotAC('TVA',         formatMontant(acompte.montant_tva), false, 18);
+      drawTotAC('Montant TTC', formatMontant(acompte.montant_ttc), true,   0);
+      doc.moveTo(340, BOTTOM_AC - 44).lineTo(545, BOTTOM_AC - 44).strokeColor('#CCCCCC').stroke();
 
       if (acompte.statut === 'encaisse' && acompte.date_encaissement) {
         const modesLabel: Record<string, string> = {
@@ -788,13 +788,12 @@ export class FacturXService {
           carte: 'Carte bancaire', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre',
         };
         const modeLabel = acompte.mode_paiement ? (modesLabel[acompte.mode_paiement] ?? acompte.mode_paiement) : null;
-        const acquitteY = Math.max(y + 30, 680);
-        doc.rect(50, acquitteY, W, 26).fillColor('#E8F5E9').stroke();
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('#2E7D32')
-           .text('ENCAISSÉ', 62, acquitteY + 8);
-        doc.fontSize(9).font('Helvetica').fillColor('#2E7D32')
+        doc.rect(50, BOTTOM_AC - 60, 260, 22).fillColor('#E8F5E9').stroke();
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#2E7D32')
+           .text('ENCAISSÉ', 58, BOTTOM_AC - 55, { lineBreak: false });
+        doc.fontSize(8).font('Helvetica').fillColor('#2E7D32')
            .text(`Encaissé le ${formatDate(acompte.date_encaissement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
-             160, acquitteY + 9, { width: 330 });
+                 120, BOTTOM_AC - 55, { width: 180, lineBreak: false });
         doc.fillColor('#000000');
       }
 

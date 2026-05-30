@@ -32,6 +32,11 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Ux: Émettre en blanc (btn-outline) + badge ✓ Émis vert figé après émission
 
 
 ## [2.1.81] — 2026-05-30

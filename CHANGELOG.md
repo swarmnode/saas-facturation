@@ -5,6 +5,26 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix: sauvegarde des champs SEPA manquants dans les routes API
+
+- PUT /api/clients/:id : ajout iban, bic, titulaire_compte, mandat_rum,
+  mandat_date, mandat_type, mode_reglement_defaut, adresse2
+- POST /api/entreprise : ajout iban, bic, ics
+
+Ces champs etaient inseres en DB (migrations 005-008) et affiches
+dans les formulaires frontend, mais le backend ne les persistait pas.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: cache-busting favicon ?v=2
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+## [2.3.133] — 2026-05-30
+
 ### Ajouté
 - Feat: icone FacturPro (SVG + ICO multi-resolution)
 
@@ -477,6 +497,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.3.133]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.3.133
 [2.2.129]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.2.129
 [2.1.81]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.1.81
 [2.0.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.9

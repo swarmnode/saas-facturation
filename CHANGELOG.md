@@ -94,10 +94,12 @@ Après le premier save d'un nouveau document :
 - tabMgr.promoteTab() met à jour le tab dans le store → saveTabState persiste le bon ID
 - Au rechargement, DocEditor.openDevis(realId) est appelé → document chargé avec son N°
 - Draft localStorage nettoyé (clearDraft dans saveDoc)
+- Fix: Total TTC aligné en bas du cadre signature (justify-content: flex-end)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

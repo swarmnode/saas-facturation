@@ -459,6 +459,7 @@ const DocEditor = (() => {
       `:type==='bl'?`
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
       `:`
+        ${['emise','payee'].includes(doc?.statut)?`<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Émis</button>`:''}
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
         ${doc?.statut==='emise'?`<button class="btn btn-primary btn-sm" onclick="payerFacture(${id})">💳 Payer</button>`:''}
         ${['emise','payee'].includes(doc?.statut)&&!isAvoir?`<button class="btn btn-outline btn-sm" onclick="DocEditor.openAvoir(${id})">Avoir</button>`:''}
@@ -509,7 +510,7 @@ const DocEditor = (() => {
 
     // Boutons contextuels factures/avoirs en mode édition (brouillon)
     if ((type === 'facture' || type === 'avoir') && id && doc?.statut === 'brouillon') {
-      ins(mkBtn('Émettre', 'btn-success', async () => {
+      ins(mkBtn('Émettre', 'btn-outline', async () => {
         if (!confirm('Émettre cette facture ? Elle sera verrouillée définitivement.')) return;
         const r = await api.post(`/api/factures/${id}/emettre`);
         if (r?.error) { alert(r.error); return; }

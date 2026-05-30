@@ -221,9 +221,9 @@ const DocEditor = (() => {
         <div class="e-description-inp" contenteditable="true" data-placeholder="Description…">${l.description||''}</div>
         ${showSerie?`<input class="e-cell e-serie" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">`:''}
       </td>
-      <td class="e-td-num"><input class="e-cell e-qty" type="number" value="${l.quantite||1}" min="0.001" step="0.001"></td>
-      <td class="e-td-num"><input class="e-cell e-pu" type="number" value="${l.prix_unitaire_ht ?? 1}" step="0.01" placeholder="0,00"></td>
-      <td class="e-td-num"><input class="e-cell e-remise" type="number" value="${l.remise_pct||0}" min="0" max="100"></td>
+      <td class="e-td-num"><input class="e-cell e-qty" type="number" style="text-align:right" value="${l.quantite||1}" min="0.001" step="0.001"></td>
+      <td class="e-td-num"><input class="e-cell e-pu" type="number" style="text-align:right" value="${l.prix_unitaire_ht ?? 1}" step="0.01" placeholder="0,00"></td>
+      <td class="e-td-num"><input class="e-cell e-remise" type="number" style="text-align:right" value="${l.remise_pct||0}" min="0" max="100"></td>
       <td class="e-td-tva"><select class="e-cell e-tva-sel">${tvaOpts}</select></td>
       <td class="e-td-total e-ligne-total">${fmt(l.montant_ht||0)}</td>
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
@@ -245,7 +245,7 @@ const DocEditor = (() => {
         <div class="e-description-inp" contenteditable="true" data-placeholder="Description…">${l.description||''}</div>
         <input class="e-cell e-serie" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">
       </td>
-      <td class="e-td-num"><input class="e-cell e-qty" type="number" value="${l.quantite||1}" min="0.001" step="0.001"${l._stock!=null?` max="${l._stock}"`:''}></td>
+      <td class="e-td-num"><input class="e-cell e-qty" type="number" style="text-align:right" value="${l.quantite||1}" min="0.001" step="0.001"${l._stock!=null?` max="${l._stock}"`:''}></td>
       <td class="e-td-tva"><input class="e-cell e-unite" value="${l.unite||''}" placeholder="heure…"></td>
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
     tr.querySelector('.e-del-btn').onclick=()=>tr.remove();

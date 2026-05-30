@@ -50,6 +50,155 @@ const fmt = {
     carte: 'Carte', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre' })[m] || m,
 };
 
+// ── Helpers boutons ───────────────────────────────────────────────────────
+const btn = {
+  outline: (onclick, label, title='') => `<button class="btn btn-outline btn-sm" onclick="${onclick}"${title?` title="${title}"`:''}>${label}</button>`,
+  success: (onclick, label)           => `<button class="btn btn-success btn-sm" onclick="${onclick}">${label}</button>`,
+  primary: (onclick, label)           => `<button class="btn btn-primary btn-sm" onclick="${onclick}">${label}</button>`,
+  warning: (onclick, label)           => `<button class="btn btn-warning btn-sm" onclick="${onclick}">${label}</button>`,
+  trash:   (onclick, title='Supprimer') => `<button class="btn-trash" onclick="${onclick}" title="${title}">🗑️</button>`,
+};
+
+// ── Configuration par type de document ────────────────────────────────────
+const DOC_CONFIGS = {
+  devis: {
+    api:      '/api/devis',
+    topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`,
+    headers:  ['N°','Client','Objet','HT','TTC','Statut','Créé le'],
+    rowOpen:  d => `DocEditor.openDevis(${d.id})`,
+    cells:    d => [
+      `<strong>${d.numero}</strong>`,
+      d.client_nom||d.client_nom_part||'—',
+      d.objet||'—',
+      `<span class="text-right">${fmt.money(d.montant_ht)}</span>`,
+      `<strong>${fmt.money(d.montant_ttc)}</strong>`,
+      fmt.badge(d.statut),
+      fmt.date(d.created_at),
+    ],
+    actions: d => [
+      btn.outline(`DocEditor.openDevis(${d.id})`, d.locked?'Voir':'Voir/Modifier'),
+      btn.outline(`previewDevis(${d.id})`, '👁 PDF'),
+      btn.outline(`envoyerDevis(${d.id})`, '✉ Envoyer'),
+      !d.locked ? btn.trash(`deleteDevis(${d.id})`) : '',
+    ],
+  },
+  factures: {
+    api:      '/api/factures',
+    topbar:   () => `
+      <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
+      <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
+      <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
+    headers:  ['N°','Client','HT','TTC','Statut','Émise le','Règlement'],
+    rowOpen:  f => `DocEditor.openFacture(${f.id})`,
+    cells:    f => [
+      `<strong>${f.numero}</strong>${f.type_facture==='avoir'?' <span class="badge badge-avoir">Avoir</span>':''}`,
+      f.client_nom||f.client_nom_part||'—',
+      `<span class="text-right">${fmt.money(f.montant_ht)}</span>`,
+      `<strong>${fmt.money(f.montant_ttc)}</strong>`,
+      fmt.badge(f.statut),
+      fmt.date(f.date_emission),
+      f.mode_paiement?`${fmt.modePaiement(f.mode_paiement)}<br><small>${fmt.date(f.date_paiement)}</small>`:'—',
+    ],
+    actions: f => [
+      f.statut==='brouillon' ? btn.success(`emettreFacture(${f.id})`, 'Émettre') : '',
+      f.statut==='emise'     ? btn.primary(`payerFacture(${f.id})`, '💳 Payer') : '',
+      btn.outline(`DocEditor.openFacture(${f.id})`, 'Voir/Modifier'),
+      btn.outline(`previewFacture(${f.id})`, '👁 PDF'),
+      btn.outline(`envoyerFacture(${f.id})`, '✉ Envoyer'),
+      ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? btn.outline(`showBLFromFactureForm(${f.id})`, '🚚 BL') : '',
+      ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? btn.outline(`DocEditor.openAvoir(${f.id})`, 'Avoir') : '',
+    ],
+  },
+  avoirs: {
+    api:      '/api/factures/avoirs/liste',
+    topbar:   () => '',
+    headers:  ['N°','Facture d\'origine','Client','HT','TTC','Statut','Date'],
+    rowOpen:  a => `DocEditor.openFacture(${a.id})`,
+    cells:    a => [
+      `<strong>${a.numero}</strong>`,
+      a.facture_origine_numero||'—',
+      a.client_nom||a.client_nom_part||'—',
+      `<span class="text-right">${fmt.money(a.montant_ht)}</span>`,
+      `<strong>${fmt.money(a.montant_ttc)}</strong>`,
+      fmt.badge(a.statut),
+      fmt.date(a.date_emission),
+    ],
+    actions: a => [
+      a.statut==='brouillon' ? btn.success(`emettreFacture(${a.id})`, 'Émettre') : '',
+      btn.outline(`DocEditor.openFacture(${a.id})`, 'Voir/Modifier'),
+      btn.outline(`previewFacture(${a.id})`, '👁 PDF'),
+      btn.outline(`envoyerFacture(${a.id})`, '✉ Envoyer'),
+      !a.locked ? btn.trash(`deleteAvoir(${a.id})`) : '',
+    ],
+  },
+  acomptes: {
+    api:      '/api/acomptes',
+    topbar:   () => `<button class="btn btn-primary" onclick="showAcompteForm()">+ Nouvel acompte</button>`,
+    headers:  ['N°','Client','HT','TVA','TTC','Statut','Encaissé le'],
+    rowOpen:  a => `DocEditor.openAcompte(${a.id})`,
+    cells:    a => [
+      `<strong>${a.numero}</strong>`,
+      a.client_nom||a.client_nom_part||'—',
+      `<span class="text-right">${fmt.money(a.montant_ht)}</span>`,
+      `<span class="text-right">${fmt.money(a.montant_tva)}</span>`,
+      `<strong>${fmt.money(a.montant_ttc)}</strong>`,
+      fmt.badge(a.statut),
+      fmt.date(a.date_encaissement),
+    ],
+    actions: a => [
+      a.statut==='en_attente' ? btn.success(`encaisserAcompte(${a.id})`, 'Encaisser') : '',
+      btn.outline(`DocEditor.openAcompte(${a.id})`, 'Voir'),
+      btn.outline(`openPdf('/api/acomptes/${a.id}/apercu')`, '👁 PDF'),
+      btn.outline(`envoyerAcompte(${a.id})`, '✉ Envoyer'),
+      !a.locked ? btn.trash(`deleteAcompte(${a.id})`) : '',
+    ],
+  },
+  'bons-livraison': {
+    api:      '/api/bons-livraison',
+    topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button>`,
+    headers:  ['N°','Client','Date émission','Lieu','Statut'],
+    rowOpen:  b => `DocEditor.openBL(${b.id})`,
+    cells:    b => [
+      `<strong>${b.numero}</strong>`,
+      b.client_nom||b.client_nom_part||'—',
+      fmt.date(b.date_emission),
+      b.lieu_livraison||'—',
+      `<span class="badge badge-${({brouillon:'brouillon',emis:'envoye',livre:'payee'})[b.statut]||''}">${({brouillon:'Brouillon',emis:'Émis',livre:'Livré'})[b.statut]||b.statut}</span>`,
+    ],
+    actions: b => [
+      btn.outline(`DocEditor.openBL(${b.id})`, b.statut!=='livre'?'Voir/Modifier':'Voir'),
+      btn.outline(`previewBL(${b.id})`, '👁 PDF'),
+      btn.outline(`envoyerBL(${b.id})`, '✉ Envoyer'),
+      b.statut==='brouillon'&&(b.devis_id||b.facture_id) ? '' : (b.statut!=='livre' ? btn.success(`livrerBL(${b.id})`,'✓ Livré') : ''),
+      ['emis','livre'].includes(b.statut)&&(b.devis_id||b.facture_id) ? btn.outline(`showFactureFromBLForm(${b.id})`,'🧾 Facturer') : '',
+      b.statut==='brouillon' ? btn.trash(`supprimerBL(${b.id})`) : '',
+    ],
+  },
+};
+
+// Rendu unifié des listes de documents
+async function renderDocList(type, el) {
+  const cfg  = DOC_CONFIGS[type];
+  const docs = await api.get(cfg.api);
+  document.getElementById('topbarActions').innerHTML = cfg.topbar();
+
+  if (!docs.length) {
+    el.innerHTML = `<div class="card"><div class="empty">Aucun document</div></div>`;
+    return;
+  }
+  const colSpan = cfg.headers.length + 1;
+  el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+    <thead><tr>${cfg.headers.map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead>
+    <tbody>${docs.map(doc => {
+      const cells   = cfg.cells(doc).map(c=>`<td>${c}</td>`).join('');
+      const actions = cfg.actions(doc).filter(Boolean).join('');
+      return `
+        <tr class="data-row" onclick="${cfg.rowOpen(doc)}" style="cursor:pointer">${cells}<td></td></tr>
+        <tr class="row-actions"><td colspan="${colSpan}"><div class="btn-row">${actions}</div></td></tr>`;
+    }).join('')}
+    </tbody></table></div></div>`;
+}
+
 // ── Modal ─────────────────────────────────────────────────────────────────
 const modal = {
   overlay: null, el: null, title: null, body: null,
@@ -361,11 +510,11 @@ async function renderView(view, el) {
   switch (view) {
     case 'dashboard':       return renderDashboard(el);
     case 'clients':         return renderClients(el);
-    case 'devis':           return renderDevis(el);
-    case 'factures':        return renderFactures(el);
-    case 'avoirs':          return renderAvoirs(el);
-    case 'acomptes':        return renderAcomptes(el);
-    case 'bons-livraison':  return renderBonsLivraison(el);
+    case 'devis':           return renderDocList('devis', el);
+    case 'factures':        return renderDocList('factures', el);
+    case 'avoirs':          return renderDocList('avoirs', el);
+    case 'acomptes':        return renderDocList('acomptes', el);
+    case 'bons-livraison':  return renderDocList('bons-livraison', el);
     case 'articles':        return renderArticles(el);
     case 'archives':        return renderArchives(el);
     case 'parametres':      return renderParametres(el);
@@ -465,53 +614,18 @@ async function renderDashboard(el) {
     </div>`;
 
   // Fonction de rendu du tbody (réutilisée après chaque tri)
+  // Mapping type dashboard → clé DOC_CONFIGS
+  const DASH_TO_CFG = { devis:'devis', facture:'factures', avoir:'avoirs', acompte:'acomptes', bl:'bons-livraison' };
+
   function renderDashRows(list) {
     const sorted = sortAll(list);
     const tbody  = document.getElementById('dashTbody');
     if (!tbody) return;
     tbody.innerHTML = sorted.map(({ type, doc, date, client, montant }) => {
       const label   = typeLabels[type];
-      const onClick = type === 'devis'   ? `DocEditor.openDevis(${doc.id})`
-                   : type === 'bl'       ? `DocEditor.openBL(${doc.id})`
-                   : type === 'acompte'  ? `DocEditor.openAcompte(${doc.id})`
-                   :                       `DocEditor.openFacture(${doc.id})`;
-      let btns = '';
-      if (type === 'devis') {
-        const d = doc;
-        btns = `
-          <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
-          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
-          ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer">🗑️</button>` : ''}`;
-      } else if (type === 'facture') {
-        const f = doc;
-        btns = `
-          ${f.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${f.id})">Émettre</button>` : ''}
-          ${f.statut === 'emise'     ? `<button class="btn btn-primary btn-sm" onclick="payerFacture(${f.id})">Payer</button>` : ''}
-          <button class="btn btn-outline btn-sm" onclick="previewFacture(${f.id})">👁 PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${f.id})">✉ Envoyer</button>
-          ${['emise','payee'].includes(f.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromFactureForm(${f.id})">🚚 BL</button>` : ''}
-          ${['emise','payee'].includes(f.statut) ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openAvoir(${f.id})">Avoir</button>` : ''}`;
-      } else if (type === 'avoir') {
-        const a = doc;
-        btns = `
-          ${a.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${a.id})">Émettre</button>` : ''}
-          <button class="btn btn-outline btn-sm" onclick="previewFacture(${a.id})">👁 PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${a.id})">✉ Envoyer</button>
-          ${!a.locked ? `<button class="btn-trash" onclick="deleteAvoir(${a.id})" title="Supprimer">🗑️</button>` : ''}`;
-      } else if (type === 'acompte') {
-        const a = doc;
-        btns = `
-          ${a.statut === 'en_attente' ? `<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${a.id})">Encaisser</button>` : ''}
-          <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${a.id}/apercu')">👁 PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="envoyerAcompte(${a.id})">✉ Envoyer</button>
-          ${!a.locked ? `<button class="btn-trash" onclick="deleteAcompte(${a.id})" title="Supprimer">🗑️</button>` : ''}`;
-      } else if (type === 'bl') {
-        const b = doc;
-        btns = `
-          <button class="btn btn-outline btn-sm" onclick="openPdf('/api/bons-livraison/${b.id}/apercu')">👁 PDF</button>
-          ${b.statut === 'brouillon' ? `<button class="btn-trash" onclick="supprimerBL(${b.id})" title="Supprimer">🗑️</button>` : ''}`;
-      }
+      const cfg     = DOC_CONFIGS[DASH_TO_CFG[type]];
+      const onClick = cfg ? cfg.rowOpen(doc) : '';
+      const btns    = cfg ? cfg.actions(doc).filter(Boolean).join('') : '';
       return `
         <tr class="data-row" onclick="${onClick}" style="cursor:pointer">
           <td><span class="badge badge-type-${type}">${label}</span></td>
@@ -699,42 +813,6 @@ async function showClientForm(id) {
 }
 
 // ── Devis ─────────────────────────────────────────────────────────────────
-async function renderDevis(el) {
-  const devis = await api.get('/api/devis');
-  document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`;
-
-  el.innerHTML = `<div class="card"><div class="table-wrap">${tableDevis(devis, true)}</div></div>`;
-}
-
-function tableDevis(list, withActions = false) {
-  if (!list.length) return '<div class="empty">Aucun devis</div>';
-  return `<table>
-    <thead><tr>
-      <th>N°</th><th>Client</th><th>Objet</th><th>HT</th><th>TTC</th><th>Statut</th><th>Créé le</th>
-    </tr></thead>
-    <tbody>${list.map(d => `
-      <tr class="data-row">
-        <td><strong>${d.numero}</strong></td>
-        <td>${d.client_nom || d.client_nom_part || '—'}</td>
-        <td>${d.objet || '—'}</td>
-        <td class="text-right">${fmt.money(d.montant_ht)}</td>
-        <td class="text-right"><strong>${fmt.money(d.montant_ttc)}</strong></td>
-        <td>${fmt.badge(d.statut)}</td>
-        <td>${fmt.date(d.created_at)}</td>
-      </tr>
-      ${withActions ? `<tr class="row-actions">
-        <td colspan="7"><div class="btn-row">
-          
-          <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
-          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
-          ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer">🗑️</button>` : ''}
-        </div></td>
-      </tr>` : ''}`).join('')}
-    </tbody></table>`;
-}
-
 async function openPdf(url) {
   const token = localStorage.getItem('jwt');
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -1601,46 +1679,6 @@ async function _showBLFromDevisFormOld(devisId) {
 }
 
 // ── Factures ──────────────────────────────────────────────────────────────
-async function renderFactures(el) {
-  const factures = await api.get('/api/factures');
-  document.getElementById('topbarActions').innerHTML = `
-    <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
-    <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
-    <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`;
-
-  el.innerHTML = `<div class="card"><div class="table-wrap">${tableFactures(factures, true)}</div></div>`;
-}
-
-function tableFactures(list, withActions = false) {
-  if (!list.length) return '<div class="empty">Aucune facture</div>';
-  return `<table>
-    <thead><tr>
-      <th>N°</th><th>Client</th><th>HT</th><th>TTC</th><th>Statut</th><th>Émise le</th><th>Règlement</th>
-    </tr></thead>
-    <tbody>${list.map(f => `
-      <tr class="data-row">
-        <td><strong>${f.numero}</strong>${f.type_facture === 'avoir' ? ' <span class="badge badge-avoir">Avoir</span>' : ''}</td>
-        <td>${f.client_nom || f.client_nom_part || '—'}</td>
-        <td class="text-right">${fmt.money(f.montant_ht)}</td>
-        <td class="text-right"><strong>${fmt.money(f.montant_ttc)}</strong></td>
-        <td>${fmt.badge(f.statut)}</td>
-        <td>${fmt.date(f.date_emission)}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${f.mode_paiement ? `${fmt.modePaiement(f.mode_paiement)}<br><span>${fmt.date(f.date_paiement)}</span>` : '—'}</td>
-      </tr>
-      ${withActions ? `<tr class="row-actions">
-        <td colspan="7"><div class="btn-row">
-          
-          ${f.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${f.id})">Émettre</button>` : ''}
-          ${f.statut === 'emise'     ? `<button class="btn btn-primary btn-sm" onclick="payerFacture(${f.id})">Payer</button>` : ''}
-          <button class="btn btn-outline btn-sm" onclick="previewFacture(${f.id})">👁 Aperçu PDF</button>
-          <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${f.id})">✉ Envoyer</button>
-          ${['emise','payee'].includes(f.statut) && f.type_facture !== 'avoir' ? `<button class="btn btn-outline btn-sm" onclick="showBLFromFactureForm(${f.id})">🚚 BL</button>` : ''}
-          ${['emise','payee'].includes(f.statut) && f.type_facture !== 'avoir' ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openAvoir(${f.id})">Avoir</button>` : ''}
-        </div></td>
-      </tr>` : ''}`).join('')}
-    </tbody></table>`;
-}
-
 async function showBLFromFactureForm(factureId) {
   const f = await api.get(`/api/factures/${factureId}`);
   return DocEditor.openBL(null, {
@@ -1920,57 +1958,6 @@ function showFactureForm() {
 }
 
 // ── Bons de livraison ─────────────────────────────────────────────────────
-async function renderBonsLivraison(el) {
-  const bls = await api.get('/api/bons-livraison');
-  document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button>`;
-
-  const badgeBL = s => {
-    const map = { brouillon: 'badge-brouillon', emis: 'badge-envoye', livre: 'badge-payee' };
-    const labels = { brouillon: 'Brouillon', emis: 'Émis', livre: 'Livré' };
-    return `<span class="badge ${map[s] || ''}">${labels[s] || s}</span>`;
-  };
-
-  el.innerHTML = `<div class="card"><div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>N°</th><th>Client</th><th>Date émission</th><th>Date livraison</th>
-        <th>Lieu</th><th>Statut</th><th></th>
-      </tr></thead>
-      <tbody>${bls.length ? bls.map(b => `
-        <tr>
-          <td><strong>${b.numero}</strong></td>
-          <td>${b.client_nom || b.client_nom_part || '—'}</td>
-          <td>${fmt.date(b.date_emission)}</td>
-          <td>${b.date_livraison ? fmt.date(b.date_livraison) : '—'}</td>
-          <td>${b.lieu_livraison || '—'}</td>
-          <td>${badgeBL(b.statut)}</td>
-          <td>
-            <div style="display:flex;gap:4px">
-              
-              <button class="btn btn-outline btn-sm" onclick="previewBL(${b.id})">👁 Aperçu PDF</button>
-              <button class="btn btn-outline btn-sm" onclick="envoyerBL(${b.id})">✉ Envoyer</button>
-              ${!(b.devis_id || b.facture_id) ? `
-                <button class="btn btn-outline btn-sm" onclick="DocEditor.openBL(${b.id})">${b.statut !== "livre" ? "Voir/Modifier" : "Voir"}</button>
-                ${b.statut !== 'livre' ? `<button class="btn btn-success btn-sm" onclick="livrerBL(${b.id})">Livré</button>` : `<button class="btn btn-success btn-sm" disabled style="opacity:.5;cursor:default">✓ Livré</button>`}
-                <button class="btn-trash" onclick="supprimerBL(${b.id})" title="Supprimer">🗑️</button>` : ''}
-              ${(b.devis_id || b.facture_id) && b.statut === 'brouillon' ? `
-                <button class="btn btn-outline btn-sm" onclick="DocEditor.openBL(${b.id})">${b.statut !== "livre" ? "Voir/Modifier" : "Voir"}</button>
-                <button class="btn-trash" onclick="supprimerBL(${b.id})" title="Supprimer">🗑️</button>` : ''}
-              ${(b.devis_id || b.facture_id) && b.statut === 'emis' ? `
-                <button class="btn btn-success btn-sm" onclick="livrerBL(${b.id})">Livré</button>
-                <button class="btn btn-outline btn-sm" onclick="showDevisFromBLForm(${b.id})" title="Créer un devis">📋 Devis</button>
-                <button class="btn btn-outline btn-sm" onclick="showFactureFromBLForm(${b.id})" title="Créer une facture">🧾 Facturer</button>` : ''}
-              ${(b.devis_id || b.facture_id) && b.statut === 'livre' ? `
-                <button class="btn btn-outline btn-sm" onclick="showDevisFromBLForm(${b.id})" title="Créer un devis">📋 Devis</button>
-                <button class="btn btn-outline btn-sm" onclick="showFactureFromBLForm(${b.id})" title="Créer une facture">🧾 Facturer</button>` : ''}
-            </div>
-          </td>
-        </tr>`).join('') : '<tr><td colspan="7" class="empty">Aucun bon de livraison</td></tr>'}</tbody>
-    </table>
-  </div></div>`;
-}
-
 function blLignesForm(lignes, tvaOpts) {
   return (lignes || [{}]).map((l, i) => {
     const n = i + 1;
@@ -2907,72 +2894,7 @@ function attachConditionsPaiement(container) {
 }
 
 // ── Avoirs ────────────────────────────────────────────────────────────────
-async function renderAvoirs(el) {
-  const avoirs = await api.get('/api/factures/avoirs/liste');
-  document.getElementById('topbarActions').innerHTML = '';
-
-  if (!avoirs.length) {
-    el.innerHTML = `<div class="card"><div class="empty">Aucun avoir. Créez-en un depuis une facture émise.</div></div>`;
-    return;
-  }
-
-  el.innerHTML = `<div class="card"><div class="table-wrap"><table>
-    <thead><tr>
-      <th>N°</th><th>Facture d'origine</th><th>Client</th><th>HT</th><th>TTC</th><th>Statut</th><th>Date</th>
-    </tr></thead>
-    <tbody>${avoirs.map(a => `
-      <tr class="data-row">
-        <td><strong>${a.numero}</strong></td>
-        <td>${a.facture_origine_numero || '—'}</td>
-        <td>${a.client_nom || a.client_nom_part || '—'}</td>
-        <td class="text-right">${fmt.money(a.montant_ht)}</td>
-        <td class="text-right"><strong>${fmt.money(a.montant_ttc)}</strong></td>
-        <td>${fmt.badge(a.statut)}</td>
-        <td>${fmt.date(a.date_emission)}</td>
-      </tr>
-      <tr class="row-actions"><td colspan="7"><div class="btn-row">
-        
-        ${a.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${a.id})">Émettre</button>` : ''}
-        <button class="btn btn-outline btn-sm" onclick="previewFacture(${a.id})">👁 Aperçu PDF</button>
-        <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${a.id})">✉ Envoyer</button>
-        ${!a.locked ? `<button class="btn-trash" onclick="deleteAvoir(${a.id})" title="Supprimer cet avoir">🗑️</button>` : ''}
-      </div></td></tr>`).join('')}
-    </tbody>
-  </table></div></div>`;
-}
-
 // ── Acomptes ──────────────────────────────────────────────────────────────
-async function renderAcomptes(el) {
-  const acomptes = await api.get('/api/acomptes');
-  document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="showAcompteForm()">+ Nouvel acompte</button>`;
-
-  el.innerHTML = `<div class="card"><div class="table-wrap">
-    <table>
-      <thead><tr><th>N°</th><th>Client</th><th>HT</th><th>TVA</th><th>TTC</th><th>Statut</th><th>Encaissé le</th><th></th></tr></thead>
-      <tbody>${acomptes.length ? acomptes.map(a => `
-        <tr>
-          <td><strong>${a.numero}</strong></td>
-          <td>${a.client_nom || a.client_nom_part || '—'}</td>
-          <td class="text-right">${fmt.money(a.montant_ht)}</td>
-          <td class="text-right">${fmt.money(a.montant_tva)}</td>
-          <td class="text-right"><strong>${fmt.money(a.montant_ttc)}</strong></td>
-          <td>${fmt.badge(a.statut)}</td>
-          <td>${fmt.date(a.date_encaissement)}</td>
-          <td>
-            <div style="display:flex;gap:4px">
-              
-              ${a.statut === 'en_attente' ? `<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${a.id})">Encaisser</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${a.id}/apercu')">👁 Aperçu PDF</button>
-              <button class="btn btn-outline btn-sm" onclick="envoyerAcompte(${a.id})">✉ Envoyer</button>
-              ${!a.locked ? `<button class="btn-trash" onclick="deleteAcompte(${a.id})" title="Supprimer">🗑️</button>` : ''}
-            </div>
-          </td>
-        </tr>`).join('') : '<tr><td colspan="8" class="empty">Aucun acompte</td></tr>'}</tbody>
-    </table>
-  </div></div>`;
-}
-
 async function envoyerAcompte(id) {
   const [acompte, entreprise] = await Promise.all([
     api.get(`/api/acomptes/${id}`),

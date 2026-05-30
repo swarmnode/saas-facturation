@@ -43,9 +43,11 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 - Fix: bouton '→ Facture' visible pour tous les statuts BL (y compris brouillon)
 - Fix: client pré-rempli dans l'éditeur même hors clientOptions (fetch direct /api/clients/:id)
 - Fix: suppression mention 'Bon pour accord' dans les BL (éditeur + PDF)
+- Fix: BL livré n'est plus en lecture seule (pas d'obligation légale d'inaltérabilité)
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

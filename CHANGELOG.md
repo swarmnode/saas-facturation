@@ -21,6 +21,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Toujours visible : 'Accepter' (outline blanc) → clic → statut 'accepte'
 - Après acceptation : '✓ Accepté' (vert, non cliquable) + '🚚 → BL' (prioritaire)
 - Signé : '✓ Accepté' (vert figé) + Avenant · Facturer · BL
+- Feat: client recherche filtrante dans l'éditeur + Nouveau client en bas
+
+- Remplace le <select> client par un champ de recherche filtrant
+- Dropdown avec les clients correspondants + '+ Nouveau client' en gras
+- Fonctionne dans devis, factures, avoirs et BL
 
 
 ### Corrigé
@@ -44,6 +49,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

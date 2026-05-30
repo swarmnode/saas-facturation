@@ -23,9 +23,11 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - database.ts : MIGRATION5_PATH enregistré
 - package.json : npm run build copie aussi src/server/db/*.sql → dist/server/db/
 - Fix: bouton Émettre déplacé en dernier (droite) dans toolbar facture
+- Fix: ordre logique toolbar facture — Émettre avant Envoyer
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

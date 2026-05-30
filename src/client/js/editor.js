@@ -123,6 +123,62 @@ const DocEditor = (() => {
     });
   }
 
+  // ── Client search component ────────────────────────────────────────────
+
+  function clientName(c) {
+    return c.raison_sociale || [c.civilite, c.prenom, c.nom].filter(Boolean).join(' ');
+  }
+
+  function initClientSearch(wrap, hiddenInput, preview) {
+    if (!wrap) return;
+    const searchInp = wrap.querySelector('.e-client-search');
+    const drop      = wrap.querySelector('.e-client-drop');
+    if (!searchInp || !drop) return;
+
+    // Prévisualisation initiale
+    const initCid = parseInt(hiddenInput?.value);
+    if (initCid) renderClientPreview(clientOptions.find(c => c.id === initCid) || null, preview);
+
+    function showDrop(q) {
+      const filtered = q.length < 1
+        ? clientOptions.slice(0, 30)
+        : clientOptions.filter(c => clientName(c).toLowerCase().includes(q.toLowerCase()));
+
+      drop.innerHTML = '';
+      filtered.forEach(c => {
+        const d = document.createElement('div');
+        d.className = 'e-client-drop-item';
+        d.textContent = clientName(c);
+        d.onmousedown = () => {
+          hiddenInput.value = c.id;
+          searchInp.value   = clientName(c);
+          renderClientPreview(c, preview);
+          hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+          drop.style.display = 'none';
+        };
+        drop.appendChild(d);
+      });
+
+      const newItem = document.createElement('div');
+      newItem.className = 'e-client-drop-new';
+      newItem.textContent = '+ Nouveau client';
+      newItem.onmousedown = () => {
+        drop.style.display = 'none';
+        openQuickClientCreate({ closest: () => null }, null, null, null, null);
+      };
+      drop.appendChild(newItem);
+      drop.style.display = 'block';
+    }
+
+    searchInp.addEventListener('focus', () => showDrop(searchInp.value));
+    searchInp.addEventListener('input', () => {
+      showDrop(searchInp.value);
+      hiddenInput.value = '';
+      renderClientPreview(null, preview);
+    });
+    searchInp.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 200));
+  }
+
   // ── Ligne row ───────────────────────────────────────────────────────────
 
   function calcLigne(row) {

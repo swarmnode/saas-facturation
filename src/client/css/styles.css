@@ -490,6 +490,35 @@ select.e-cell { cursor:pointer; }
 .e-footer-editable:hover { border-color:#e0e0e0; }
 .e-footer-editable:focus { border-color:#ccc; background:#fafafa; }
 
+/* Client search in editor */
+.e-client-search-wrap { position: relative; }
+.e-client-search {
+  font-size: 10pt; font-weight: 600; font-family: inherit;
+  border: none; border-bottom: 1.5px dashed #ccc;
+  background: transparent; text-align: right; width: 240px;
+  padding: 2px 4px; outline: none; color: #1a1a1a; cursor: text;
+}
+.e-client-search:focus { border-bottom-color: var(--primary); }
+.e-client-search::placeholder { font-weight: 400; color: #aaa; }
+.e-client-drop {
+  position: absolute; right: 0; top: calc(100% + 4px);
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  z-index: 1000; min-width: 260px; max-height: 260px; overflow-y: auto;
+}
+.e-client-drop-item {
+  padding: 8px 14px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.e-client-drop-item:last-child { border-bottom: none; }
+.e-client-drop-item:hover { background: var(--bg); }
+.e-client-drop-new {
+  padding: 10px 14px; cursor: pointer; font-size: 13px;
+  font-weight: 700; color: var(--primary);
+  border-top: 1px solid var(--border);
+}
+.e-client-drop-new:hover { background: #EFF6FF; }
+
 /* Stock badge */
 .e-stock-badge {
   font-size: 7.5pt; background: #EFF6FF; color: #2563EB;

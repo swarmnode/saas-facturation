@@ -329,8 +329,7 @@ const DocEditor = (() => {
 
         <div class="e-client-block">
           <div class="e-client-label">Destinataire</div>
-          <div class="ss-wrap" data-init-client="${doc?.client_id || ""}"></div>
-          </div>
+          <div class="ss-wrap" data-init-client="${doc?.client_id || ''}"></div>
           <div class="e-client-preview"></div>
         </div>
 

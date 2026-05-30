@@ -80,6 +80,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -120,6 +121,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - open() : entrée unique pour tous les types sauf acompte
   (remplace open + openBL)
 - 1076 → 676 lignes (-37%)
+- Refactor(B): app.js — DOC_CONFIGS + renderDocList unifié
+
+- btn.{outline,success,primary,warning,trash} : helpers partagés
+- DOC_CONFIGS[type] : config déclarative par type (api, topbar, colonnes, actions)
+- renderDocList(type, el) : remplace renderDevis/Factures/Avoirs/Acomptes/BL
+- renderDashRows : utilise DOC_CONFIGS.actions au lieu de 60 lignes inline
+- Suppression de 7 fonctions obsolètes : renderDevis, tableDevis,
+  renderFactures, tableFactures, renderBonsLivraison, renderAvoirs, renderAcomptes
+- -192 lignes supprimées, 0 duplication boutons entre listes et dashboard
 
 
 ## [2.0.9] — 2026-05-30

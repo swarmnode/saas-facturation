@@ -2777,15 +2777,27 @@ async function renderArticles(el) {
     <table>
       <thead><tr>
         <th>Réf.</th><th>Désignation</th><th>Description</th>
-        <th>Unité</th><th class="text-right">Prix HT</th><th>TVA</th><th class="text-right">Stock</th><th></th>
+        <th>Unité</th><th class="text-right">Prix vente HT</th><th class="text-right">Prix achat HT</th>
+        <th class="text-right">Marge</th><th>TVA</th><th class="text-right">Stock</th><th></th>
       </tr></thead>
-      <tbody>${articles.length ? articles.map(a => `
-        <tr>
+      <tbody>${articles.length ? articles.map(a => {
+        const pv = +a.prix_unitaire_ht || 0;
+        const pa = a.prix_achat_ht != null ? +a.prix_achat_ht : null;
+        const marge = pa != null ? pv - pa : null;
+        const tauxMarque = (marge != null && pv > 0) ? (marge / pv * 100) : null;
+        const margeHtml = marge != null
+          ? `<span style="color:${marge >= 0 ? 'var(--success)' : 'var(--danger)'}">
+               ${fmt.money(marge)} <small>(${tauxMarque.toFixed(1)}%)</small>
+             </span>`
+          : '—';
+        return `<tr>
           <td><code>${a.reference || '—'}</code></td>
           <td><strong>${a.designation}</strong></td>
           <td style="color:var(--text-muted);font-size:12px">${a.description || '—'}</td>
           <td>${a.unite || '—'}</td>
-          <td class="text-right">${fmt.money(a.prix_unitaire_ht)}</td>
+          <td class="text-right">${fmt.money(pv)}</td>
+          <td class="text-right">${pa != null ? fmt.money(pa) : '—'}</td>
+          <td class="text-right">${margeHtml}</td>
           <td>${a.tva_taux}%</td>
           <td class="text-right">${a.quantite_stock != null ? `<span class="e-stock-badge">${a.quantite_stock}</span>` : '—'}</td>
           <td>
@@ -2794,7 +2806,8 @@ async function renderArticles(el) {
               <button class="btn-trash" onclick="deleteArticle(${a.id})" title="Supprimer">🗑️</button>
             </div>
           </td>
-        </tr>`).join('') : '<tr><td colspan="8" class="empty">Aucun article</td></tr>'}</tbody>
+        </tr>`;
+      }).join('') : '<tr><td colspan="10" class="empty">Aucun article</td></tr>'}</tbody>
     </table>
   </div></div>`;
 }
@@ -2826,9 +2839,18 @@ async function showArticleForm(id) {
       </div>
       <div class="form-row">
         <div class="form-group"><label>Prix unitaire HT *</label>
-          <input name="prix_unitaire_ht" type="number" step="0.01" min="0"
+          <input name="prix_unitaire_ht" id="artPrixVente" type="number" step="0.01" min="0"
             value="${a.prix_unitaire_ht ?? ''}" required/>
         </div>
+        <div class="form-group"><label>Prix d'achat HT
+          <small style="font-weight:normal;color:var(--text-muted)"> — optionnel, pour le calcul de marge</small>
+        </label>
+          <input name="prix_achat_ht" id="artPrixAchat" type="number" step="0.01" min="0"
+            value="${a.prix_achat_ht ?? ''}"/>
+        </div>
+      </div>
+      <div id="artMargeInfo" style="display:none;padding:8px 12px;border-radius:6px;margin-bottom:8px;font-size:13px"></div>
+      <div class="form-row">
         <div class="form-group"><label>Taux TVA *</label>
           <select name="taux_tva_id">${tvaOpts}</select>
         </div>
@@ -2858,6 +2880,31 @@ async function showArticleForm(id) {
       if (sel.value === '__autre__') custom.focus();
     });
 
+    // Calcul de marge en temps réel
+    const pvInput = body.querySelector('#artPrixVente');
+    const paInput = body.querySelector('#artPrixAchat');
+    const margeEl = body.querySelector('#artMargeInfo');
+    function updateMarge() {
+      const pv = parseFloat(pvInput.value) || 0;
+      const pa = parseFloat(paInput.value);
+      if (!paInput.value || isNaN(pa) || pv === 0) { margeEl.style.display = 'none'; return; }
+      const marge = pv - pa;
+      const tauxMarque = marge / pv * 100;
+      const tauxMarge  = pa > 0 ? marge / pa * 100 : 0;
+      const color = marge >= 0 ? '#2e7d32' : '#c62828';
+      const bg    = marge >= 0 ? '#e8f5e9' : '#ffebee';
+      margeEl.style.display = 'block';
+      margeEl.style.background = bg;
+      margeEl.style.color = color;
+      margeEl.innerHTML = `
+        Marge brute : <strong>${marge.toFixed(2)} €</strong>
+        &nbsp;·&nbsp; Taux de marque : <strong>${tauxMarque.toFixed(1)} %</strong>
+        &nbsp;·&nbsp; Taux de marge : <strong>${tauxMarge.toFixed(1)} %</strong>`;
+    }
+    pvInput.addEventListener('input', updateMarge);
+    paInput.addEventListener('input', updateMarge);
+    updateMarge();
+
     body.querySelector('#articleForm').onsubmit = async e => {
       e.preventDefault();
       const fd    = new FormData(e.target);
@@ -2865,12 +2912,14 @@ async function showArticleForm(id) {
         ? (custom.value.trim() || undefined)
         : (sel.value || undefined);
       const stock = fd.get('quantite_stock');
+      const achat = fd.get('prix_achat_ht');
       const data = {
         reference:        fd.get('reference') || undefined,
         designation:      fd.get('designation'),
         description:      fd.get('description') || undefined,
         unite,
         prix_unitaire_ht: parseFloat(fd.get('prix_unitaire_ht') || '0'),
+        prix_achat_ht:    achat ? parseFloat(achat) : null,
         taux_tva_id:      parseInt(fd.get('taux_tva_id') || '1'),
         quantite_stock:   stock ? parseFloat(stock) : null,
       };

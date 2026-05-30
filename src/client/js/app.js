@@ -281,7 +281,14 @@ const tabMgr = (() => {
 
   function init() { openViewTab('dashboard'); }
 
-  return { openViewTab, openDocTab, closeTab, init };
+  function activateByKey(type, key) {
+    const t = type === 'view'
+      ? tabs.find(t => t.type === 'view' && t.viewName === key)
+      : tabs.find(t => t.type === 'doc'  && String(t.docId) === String(key));
+    if (t) activateTab(t.id);
+  }
+
+  return { openViewTab, openDocTab, closeTab, init, activateByKey };
 })();
 
 function updateSidebarLogo(logoPath) {
@@ -4063,14 +4070,18 @@ async function restoreTabState(state) {
     const { tabs: saved } = state;
     if (!saved?.length) return;
 
-    // Ouvrir les inactifs d'abord, l'actif EN DERNIER pour qu'il garde le focus
-    const nonActifs = saved.filter(t => !t.active);
-    const actif     = saved.find(t => t.active);
-    for (const t of nonActifs) {
+    // Ouvrir dans l'ordre original pour conserver la position des onglets
+    const actif = saved.find(t => t.active);
+    for (const t of saved) {
       try { await _openSavedTab(t); } catch(e) {}
     }
+    // Réactiver le bon onglet sans refaire d'appel API
     if (actif) {
-      try { await _openSavedTab(actif); } catch(e) {}
+      if (actif.type === 'view') {
+        tabMgr.activateByKey('view', actif.viewName);
+      } else {
+        tabMgr.activateByKey('doc', actif.docId);
+      }
     }
   } catch(e) { console.warn('Restauration session échouée', e); }
 }

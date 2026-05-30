@@ -509,6 +509,7 @@ const DocEditor = (() => {
 
     // Boutons contextuels factures/avoirs en mode édition (brouillon)
     if ((type === 'facture' || type === 'avoir') && id && doc?.statut === 'brouillon') {
+      ins(mkBtn('✉ Envoyer', 'btn-outline', () => envoyerFacture(id)));
       ins(mkBtn('Émettre', 'btn-success', async () => {
         if (!confirm('Émettre cette facture ? Elle sera verrouillée définitivement.')) return;
         const r = await api.post(`/api/factures/${id}/emettre`);
@@ -516,7 +517,6 @@ const DocEditor = (() => {
         tabMgr.closeTab(el.dataset.tid);
         tabMgr.openViewTab(type === 'avoir' ? 'avoirs' : 'factures');
       }));
-      ins(mkBtn('✉ Envoyer', 'btn-outline', () => envoyerFacture(id)));
     }
 
     // Document existant : commencer en état "sauvegardé" jusqu'à la 1ère modification

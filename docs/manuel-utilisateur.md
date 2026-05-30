@@ -362,6 +362,11 @@ Le bouton **Émettre** :
 
 Bouton **Enregistrer le paiement** : renseignez la date de paiement et le mode. Le statut passe à `payée`.
 
+Lors du paiement, deux opérations comptables sont déclenchées automatiquement :
+
+1. Les **écritures de règlement** sont inscrites au FEC (journal BQ — Banque) : débit du compte d'encaissement (512 Banque, 530 Caisse ou 5112 Chèques selon le mode) et crédit du compte 411 Clients.
+2. Les lignes 411 de l'émission et du règlement sont **lettrées** automatiquement (voir section Lettrage).
+
 ## Télécharger le PDF Factur-X
 
 Le bouton **Télécharger PDF** livre le fichier PDF avec le fichier XML EN 16931 embarqué, compatible avec les logiciels comptables (Sage, EBP, Cegid…).
@@ -396,9 +401,7 @@ Deux façons :
 
 Même processus qu'une facture : bouton **Émettre**. L'avoir est verrouillé, un PDF Factur-X est généré et les écritures comptables sont inscrites en FEC.
 
-## Règles comptables
-
-Un avoir annule tout ou partie d'une facture. Le rapprochement comptable (imputation de l'avoir sur la facture) est à réaliser dans votre logiciel comptable à partir des exports FEC.
+Lorsque l'avoir est lié à une facture d'origine (`facture_origine_id`), les lignes 411 des deux documents sont **lettrées automatiquement** dès l'émission.
 
 ---
 
@@ -479,6 +482,56 @@ Avant de générer un fichier SEPA, vérifiez que :
 ## Structure du fichier
 
 Le fichier suit le schéma ISO 20022 pain.008.001.02 (prélèvement CORE ou B2B selon le type de mandat). Chaque transaction correspond à une facture. La date de règlement demandée est le lendemain de la génération (D+1 ouvré à paramétrer dans votre banque).
+
+---
+
+# Lettrage
+
+Le lettrage est le rapprochement comptable des écritures du compte **411 Clients** : chaque débit (émission d'une facture) est mis en regard du crédit correspondant (paiement reçu ou avoir émis). Les deux lignes reçoivent la même **lettre** (A, B, C… Z, AA, AB…) pour signifier qu'elles s'annulent mutuellement.
+
+Les lignes **non lettrées** représentent des créances encore ouvertes (factures impayées sans avoir associé).
+
+## Lettrage automatique
+
+FacturPro letttre automatiquement dans deux situations :
+
+| Événement | Effet |
+|---|---|
+| Facture marquée **payée** | Les lignes 411 de l'émission et du règlement reçoivent la même lettre |
+| Avoir émis sur une facture | Les lignes 411 de la facture et de l'avoir reçoivent la même lettre |
+
+## Page Lettrage
+
+Accessible depuis la barre de navigation **⚖️ Lettrage**.
+
+La page affiche, pour chaque client sélectionné dans le filtre, deux sections :
+
+**Non-lettrées (créances ouvertes)**
+
+- Liste des écritures 411 sans lettre attribuée.
+- Le **solde non lettré** (débit – crédit) apparaît en rouge si positif (impayé) ou en vert si soldé.
+- Cochez les lignes à rapprocher, puis cliquez **Lettrer la sélection**.
+- Le bouton **Tout lettrer** tente de lettrer toutes les lignes non-lettrées du client en une seule fois.
+
+**Lettrées (créances soldées)**
+
+- Regroupées par lettre (A, B…).
+- Chaque groupe dispose d'un bouton **Délettrer** pour annuler le rapprochement si une erreur a été commise.
+
+## Lettrage manuel
+
+Le lettrage manuel exige que la **somme des débits** sélectionnés soit **égale à la somme des crédits** (tolérance de 0,01 €). Si ce n'est pas le cas, le système rejette l'opération avec un message indiquant l'écart.
+
+## Impact sur le FEC
+
+Depuis l'introduction du lettrage, chaque paiement de facture génère également des **écritures de règlement** dans le FEC (journal BQ — Banque) :
+
+| Compte | Sens | Libellé |
+|---|---|---|
+| 512 Banque / 530 Caisse / 5112 Chèques | Débit | Règlement FAC-YYYY-NNNN |
+| 411 Clients | Crédit | Règlement FAC-YYYY-NNNN |
+
+Le FEC est ainsi complet : émission + règlement + lettrage, vérifiable lors d'un contrôle fiscal.
 
 ---
 

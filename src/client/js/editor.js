@@ -507,6 +507,15 @@ const DocEditor = (() => {
       }
     }
 
+    // Document existant : commencer en état "sauvegardé" jusqu'à la 1ère modification
+    if (id) {
+      saveBtn.textContent = '✓ Enregistré';
+      saveBtn.className   = 'btn btn-success btn-sm e-save-btn';
+      saveBtn.disabled    = true;
+      saveBtn.style.cursor  = 'default';
+      saveBtn.style.opacity = '1';
+    }
+
     // Dirty state + save
     const markDirty = () => { saveBtn.textContent='Enregistrer'; saveBtn.className='btn btn-primary btn-sm e-save-btn'; saveBtn.disabled=false; saveBtn.style.cursor=''; saveBtn.style.opacity=''; };
     page.addEventListener('input', markDirty);

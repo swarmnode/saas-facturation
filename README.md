@@ -96,6 +96,12 @@ npm start        # Production (dist/server/index.js)
 
 Voir [CLAUDE.md](CLAUDE.md) pour le détail de l'architecture, des invariants de conformité et des conventions de développement.
 
+## Changelog
+
+Voir [CHANGELOG.md](CHANGELOG.md) — historique complet des versions.
+
+Dernière version : **[v2.0.9](https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.9)** — Factur-X natif (XML embarqué dans le PDF)
+
 ## Licence
 
 Propriétaire — tous droits réservés.

@@ -96,10 +96,17 @@ Après le premier save d'un nouveau document :
 - Draft localStorage nettoyé (clearDraft dans saveDoc)
 - Fix: Total TTC aligné en bas du cadre signature (justify-content: flex-end)
 - Fix: suppression ligne séparatrice et pied légal (société/SIRET)
+- Fix: PDF devis — Total TTC aligné sur le bas du cadre signature
+
+- DEVIS_TOTAL_BOTTOM = sigTop + sigBoxH (bas exact du cadre)
+- Totaux dessinés de bas en haut : TTC en bas, TVA+HT au-dessus
+- Séparateur horizontal à 44pt au-dessus du TTC
+- Même logique que pour les factures (BOTTOM fixe)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

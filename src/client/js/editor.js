@@ -543,7 +543,32 @@ const DocEditor = (() => {
         }
       }
 
-      el.querySelector('.e-save-btn').onclick = () => saveDoc(type, id, el, page);
+      const saveBtn = el.querySelector('.e-save-btn');
+
+      // Dirty state : revenir à "Enregistrer" à chaque modification
+      const markDirty = () => {
+        saveBtn.textContent = 'Enregistrer';
+        saveBtn.className   = 'btn btn-primary btn-sm e-save-btn';
+        saveBtn.disabled    = false;
+      };
+      page.addEventListener('input',  markDirty);
+      page.addEventListener('change', markDirty);
+
+      saveBtn.onclick = async () => {
+        saveBtn.disabled    = true;
+        saveBtn.textContent = 'Enregistrement…';
+        const ok = await saveDoc(type, id, el, page);
+        if (ok) {
+          saveBtn.textContent = '✓ Enregistré';
+          saveBtn.className   = 'btn btn-success btn-sm e-save-btn';
+          saveBtn.disabled    = true;
+          saveBtn.style.cursor  = 'default';
+          saveBtn.style.opacity = '1';
+        } else {
+          saveBtn.disabled    = false;
+          saveBtn.textContent = 'Enregistrer';
+        }
+      };
     }
 
     // Close → back to list (always)
@@ -573,8 +598,8 @@ const DocEditor = (() => {
     });
 
     const clientId = parseInt(page.querySelector('[name=client_id]').value);
-    if (!clientId)     return alert('Veuillez sélectionner un client.');
-    if (!lignes.length) return alert('Ajoutez au moins une ligne.');
+    if (!clientId)     { alert('Veuillez sélectionner un client.'); return false; }
+    if (!lignes.length) { alert('Ajoutez au moins une ligne.');     return false; }
 
     const data = {
       client_id: clientId,
@@ -598,10 +623,6 @@ const DocEditor = (() => {
       }
     }
 
-    const saveBtn = el.querySelector('.e-save-btn');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Enregistrement…';
-
     try {
       let result;
       if (id) {
@@ -610,13 +631,17 @@ const DocEditor = (() => {
         data.entreprise_id = _entreprise.id;
         result = await api.post(`/api/${route}`, data);
       }
-      if (result?.error) { alert(result.error); return; }
+      if (result?.error) { alert(result.error); return false; }
       if (el.dataset.docKey) clearDraft(el.dataset.docKey);
-      tabMgr.closeTab(el.dataset.tid);
-      tabMgr.openViewTab(type === 'facture' ? 'factures' : 'devis');
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Enregistrer';
+      // Mettre à jour le titre de l'onglet avec le nouveau numéro
+      if (result?.numero) {
+        const titleEl = el.querySelector('.e-tb-title');
+        if (titleEl) titleEl.textContent = `${type === 'devis' ? 'DEVIS' : 'FACTURE'} ${result.numero}`;
+      }
+      return true;
+    } catch(e) {
+      alert('Erreur lors de l\'enregistrement');
+      return false;
     }
   }
 

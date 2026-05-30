@@ -56,10 +56,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: cache-busting sur scripts JS/CSS
 - Fix: sauvegarde draft forcée au beforeunload (rafraîchissement immédiat)
 - Fix: champ de recherche client correctement rendu dans l'éditeur
+- Fix: </div> parasite dans e-client-block cassait le layout A4
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -490,7 +490,41 @@ select.e-cell { cursor:pointer; }
 .e-footer-editable:hover { border-color:#e0e0e0; }
 .e-footer-editable:focus { border-color:#ccc; background:#fafafa; }
 
-/* Client search in editor */
+/* ── SearchSelect component ─────────────────────────────────────────────── */
+.ss-wrap { position: relative; display: inline-block; }
+.ss-input {
+  border: none; border-bottom: 1.5px dashed #ccc; background: transparent;
+  font-family: inherit; font-size: inherit; padding: 2px 4px; outline: none;
+  color: #1a1a1a; width: 100%; cursor: text;
+}
+.ss-input:focus { border-bottom-color: var(--primary); }
+.ss-input::placeholder { color: #aaa; font-weight: 400; }
+.ss-drop {
+  position: absolute; top: calc(100% + 4px); z-index: 2000;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  min-width: 220px; max-height: 260px; overflow-y: auto;
+}
+.ss-drop-right { right: 0; }
+.ss-drop-left  { left: 0; }
+.ss-item {
+  padding: 8px 14px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid #f4f4f4;
+}
+.ss-item:last-child { border-bottom: none; }
+.ss-item:hover, .ss-item-active { background: var(--bg); }
+.ss-item-active { font-weight: 600; }
+.ss-sep    { border-top: 1px solid var(--border); margin: 2px 0; }
+.ss-create { padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--primary); }
+.ss-create:hover { background: #EFF6FF; }
+.ss-empty  { padding: 10px 14px; font-size: 13px; color: var(--text-muted); }
+
+/* Variante dans l'éditeur A4 (alignée à droite, style document) */
+.e-client-block .ss-wrap { width: 100%; }
+.e-client-block .ss-input { font-size: 10pt; font-weight: 600; text-align: right; width: 240px; }
+.e-client-block .ss-drop  { min-width: 260px; }
+
+/* Client search in editor (legacy, kept for acompte viewer) */
 .e-client-search-wrap { position: relative; }
 .e-client-search {
   font-size: 10pt; font-weight: 600; font-family: inherit;

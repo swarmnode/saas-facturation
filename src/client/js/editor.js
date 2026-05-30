@@ -123,60 +123,32 @@ const DocEditor = (() => {
     });
   }
 
-  // ── Client search component ────────────────────────────────────────────
+  // ── Client search (via SearchSelect) ────────────────────────────────────
 
-  function clientName(c) {
+  function clientLabel(c) {
     return c.raison_sociale || [c.civilite, c.prenom, c.nom].filter(Boolean).join(' ');
   }
 
-  function initClientSearch(wrap, hiddenInput, preview) {
+  function initClientSearch(wrap, preview) {
     if (!wrap) return;
-    const searchInp = wrap.querySelector('.e-client-search');
-    const drop      = wrap.querySelector('.e-client-drop');
-    if (!searchInp || !drop) return;
+    const initVal = parseInt(wrap.dataset.initClient) || undefined;
+
+    const sel = SearchSelect(wrap, {
+      items:        clientOptions,
+      labelFn:      clientLabel,
+      valueFn:      c => c.id,
+      placeholder:  'Rechercher un client…',
+      initialValue: initVal,
+      align:        'right',
+      createLabel:  '+ Nouveau client',
+      onCreate:     () => showClientForm(),
+      onSelect:     (client) => renderClientPreview(client, preview),
+    });
+
+    sel.hidden.name = 'client_id';
 
     // Prévisualisation initiale
-    const initCid = parseInt(hiddenInput?.value);
-    if (initCid) renderClientPreview(clientOptions.find(c => c.id === initCid) || null, preview);
-
-    function showDrop(q) {
-      const filtered = q.length < 1
-        ? clientOptions.slice(0, 30)
-        : clientOptions.filter(c => clientName(c).toLowerCase().includes(q.toLowerCase()));
-
-      drop.innerHTML = '';
-      filtered.forEach(c => {
-        const d = document.createElement('div');
-        d.className = 'e-client-drop-item';
-        d.textContent = clientName(c);
-        d.onmousedown = () => {
-          hiddenInput.value = c.id;
-          searchInp.value   = clientName(c);
-          renderClientPreview(c, preview);
-          hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-          drop.style.display = 'none';
-        };
-        drop.appendChild(d);
-      });
-
-      const newItem = document.createElement('div');
-      newItem.className = 'e-client-drop-new';
-      newItem.textContent = '+ Nouveau client';
-      newItem.onmousedown = () => {
-        drop.style.display = 'none';
-        openQuickClientCreate({ closest: () => null }, null, null, null, null);
-      };
-      drop.appendChild(newItem);
-      drop.style.display = 'block';
-    }
-
-    searchInp.addEventListener('focus', () => showDrop(searchInp.value));
-    searchInp.addEventListener('input', () => {
-      showDrop(searchInp.value);
-      hiddenInput.value = '';
-      renderClientPreview(null, preview);
-    });
-    searchInp.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 200));
+    if (initVal) renderClientPreview(clientOptions.find(c => c.id === initVal) || null, preview);
   }
 
   // ── Ligne row ───────────────────────────────────────────────────────────
@@ -357,10 +329,7 @@ const DocEditor = (() => {
 
         <div class="e-client-block">
           <div class="e-client-label">Destinataire</div>
-          <div class="e-client-search-wrap">
-            <input class="e-client-search" placeholder="Rechercher un client…" autocomplete="off" value="${initCliName.replace(/"/g,'&quot;')}">
-            <input type="hidden" name="client_id" value="${doc?.client_id || ''}">
-            <div class="e-client-drop" style="display:none"></div>
+          <div class="ss-wrap" data-init-client="${doc?.client_id || ""}"></div>
           </div>
           <div class="e-client-preview"></div>
         </div>
@@ -474,7 +443,7 @@ const DocEditor = (() => {
     // Client selector
     // Client search
     const clientPreview = el.querySelector('.e-client-preview');
-    initClientSearch(el.querySelector('.e-client-search-wrap'), el.querySelector('[name=client_id]'), clientPreview);
+    initClientSearch(el.querySelector('.ss-wrap'), clientPreview);
 
     // Pre-fill lines (or one blank if editable)
     const readonly   = !!(doc?.locked);
@@ -795,10 +764,7 @@ const DocEditor = (() => {
         </div>
 
         <div class="e-client-block">
-          <div class="e-client-search-wrap">
-            <input class="e-client-search" placeholder="Rechercher un client…" autocomplete="off" value="${blInitName.replace(/"/g,'&quot;')}">
-            <input type="hidden" name="client_id" value="${bl?.client_id || prefill?.client_id || ''}">
-            <div class="e-client-drop" style="display:none"></div>
+          <div class="ss-wrap" data-init-client="${bl?.client_id || prefill?.client_id || ""}"></div>
           </div>
 
           <div class="e-client-preview"></div>
@@ -920,7 +886,7 @@ const DocEditor = (() => {
       const tbody    = el.querySelector('.e-bl-body');
       // Client search BL
       const clientPrev  = el.querySelector('.e-client-preview');
-      initClientSearch(el.querySelector('.e-client-search-wrap'), el.querySelector('[name=client_id]'), clientPrev);
+      initClientSearch(el.querySelector('.ss-wrap'), clientPrev);
 
       // Lines
       const blReadonly = bl && bl.statut === 'livre';

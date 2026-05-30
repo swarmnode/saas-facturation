@@ -221,7 +221,7 @@ const DocEditor = (() => {
         ${showSerie?`<input class="e-cell e-serie" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">`:''}
       </td>
       <td class="e-td-num"><input class="e-cell e-qty" type="number" value="${l.quantite||1}" min="0.001" step="0.001"></td>
-      <td class="e-td-num"><input class="e-cell e-pu" type="number" value="${l.prix_unitaire_ht||''}" step="0.01" placeholder="0,00"></td>
+      <td class="e-td-num"><input class="e-cell e-pu" type="number" value="${l.prix_unitaire_ht ?? 1}" step="0.01" placeholder="0,00"></td>
       <td class="e-td-num"><input class="e-cell e-remise" type="number" value="${l.remise_pct||0}" min="0" max="100"></td>
       <td class="e-td-tva"><select class="e-cell e-tva-sel">${tvaOpts}</select></td>
       <td class="e-td-total e-ligne-total">${fmt(l.montant_ht||0)}</td>
@@ -423,6 +423,7 @@ const DocEditor = (() => {
       el.querySelector('.e-add-btn').onclick = () => {
         const row = makeRow({});
         tbody.appendChild(row);
+        calcLigne(row); calcTotaux(page);
         row.querySelector('.e-desig').focus();
       };
 
@@ -569,8 +570,14 @@ const DocEditor = (() => {
         : await api.post(`/api/${route}`, { ...data, entreprise_id: _entreprise.id });
       if (result?.error) { alert(result.error); return false; }
       if (el.dataset.docKey) clearDraft(el.dataset.docKey);
-      const titleEl = el.querySelector('.e-tb-title');
-      if (titleEl && result?.numero) titleEl.textContent = `${DOC_LABELS[type]} ${result.numero}`;
+      if (result?.numero) {
+        const titleEl = el.querySelector('.e-tb-title');
+        if (titleEl) titleEl.textContent = `${DOC_LABELS[type]} ${result.numero}`;
+        const numEl = el.querySelector('.e-doc-numero');
+        if (numEl) numEl.textContent = `N° ${result.numero}`;
+        const tabTitle = document.querySelector(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`);
+        if (tabTitle) tabTitle.textContent = result.numero;
+      }
       return true;
     } catch(e) { alert('Erreur lors de l\'enregistrement'); return false; }
   }

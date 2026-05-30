@@ -5,6 +5,21 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Chore: licence AGPL v3 + mise a jour README
+
+- LICENSE : texte officiel GNU AGPL v3.0
+- README  : badge licence, version courante v2.4.140, fonctionnalites a jour
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+## [2.4.140] — 2026-05-30
+
 ### Ajouté
 - Feat: lettrage comptable (compte 411, auto + manuel)
 
@@ -532,6 +547,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.4.140]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.4.140
 [2.3.133]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.3.133
 [2.2.129]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.2.129
 [2.1.81]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.1.81

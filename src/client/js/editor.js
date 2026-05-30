@@ -185,7 +185,21 @@ const DocEditor = (() => {
       onSelect:     client => renderClientPreview(client, preview),
     });
     sel.hidden.name = 'client_id';
-    if (initVal) renderClientPreview(clientOptions.find(c => c.id === initVal)||null, preview);
+    if (initVal) {
+      const found = clientOptions.find(c => c.id == initVal);
+      if (found) {
+        renderClientPreview(found, preview);
+      } else {
+        // Client hors enterprise courante (ex: BL d'une autre société) — fetch direct
+        api.get(`/api/clients/${initVal}`).then(c => {
+          if (c?.id) {
+            renderClientPreview(c, preview);
+            sel.input.value  = clientLabel(c);
+            sel.hidden.value = c.id;
+          }
+        }).catch(() => {});
+      }
+    }
   }
 
   // ── Ligne rows ────────────────────────────────────────────────────────────

@@ -87,10 +87,18 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - calcLigne(row) appelé pour chaque ligne au chargement (évite 0,00 € initial)
 - article-selected déclenche calcLigne + calcTotaux directement
 - vertical-align:top sur e-td-total (montant aligné en haut)
+- Fix: N° devis persisté après rechargement — promoteTab met à jour le docId
+
+Après le premier save d'un nouveau document :
+- el.dataset.docKey passe de 'new-devis-...' au vrai ID
+- tabMgr.promoteTab() met à jour le tab dans le store → saveTabState persiste le bon ID
+- Au rechargement, DocEditor.openDevis(realId) est appelé → document chargé avec son N°
+- Draft localStorage nettoyé (clearDraft dans saveDoc)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

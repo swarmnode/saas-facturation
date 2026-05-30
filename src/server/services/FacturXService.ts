@@ -6,6 +6,17 @@ import { PDFDocument as PdfLib, AFRelationship, PDFName } from 'pdf-lib';
 
 const STORAGE_PDF = path.resolve(process.cwd(), 'storage', 'pdf');
 
+// ── Helper : bloc client (nom + adresse + adresse2 + ville + TVA) ──────────
+function drawClientBlock(doc: any, client: any, clientNom: string, clientY: number): void {
+  let y = clientY;
+  doc.fontSize(11).font('Helvetica-Bold').text(clientNom, 350, y, { width: 195, lineBreak: false });
+  doc.fontSize(10).font('Helvetica');
+  y += 16; doc.text(client.adresse, 350, y, { width: 195, lineBreak: false });
+  if (client.adresse2) { y += 12; doc.text(client.adresse2, 350, y, { width: 195, lineBreak: false }); }
+  y += 12; doc.text(`${client.code_postal} ${client.ville}`, 350, y, { width: 195, lineBreak: false });
+  if (client.tva_intracom) { y += 12; doc.text(`TVA Intracom : ${client.tva_intracom}`, 350, y, { width: 195, lineBreak: false }); }
+}
+
 // ── Embedding Factur-X XML dans le PDF (post-processing pdf-lib) ───────────
 async function embedFacturXML(pdfPath: string, xmlContent: string): Promise<void> {
   const pdfBytes = fs.readFileSync(pdfPath);
@@ -242,12 +253,7 @@ export class FacturXService {
 
       const clientY = logoInfo ? 130 : 75;
       doc.fontSize(11).font('Helvetica-Bold')
-         .text(clientNom, 350, clientY, { width: 195 });
-      doc.fontSize(10).font('Helvetica')
-         .text(client.adresse, 350, clientY + 16, { width: 195 })
-         .text(`${client.code_postal} ${client.ville}`, 350, clientY + 28, { width: 195 });
-      if (client.tva_intracom)
-        doc.text(`TVA Intracom : ${client.tva_intracom}`, 350, clientY + 40, { width: 195 });
+         drawClientBlock(doc, client, clientNom, clientY);
 
       // ── Titre facture ────────────────────────────────────────────────
       const sepY = logoInfo ? 185 : 150;
@@ -384,11 +390,7 @@ export class FacturXService {
         ? client.raison_sociale
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
-      doc.fontSize(11).font('Helvetica-Bold').text(clientNom, 350, clientY, { width: 195 });
-      doc.fontSize(10).font('Helvetica')
-         .text(client.adresse, 350, clientY + 16, { width: 195 })
-         .text(`${client.code_postal} ${client.ville}`, 350, clientY + 28, { width: 195 });
-      if (client.tva_intracom) doc.text(`TVA Intracom : ${client.tva_intracom}`, 350, clientY + 40, { width: 195 });
+      drawClientBlock(doc, client, clientNom, clientY);
 
       // Titre
       const sepY = logoInfo ? 185 : 150;
@@ -506,10 +508,7 @@ export class FacturXService {
         ? client.raison_sociale
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
-      doc.fontSize(11).font('Helvetica-Bold').text(clientNom, 350, clientY, { width: 195 });
-      doc.fontSize(10).font('Helvetica')
-         .text(client.adresse, 350, clientY + 16, { width: 195 })
-         .text(`${client.code_postal} ${client.ville}`, 350, clientY + 28, { width: 195 });
+      drawClientBlock(doc, client, clientNom, clientY);
 
       // Titre
       const sepY = logoInfo ? 185 : 150;
@@ -621,12 +620,7 @@ export class FacturXService {
         ? client.raison_sociale
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
-      doc.fontSize(11).font('Helvetica-Bold').text(clientNom, 350, clientY, { width: 195 });
-      doc.fontSize(10).font('Helvetica')
-         .text(client.adresse, 350, clientY + 16, { width: 195 })
-         .text(`${client.code_postal} ${client.ville}`, 350, clientY + 28, { width: 195 });
-      if (client.tva_intracom)
-        doc.text(`TVA Intracom : ${client.tva_intracom}`, 350, clientY + 40, { width: 195 });
+      drawClientBlock(doc, client, clientNom, clientY);
 
       const sepY = logoInfo ? 185 : 150;
       doc.moveTo(50, sepY).lineTo(545, sepY).strokeColor('#CCCCCC').stroke();
@@ -744,10 +738,7 @@ export class FacturXService {
         ? client.raison_sociale
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
-      doc.fontSize(11).font('Helvetica-Bold').text(clientNom, 350, clientY, { width: 195 });
-      doc.fontSize(10).font('Helvetica')
-         .text(client.adresse, 350, clientY + 16, { width: 195 })
-         .text(`${client.code_postal} ${client.ville}`, 350, clientY + 28, { width: 195 });
+      drawClientBlock(doc, client, clientNom, clientY);
 
       const sepY = logoInfo ? 185 : 150;
       doc.moveTo(50, sepY).lineTo(545, sepY).strokeColor('#CCCCCC').stroke();

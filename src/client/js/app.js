@@ -782,6 +782,7 @@ async function showClientForm(id) {
         <div class="form-group"><label>Nom</label><input name="nom" value="${client.nom || ''}"/></div>
       </div>
       <div class="form-group"><label>Adresse *</label><input name="adresse" value="${client.adresse || ''}" required/></div>
+      <div class="form-group"><label>Complément d'adresse</label><input name="adresse2" value="${client.adresse2 || ''}" placeholder="Bâtiment, étage, BP…"/></div>
       <div class="form-row">
         <div class="form-group"><label>Code postal *</label><input name="code_postal" value="${client.code_postal || ''}" required/></div>
         <div class="form-group"><label>Ville *</label><input name="ville" value="${client.ville || ''}" required/></div>

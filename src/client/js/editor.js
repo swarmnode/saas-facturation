@@ -160,11 +160,11 @@ const DocEditor = (() => {
     if (!el) return;
     if (!client) { el.innerHTML = ''; return; }
     const nom   = client.type_client === 'professionnel' ? (client.raison_sociale||'') : [client.civilite,client.prenom,client.nom].filter(Boolean).join(' ');
-    const adr   = [client.adresse, client.adresse2].filter(Boolean).join(', ');
     const ville = [client.code_postal, client.ville].filter(Boolean).join(' ');
     el.innerHTML = `
       <div class="e-cp-name">${nom}</div>
-      ${adr   ? `<div>${adr}</div>`   : ''}
+      ${client.adresse  ? `<div>${client.adresse}</div>`  : ''}
+      ${client.adresse2 ? `<div>${client.adresse2}</div>` : ''}
       ${ville ? `<div>${ville}</div>` : ''}
       ${client.tva_intracom ? `<div>TVA : ${client.tva_intracom}</div>` : ''}`;
   }

@@ -2665,8 +2665,8 @@ function attachArticleAutocomplete(desInput, puInput, tvaSelect, uniteInput) {
         `<small>${fmt.money(a.prix_unitaire_ht)} HT &middot; TVA ${a.tva_taux}%${a.unite ? ' &middot; ' + a.unite : ''}</small>`;
       div.onmousedown = () => {
         desInput.value = a.designation;
-        if (puInput)    puInput.value    = a.prix_unitaire_ht;
-        if (tvaSelect)  tvaSelect.value  = a.taux_tva_id;
+        if (puInput)    { puInput.value    = a.prix_unitaire_ht; puInput.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (tvaSelect)  { tvaSelect.value  = a.taux_tva_id;     tvaSelect.dispatchEvent(new Event('input', { bubbles: true })); }
         if (uniteInput) uniteInput.value = a.unite || '';
         removeAc();
         desInput.dispatchEvent(new CustomEvent('article-selected', { detail: a, bubbles: true }));

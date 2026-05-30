@@ -454,17 +454,17 @@ tr.row-actions:hover td { background: transparent; }
 /* Lignes table */
 .e-lignes-table { width:100%; border-collapse:collapse; margin-bottom:0; table-layout:fixed; }
 .e-th-desig { text-align:left;   padding:7px 8px; font-size:8pt; width:36%; }
-.e-th-num   { text-align:right;  padding:7px 6px; font-size:8pt; width:9%; }
-.e-th-tva   { text-align:right;  padding:7px 6px; font-size:8pt; width:14%; }
+.e-th-num   { text-align:right; padding:7px 6px; font-size:8pt; width:9%;  white-space:nowrap; }
+.e-th-tva   { text-align:right; padding:7px 6px; font-size:8pt; width:14%; white-space:nowrap; }
 .e-th-total { text-align:right;  padding:7px 8px; font-size:8pt; width:14%; min-width:90px; }
 .e-th-del   { width:3%; }
 
 .e-ligne-row:nth-child(even) { background:#f7f8fa; }
 .e-td-desig { padding:4px 6px; vertical-align:top; }
-.e-td-num   { padding:4px 6px; vertical-align:top; text-align:right; }
-.e-td-num .e-cell { text-align:right; }
-.e-td-tva   { padding:4px 6px; vertical-align:top; text-align:right; }
-.e-td-tva .e-cell { text-align:right; }
+.e-td-num                { padding:4px 6px; vertical-align:top; text-align:right; }
+.e-td-num input.e-cell  { text-align:right; direction:ltr; }
+.e-td-tva                { padding:4px 6px; vertical-align:top; text-align:right; }
+.e-td-tva select.e-cell { text-align:right; direction:ltr; }
 .e-td-total { padding:6px 8px; vertical-align:middle; text-align:right; font-size:9pt; white-space:nowrap; font-weight:600; }
 .e-td-del   { padding:4px 2px; vertical-align:middle; text-align:center; }
 

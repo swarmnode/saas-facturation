@@ -38,11 +38,18 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
 - Ux: Émettre en blanc (btn-outline) + badge ✓ Émis vert figé après émission
 - Ux: bouton unique 'Émettre & Envoyer' — émet puis ouvre la modal d'envoi
+- Ux: liste factures — Émettre & Envoyer fusionnés + badge ✓ Émis vert
+
+- Brouillon : bouton 'Émettre & Envoyer' (outline) → émet puis ouvre modal envoi
+- Émise/Payée : badge '✓ Émis' vert figé + '✉ Envoyer' séparé
+- Cohérent avec l'éditeur WYSIWYG
+- S'applique aussi au tableau de bord (via DOC_CONFIGS)
 
 
 ## [2.1.81] — 2026-05-30

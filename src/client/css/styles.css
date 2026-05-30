@@ -465,7 +465,7 @@ tr.row-actions:hover td { background: transparent; }
 .e-td-num input.e-cell  { text-align:right; direction:ltr; }
 .e-td-tva                { padding:4px 6px; vertical-align:top; text-align:right; }
 .e-td-tva select.e-cell { text-align:right; direction:ltr; }
-.e-td-total { padding:6px 8px; vertical-align:middle; text-align:right; font-size:9pt; white-space:nowrap; font-weight:600; }
+.e-td-total { padding:6px 8px; vertical-align:top; text-align:right; font-size:9pt; white-space:nowrap; font-weight:600; }
 .e-td-del   { padding:4px 2px; vertical-align:middle; text-align:center; }
 
 .e-cell { width:100%; border:none; background:transparent; font-family:inherit; font-size:9pt; color:#1a1a1a; padding:2px 3px; outline:none; border-bottom:1px solid transparent; }

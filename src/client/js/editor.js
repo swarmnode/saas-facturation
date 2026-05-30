@@ -232,7 +232,11 @@ const DocEditor = (() => {
     const desig=tr.querySelector('.e-desig');
     attachArticleAutocomplete(desig,tr.querySelector('.e-pu'),tr.querySelector('.e-tva-sel'));
     desig.addEventListener('input',()=>calcTotaux(page));
-    desig.addEventListener('article-selected',e=>{const art=e.detail;if(art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}});
+    desig.addEventListener('article-selected', e => {
+      const art = e.detail;
+      calcLigne(tr); calcTotaux(page);
+      if (art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}
+    });
     return tr;
   }
 
@@ -407,7 +411,11 @@ const DocEditor = (() => {
     const readonly = !!(doc?.locked || (type==='bl' && doc?.statut==='livre'));
     const lignes   = doc?.lignes?.length ? doc.lignes : (readonly ? [] : [{}]);
     const makeRow  = isBL ? l => makeBLRow(l, page) : l => makeLigneRow(l, page, { showSerie: type==='facture'||type==='avoir' });
-    lignes.forEach(l => tbody.appendChild(makeRow(l)));
+    lignes.forEach(l => {
+      const row = makeRow(l);
+      tbody.appendChild(row);
+      if (!isBL) calcLigne(row); // met à jour la cellule Total HT de chaque ligne
+    });
     if (!isBL) calcTotaux(page);
 
     if (readonly) {

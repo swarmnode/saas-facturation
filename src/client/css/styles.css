@@ -426,7 +426,7 @@ tr.row-actions:hover td { background: transparent; }
 .e-logo         { max-width:220px; max-height:85px; object-fit:contain; }
 
 /* Client block */
-.e-client-block { display:flex; flex-direction:column; align-items:flex-end; margin-bottom:20px; min-height:80px; }
+.e-client-block { display:flex; flex-direction:column; align-items:flex-start; margin-bottom:20px; min-height:80px; width:240px; margin-left:auto; }
 .e-client-label { font-size:7.5pt; text-transform:uppercase; letter-spacing:.06em; color:#888; margin-bottom:4px; text-align:right; }
 .e-client-sel   { font-size:10pt; font-weight:600; border:none; border-bottom:1.5px dashed #ccc; background:transparent; text-align:right; max-width:240px; cursor:pointer; padding:2px 4px; color:#1a1a1a; outline:none; }
 .e-client-sel:focus { border-bottom-color:var(--primary); }
@@ -531,7 +531,7 @@ select.e-cell { cursor:pointer; }
 
 /* Variante dans l'éditeur A4 (alignée à droite, style document) */
 .e-client-block .ss-wrap { width: 100%; }
-.e-client-block .ss-input { font-size: 10pt; font-weight: 600; text-align: right; width: 240px; }
+.e-client-block .ss-input { font-size: 10pt; font-weight: 600; text-align: left; width: 100%; }
 .e-client-block .ss-drop  { min-width: 260px; }
 
 /* Client search in editor (legacy, kept for acompte viewer) */

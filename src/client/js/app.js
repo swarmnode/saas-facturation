@@ -175,7 +175,7 @@ const DOC_CONFIGS = {
       btn.outline(`previewBL(${b.id})`, '👁 PDF'),
       btn.outline(`envoyerBL(${b.id})`, '✉ Envoyer'),
       b.statut==='brouillon'&&(b.devis_id||b.facture_id) ? '' : (b.statut!=='livre' ? btn.success(`livrerBL(${b.id})`,'✓ Livré') : ''),
-      ['emis','livre'].includes(b.statut) ? btn.outline(`factureFromBL(${b.id})`,'🧾 → Facture') : '',
+      btn.outline(`factureFromBL(${b.id})`,'🧾 → Facture'),
       b.statut==='brouillon' ? btn.trash(`supprimerBL(${b.id})`) : '',
     ],
   },

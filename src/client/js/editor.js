@@ -459,7 +459,7 @@ const DocEditor = (() => {
         ${doc?.statut==='signe'?`<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${id})">📝 Avenant</button><button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${id})">🧾 Facturer</button><button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${id})">🚚 BL</button>`:''}
       `:type==='bl'?`
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
-        ${['emis','livre'].includes(doc?.statut)?`<button class="btn btn-outline btn-sm" onclick="factureFromBL(${id})">🧾 → Facture</button>`:''}
+        <button class="btn btn-outline btn-sm" onclick="factureFromBL(${id})">🧾 → Facture</button>
       `:`
         ${['emise','payee'].includes(doc?.statut)?`<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Émis</button>`:''}
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
@@ -523,7 +523,7 @@ const DocEditor = (() => {
     }
 
     // Bouton → Facture pour les BL émis en mode édition
-    if (type === 'bl' && id && ['emis','livre'].includes(doc?.statut)) {
+    if (type === 'bl' && id) {
       ins(mkBtn('🧾 → Facture', 'btn-outline', () => factureFromBL(id)));
     }
 

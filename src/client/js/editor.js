@@ -453,6 +453,14 @@ const DocEditor = (() => {
       const autoSave = debounce(() => saveDraft(docKey, el, type), 600);
       page.addEventListener('input',  autoSave);
       page.addEventListener('change', autoSave);
+
+      // Sauvegarde forcée immédiate avant rechargement / fermeture
+      const flushSave = () => saveDraft(docKey, el, type);
+      window.addEventListener('beforeunload', flushSave);
+      // Nettoyage si l'onglet est fermé volontairement
+      el.querySelector('.e-close-btn')?.addEventListener('click', () => {
+        window.removeEventListener('beforeunload', flushSave);
+      }, { once: true });
     }
 
     // Signature block: devis only
@@ -937,6 +945,11 @@ const DocEditor = (() => {
         const autoSave = debounce(() => saveDraft(docKey, el, 'bl'), 600);
         page.addEventListener('input',  autoSave);
         page.addEventListener('change', autoSave);
+        const flushSave = () => saveDraft(docKey, el, 'bl');
+        window.addEventListener('beforeunload', flushSave);
+        el.querySelector('.e-close-btn')?.addEventListener('click', () => {
+          window.removeEventListener('beforeunload', flushSave);
+        }, { once: true });
       }
       lignes.forEach(l => tbody.appendChild(makeBLRow(l, page)));
 

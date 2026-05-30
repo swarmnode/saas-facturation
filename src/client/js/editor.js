@@ -423,7 +423,7 @@ const DocEditor = (() => {
     }
 
     // Lignes
-    const readonly = !!(doc?.locked || (type==='bl' && doc?.statut==='livre'));
+    const readonly = !!(doc?.locked);
     const lignes   = doc?.lignes?.length ? doc.lignes : (readonly ? [] : [{}]);
     const makeRow  = isBL ? l => makeBLRow(l, page) : l => makeLigneRow(l, page, { showSerie: type==='facture'||type==='avoir' });
     lignes.forEach(l => {

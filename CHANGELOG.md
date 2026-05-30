@@ -16,6 +16,11 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - DevisService.changerStatut étendu au statut 'accepte'
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: bouton Accepter/Accepté toggle dans toolbar devis WYSIWYG
+
+- Toujours visible : 'Accepter' (outline blanc) → clic → statut 'accepte'
+- Après acceptation : '✓ Accepté' (vert, non cliquable) + '🚚 → BL' (prioritaire)
+- Signé : '✓ Accepté' (vert figé) + Avenant · Facturer · BL
 
 
 ### Corrigé
@@ -38,6 +43,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

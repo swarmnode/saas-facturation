@@ -28,6 +28,7 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Route POST /api/factures/:id/envoyer (récupère l'email du client auto)
 - Barre de progression + résumé envois ok/erreur
 - Feat: SIRET formaté en xxx xxx xxx xxxxx partout (éditeur, PDF x5, listes)
+- Feat: acceptation devis → client passe de 'prospect' à 'client' (RGPD)
 
 
 ### Corrigé
@@ -56,6 +57,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

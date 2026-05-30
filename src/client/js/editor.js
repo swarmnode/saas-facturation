@@ -293,10 +293,10 @@ const DocEditor = (() => {
       ? `<img class="e-logo" src="/storage/logo/logo_pdf.png?t=${Date.now()}" alt="logo">`
       : '';
 
-    const clientOpts = clientOptions.map(c => {
-      const name = c.raison_sociale || [c.civilite, c.prenom, c.nom].filter(Boolean).join(' ');
-      return `<option value="${c.id}" ${c.id == doc?.client_id ? 'selected' : ''}>${name}</option>`;
-    }).join('');
+    const initCli      = clientOptions.find(c => c.id == doc?.client_id);
+    const initCliName  = initCli ? (initCli.raison_sociale || [initCli.civilite, initCli.prenom, initCli.nom].filter(Boolean).join(' ')) : '';
+
+
 
     const tvaModeSel = isFacture ? `
       <div class="e-meta-row">
@@ -357,9 +357,11 @@ const DocEditor = (() => {
 
         <div class="e-client-block">
           <div class="e-client-label">Destinataire</div>
-          <select class="e-client-sel" name="client_id">
-            <option value="">Sélectionner un client…</option>${clientOpts}
-          </select>
+          <div class="e-client-search-wrap">
+            <input class="e-client-search" placeholder="Rechercher un client…" autocomplete="off" value="${initCliName.replace(/"/g,'&quot;')}">
+            <input type="hidden" name="client_id" value="${doc?.client_id || ''}">
+            <div class="e-client-drop" style="display:none"></div>
+          </div>
           <div class="e-client-preview"></div>
         </div>
 
@@ -470,14 +472,9 @@ const DocEditor = (() => {
     // Legal footer
 
     // Client selector
-    const clientSel     = el.querySelector('.e-client-sel');
+    // Client search
     const clientPreview = el.querySelector('.e-client-preview');
-    const updateClient  = () => {
-      const cid = parseInt(clientSel?.value);
-      renderClientPreview(cid ? clientOptions.find(c => c.id === cid) : null, clientPreview);
-    };
-    clientSel?.addEventListener('change', updateClient);
-    updateClient();
+    initClientSearch(el.querySelector('.e-client-search-wrap'), el.querySelector('[name=client_id]'), clientPreview);
 
     // Pre-fill lines (or one blank if editable)
     const readonly   = !!(doc?.locked);
@@ -765,10 +762,9 @@ const DocEditor = (() => {
       ? `<img class="e-logo" src="/storage/logo/logo_pdf.png?t=${Date.now()}" alt="logo">`
       : '';
 
-    const clientOpts = clientOptions.map(c => {
-      const name = c.raison_sociale || [c.civilite, c.prenom, c.nom].filter(Boolean).join(' ');
-      return `<option value="${c.id}" ${c.id == (bl?.client_id || prefill?.client_id) ? 'selected' : ''}>${name}</option>`;
-    }).join('');
+    const blInitCli  = clientOptions.find(c => c.id == (bl?.client_id || prefill?.client_id));
+    const blInitName = blInitCli ? (blInitCli.raison_sociale || [blInitCli.civilite, blInitCli.prenom, blInitCli.nom].filter(Boolean).join(' ')) : '';
+
 
     return `
     <div class="e-toolbar">
@@ -799,10 +795,12 @@ const DocEditor = (() => {
         </div>
 
         <div class="e-client-block">
-          <div class="e-client-label">Destinataire</div>
-          <select class="e-client-sel" name="client_id" ${bl?.id ? 'disabled' : ''}>
-            <option value="">Sélectionner un client…</option>${clientOpts}
-          </select>
+          <div class="e-client-search-wrap">
+            <input class="e-client-search" placeholder="Rechercher un client…" autocomplete="off" value="${blInitName.replace(/"/g,'&quot;')}">
+            <input type="hidden" name="client_id" value="${bl?.client_id || prefill?.client_id || ''}">
+            <div class="e-client-drop" style="display:none"></div>
+          </div>
+
           <div class="e-client-preview"></div>
         </div>
 
@@ -920,20 +918,9 @@ const DocEditor = (() => {
 
       const page     = el.querySelector('.a4-page');
       const tbody    = el.querySelector('.e-bl-body');
-      const clientSel   = el.querySelector('.e-client-sel');
+      // Client search BL
       const clientPrev  = el.querySelector('.e-client-preview');
-
-      // Pre-fill client from prefill if new
-      if (!id && prefill.client_id && clientSel) {
-        clientSel.value = prefill.client_id;
-      }
-
-      const updateClient = () => {
-        const cid = parseInt(clientSel?.value);
-        renderClientPreview(cid ? clientOptions.find(c => c.id === cid) : null, clientPrev);
-      };
-      clientSel?.addEventListener('change', updateClient);
-      updateClient();
+      initClientSearch(el.querySelector('.e-client-search-wrap'), el.querySelector('[name=client_id]'), clientPrev);
 
       // Lines
       const blReadonly = bl && bl.statut === 'livre';

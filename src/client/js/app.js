@@ -175,7 +175,7 @@ const DOC_CONFIGS = {
       btn.outline(`previewBL(${b.id})`, '👁 PDF'),
       btn.outline(`envoyerBL(${b.id})`, '✉ Envoyer'),
       b.statut==='brouillon'&&(b.devis_id||b.facture_id) ? '' : (b.statut!=='livre' ? btn.success(`livrerBL(${b.id})`,'✓ Livré') : ''),
-      ['emis','livre'].includes(b.statut)&&(b.devis_id||b.facture_id) ? btn.outline(`showFactureFromBLForm(${b.id})`,'🧾 Facturer') : '',
+      ['emis','livre'].includes(b.statut) ? btn.outline(`factureFromBL(${b.id})`,'🧾 → Facture') : '',
       b.statut==='brouillon' ? btn.trash(`supprimerBL(${b.id})`) : '',
     ],
   },
@@ -2541,6 +2541,27 @@ async function livrerBL(id) {
   if (!confirm('Marquer ce bon de livraison comme livré ?')) return;
   await api.post(`/api/bons-livraison/${id}/livrer`);
   tabMgr.openViewTab('bons-livraison');
+}
+
+async function factureFromBL(blId) {
+  const bl = await api.get(`/api/bons-livraison/${blId}`);
+  if (!bl?.id) return;
+  // Ouvre l'éditeur facture pré-rempli avec les lignes du BL
+  // Les prix sont vides — l'utilisateur les complète avant d'émettre
+  DocEditor.openFacture(null, {
+    client_id:  bl.client_id,
+    bl_id:      blId,
+    bl_numero:  bl.numero,
+    lignes: (bl.lignes || []).map(l => ({
+      designation:      l.designation,
+      description:      l.description,
+      quantite:         l.quantite,
+      unite:            l.unite,
+      prix_unitaire_ht: 0,
+      taux_tva_id:      1,
+      remise_pct:       0,
+    })),
+  });
 }
 
 async function supprimerBL(id) {

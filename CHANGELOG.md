@@ -5,6 +5,32 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: lettrage comptable (compte 411, auto + manuel)
+
+Backend
+- LettreService : generation lettres A→Z→AA…, lettrerPaiement,
+  lettrerAvoir, lettrer (manuel avec controle equilibre), delettrer
+- FecExportService.enregistrerPaiement : ecritures journal BQ
+  (debit 512/530/5112 + credit 411) a chaque paiement
+- FactureService.marquerPayee : enregistrerPaiement + lettrerPaiement
+- FactureService.emettre : lettrerAvoir automatique quand avoir
+  lie a une facture d'origine
+
+Route /api/lettrage
+- GET /          : ecritures 411 avec statut lettrage par entreprise
+- POST /lettrer  : lettrage manuel (validation debit = credit a 0.01 pres)
+- DELETE /:let   : delettrage
+
+Frontend
+- Sidebar : entree 'Lettrage' (icone balance)
+- renderLettrage : vue par client, non-lettrees vs lettrees groupees,
+  boutons 'Lettrer selection' / 'Tout lettrer' / 'Delettrer par lettre'
+- Solde non-lettré en rouge (impayé) ou vert (soldé)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Corrigé
 - Fix: sauvegarde des champs SEPA manquants dans les routes API
 
@@ -20,6 +46,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

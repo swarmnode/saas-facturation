@@ -584,15 +584,22 @@ const DocEditor = (() => {
         : await api.post(`/api/${route}`, { ...data, entreprise_id: _entreprise.id });
       if (result?.error) { alert(result.error); return false; }
       if (el.dataset.docKey) clearDraft(el.dataset.docKey);
-      // Stocker l'id pour les saves suivants (évite de créer un nouveau doc à chaque save)
-      if (result?.id) page.dataset.docId = result.id;
+      if (result?.id) {
+        page.dataset.docId = result.id;
+        // Promouvoir le tab : remplace le docKey 'new-...' par le vrai ID
+        // pour que la restauration de session retrouve le bon document
+        if (el.dataset.docKey?.startsWith('new-')) {
+          el.dataset.docKey = String(result.id);
+          const label = result.numero || `${DOC_LABELS[type]} ${result.id}`;
+          tabMgr.promoteTab(el.dataset.tid, result.id, label);
+        }
+      }
       if (result?.numero) {
         const titleEl = el.querySelector('.e-tb-title');
-        const numEl   = el.querySelector('.e-doc-numero');
-        const tabEl   = document.querySelector(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`);
+        const numEl   = page.querySelector('.e-doc-numero');
         if (titleEl) titleEl.textContent = `${DOC_LABELS[type]||type.toUpperCase()} ${result.numero}`;
         if (numEl)   numEl.textContent   = `N° ${result.numero}`;
-        if (tabEl)   tabEl.textContent   = result.numero;
+        document.querySelectorAll(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`).forEach(t => { t.textContent = result.numero; });
       }
       return true;
     } catch(e) { alert('Erreur lors de l\'enregistrement'); return false; }

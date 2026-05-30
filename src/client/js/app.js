@@ -437,7 +437,16 @@ const tabMgr = (() => {
     if (t) activateTab(t.id);
   }
 
-  return { openViewTab, openDocTab, closeTab, init, activateByKey };
+  // Après premier save d'un nouveau doc : met à jour le docId du tab
+  function promoteTab(panelTid, newDocId, newTitle) {
+    const t = tabs.find(t => t.id === panelTid);
+    if (!t) return;
+    t.docId = String(newDocId);
+    if (newTitle) t.title = newTitle;
+    renderStrip(); // persiste dans saveTabState
+  }
+
+  return { openViewTab, openDocTab, closeTab, init, activateByKey, promoteTab };
 })();
 
 function updateSidebarLogo(logoPath) {

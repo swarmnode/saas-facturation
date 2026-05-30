@@ -53,6 +53,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -61,6 +62,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Ci: fix git-cliff URL (resolve version dynamically)
 - Ci: fix cliff.toml footer template (null version guard)
 - Ux: Accepter reste sur la page, toolbar se met à jour en place
+- Ux: bouton Enregistrer reste sur la page, devient vert après save
+
+- saveDoc retourne true/false sans fermer l'onglet
+- Bouton 'Enregistrer' → '✓ Enregistré' (vert, figé) après succès
+- Toute modification remet le bouton en 'Enregistrer' (rouge primaire)
+- Nouveau document : titre de l'onglet mis à jour avec le numéro créé
 
 
 ### Refactoring

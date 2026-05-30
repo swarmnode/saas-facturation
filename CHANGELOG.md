@@ -26,6 +26,14 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Remplace le <select> client par un champ de recherche filtrant
 - Dropdown avec les clients correspondants + '+ Nouveau client' en gras
 - Fonctionne dans devis, factures, avoirs et BL
+- Feat: composant SearchSelect générique réutilisable
+
+- src/client/js/components.js : SearchSelect(container, opts)
+  Items filtrables, option 'Créer', alignement gauche/droite,
+  valeur initiale, callback onSelect/onCreate, API setValue/getValue
+- Remplace initClientSearch dans l'éditeur
+- CSS .ss-* propre et isolé
+- Chargé avant app.js dans index.html
 
 
 ### Corrigé
@@ -52,6 +60,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

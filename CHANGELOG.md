@@ -27,10 +27,17 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: syntax error in app.js (orphan template literals + Express v5 route)
+- Fix: restore active tab last + bouton Accepté dans toolbar WYSIWYG
+
+- Session restore : tab actif ouvert en dernier pour garder le focus
+- Bouton '✔ Accepté' dans la toolbar de l'éditeur pour devis envoyés
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

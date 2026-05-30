@@ -385,7 +385,7 @@ async function renderDashboard(el) {
   ]);
 
   const caTotal        = facturesList.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.montant_ttc || 0), 0);
-  const devisEnCours   = devisList.filter(d => ['brouillon','envoye'].includes(d.statut)).length;
+  const devisEnCours   = devisList.filter(d => ['brouillon','envoye','accepte'].includes(d.statut)).length;
   const facturesEmises = facturesList.filter(f => f.statut === 'emise').length;
   const acomptesAttente = acomptesList.filter(a => a.statut === 'en_attente').length;
 
@@ -476,10 +476,11 @@ async function renderDashboard(el) {
           <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
           <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
+          ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="accepterDevis(${d.id})">✔ Accepté</button>` : ''}
           ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
           ${d.statut === 'signe'  ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
-          ${['envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
-          ${['brouillon','envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : ''}
+          ${['envoye','accepte','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
+          ${d.statut === 'accepte' ? `<button class="btn btn-primary btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 → BL</button>` : ((['brouillon','envoye','signe'].includes(d.statut)) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : '')}
           ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer">🗑️</button>` : ''}`;
       } else if (type === 'facture') {
         const f = doc;
@@ -728,10 +729,11 @@ function tableDevis(list, withActions = false) {
           <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
           <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
+          ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="accepterDevis(${d.id})">✔ Accepté</button>` : ''}
           ${d.statut === 'envoye'   ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
           ${d.statut === 'signe'    ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
-          ${['envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
-          ${['brouillon','envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : ''}
+          ${['envoye','accepte','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
+          ${d.statut === 'accepte' ? `<button class="btn btn-primary btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 → BL</button>` : ((['brouillon','envoye','signe'].includes(d.statut)) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : '')}
           ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer ce devis">🗑️</button>` : ''}
         </div></td>
       </tr>` : ''}`).join('')}
@@ -1085,6 +1087,12 @@ async function envoyerDevis(id) {
   };
 }
 
+async function accepterDevis(id) {
+  const r = await api.post(`/api/devis/${id}/accepter`);
+  if (r?.error) return alert(r.error);
+  tabMgr.openViewTab('devis');
+}
+
 async function signerDevis(id) {
   if (!confirm('Signer ce devis ? Il sera verrouillé et ne pourra plus être modifié.')) return;
   await api.post(`/api/devis/${id}/signer`);
@@ -1110,10 +1118,11 @@ async function showDevisDetail(id) {
             <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
             <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
             <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉️ Envoyer</button>
+            ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="accepterDevis(${d.id})">✔ Accepté</button>` : ''}
             ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">✅ Signer</button>` : ''}
             ${d.statut === 'signe' ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">📝 Avenant</button>` : ''}
-            ${['envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
-            ${['brouillon','envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : ''}
+            ${['envoye','accepte','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
+            ${d.statut === 'accepte' ? `<button class="btn btn-primary btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 → BL</button>` : ((['brouillon','envoye','signe'].includes(d.statut)) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : '')}
           </div>
         </div>
         <table class="lignes-table">

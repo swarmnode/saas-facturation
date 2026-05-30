@@ -48,6 +48,10 @@ router.post('/:id/envoyer', requirePerm('devis:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+router.post('/:id/accepter', requirePerm('devis:w'), async (req, res, next) => {
+  try { res.json(await DevisService.changerStatut(Number(req.params.id), 'accepte')); } catch(e) { next(e); }
+});
+
 router.post('/:id/signer', requirePerm('devis:w'), async (req, res, next) => {
   try { res.json(await DevisService.changerStatut(Number(req.params.id), 'signe')); } catch(e) { next(e); }
 });

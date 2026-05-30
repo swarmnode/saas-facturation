@@ -163,7 +163,7 @@ export class DevisService {
     });
   }
 
-  static async changerStatut(id: number, statut: 'envoye' | 'signe' | 'expire' | 'refuse') {
+  static async changerStatut(id: number, statut: 'envoye' | 'accepte' | 'signe' | 'expire' | 'refuse') {
     const dr = await query('SELECT * FROM devis WHERE id = $1', [id]);
     const devis = dr.rows[0];
     if (!devis) throw new Error('Devis introuvable');

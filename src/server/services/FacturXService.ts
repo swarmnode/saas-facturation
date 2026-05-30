@@ -6,6 +6,13 @@ import { PDFDocument as PdfLib, AFRelationship, PDFName } from 'pdf-lib';
 
 const STORAGE_PDF = path.resolve(process.cwd(), 'storage', 'pdf');
 
+// Formate un SIRET en xxx xxx xxx xxxxx
+function formatSiret(s: string | null | undefined): string {
+  if (!s) return s ?? '';
+  const d = String(s).replace(/s/g, '');
+  return d.length === 14 ? `${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6,9)} ${d.slice(9)}` : s;
+}
+
 // ── Helper : bloc client (nom + adresse + adresse2 + ville + TVA) ──────────
 function drawClientBlock(doc: any, client: any, clientNom: string, clientY: number): void {
   let y = clientY;
@@ -241,7 +248,7 @@ export class FacturXService {
          .text(`${entreprise.adresse}`, 50, 75);
       if (entreprise.adresse2) doc.text(entreprise.adresse2, 50, 87);
       doc.text(`${entreprise.code_postal} ${entreprise.ville}`, 50, 87 + _a2off)
-         .text(`SIRET : ${entreprise.siret}`, 50, 99 + _a2off);
+         .text(`SIRET : ${formatSiret(entreprise.siret)}`, 50, 99 + _a2off);
       if (entreprise.tva_intracom)
         doc.text(`TVA Intracom : ${entreprise.tva_intracom}`, 50, 111 + _a2off);
       doc.text(`${entreprise.email}`, 50, 123 + _a2off);
@@ -381,7 +388,7 @@ export class FacturXService {
          .text(entreprise.adresse, 50, 75);
       if (entreprise.adresse2) doc.text(entreprise.adresse2, 50, 87);
       doc.text(`${entreprise.code_postal} ${entreprise.ville}`, 50, 87 + _a2off)
-         .text(`SIRET : ${entreprise.siret}`, 50, 99 + _a2off);
+         .text(`SIRET : ${formatSiret(entreprise.siret)}`, 50, 99 + _a2off);
       if (entreprise.tva_intracom) doc.text(`TVA Intracom : ${entreprise.tva_intracom}`, 50, 111 + _a2off);
       doc.text(entreprise.email, 50, 123 + _a2off);
 
@@ -499,7 +506,7 @@ export class FacturXService {
          .text(entreprise.adresse, 50, 75);
       if (entreprise.adresse2) doc.text(entreprise.adresse2, 50, 87);
       doc.text(`${entreprise.code_postal} ${entreprise.ville}`, 50, 87 + _a2off)
-         .text(`SIRET : ${entreprise.siret}`, 50, 99 + _a2off);
+         .text(`SIRET : ${formatSiret(entreprise.siret)}`, 50, 99 + _a2off);
       if (entreprise.tva_intracom) doc.text(`TVA Intracom : ${entreprise.tva_intracom}`, 50, 111 + _a2off);
       doc.text(entreprise.email, 50, 123 + _a2off);
 
@@ -611,7 +618,7 @@ export class FacturXService {
          .text(`${entreprise.adresse}`, 50, 75);
       if (entreprise.adresse2) doc.text(entreprise.adresse2, 50, 87);
       doc.text(`${entreprise.code_postal} ${entreprise.ville}`, 50, 87 + _a2off)
-         .text(`SIRET : ${entreprise.siret}`, 50, 99 + _a2off);
+         .text(`SIRET : ${formatSiret(entreprise.siret)}`, 50, 99 + _a2off);
       if (entreprise.tva_intracom)
         doc.text(`TVA Intracom : ${entreprise.tva_intracom}`, 50, 111 + _a2off);
       doc.text(`${entreprise.email}`, 50, 123 + _a2off);
@@ -730,7 +737,7 @@ export class FacturXService {
          .text(entreprise.adresse, 50, 75);
       if (entreprise.adresse2) doc.text(entreprise.adresse2, 50, 87);
       doc.text(`${entreprise.code_postal} ${entreprise.ville}`, 50, 87 + _a2off)
-         .text(`SIRET : ${entreprise.siret}`, 50, 99 + _a2off);
+         .text(`SIRET : ${formatSiret(entreprise.siret)}`, 50, 99 + _a2off);
       if (entreprise.tva_intracom) doc.text(`TVA Intracom : ${entreprise.tva_intracom}`, 50, 111 + _a2off);
       doc.text(entreprise.email, 50, 123 + _a2off);
 

@@ -37,6 +37,12 @@ const DocEditor = (() => {
 
   // ── Utilitaires ───────────────────────────────────────────────────────────
 
+  const formatSiret = s => {
+    if (!s) return s;
+    const d = String(s).replace(/s/g, '');
+    return d.length === 14 ? `${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6,9)} ${d.slice(9)}` : s;
+  };
+
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
   function fmt(n) {
@@ -144,7 +150,7 @@ const DocEditor = (() => {
           <div class="e-company-line">${entreprise.adresse}</div>
           ${entreprise.adresse2 ? `<div class="e-company-line">${entreprise.adresse2}</div>` : ''}
           <div class="e-company-line">${entreprise.code_postal} ${entreprise.ville}</div>
-          <div class="e-company-line">SIRET : ${entreprise.siret}</div>
+          <div class="e-company-line">SIRET : ${formatSiret(entreprise.siret)}</div>
           ${entreprise.tva_intracom ? `<div class="e-company-line">TVA : ${entreprise.tva_intracom}</div>` : ''}
           <div class="e-company-line">${entreprise.email}</div>
         </div>

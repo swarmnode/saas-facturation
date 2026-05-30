@@ -50,6 +50,13 @@ const fmt = {
     carte: 'Carte', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre' })[m] || m,
 };
 
+// ── Formatage SIRET ────────────────────────────────────────────────────────
+const formatSiret = s => {
+  if (!s) return s || '—';
+  const d = String(s).replace(/s/g, '');
+  return d.length === 14 ? `${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6,9)} ${d.slice(9)}` : s;
+};
+
 // ── Helpers boutons ───────────────────────────────────────────────────────
 const btn = {
   outline: (onclick, label, title='') => `<button class="btn btn-outline btn-sm" onclick="${onclick}"${title?` title="${title}"`:''}>${label}</button>`,

@@ -24,9 +24,13 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - package.json : npm run build copie aussi src/server/db/*.sql → dist/server/db/
 - Fix: bouton Émettre déplacé en dernier (droite) dans toolbar facture
 - Fix: ordre logique toolbar facture — Émettre avant Envoyer
+- Fix: client professionnel sans raison_sociale — fallback sur nom/prénom
+
+Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acompte, XML)
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -81,10 +81,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - En-têtes Qté/PU/Remise/TVA en nowrap (plus de coupure sur 2 lignes)
 - inputs numériques text-align:right dans leurs cellules
 - Autocomplete article : dispatchEvent input sur puInput et tvaSelect → calcul immédiat du Total HT
+- Fix: text-align:right inline sur inputs numériques + cache-busting v2
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

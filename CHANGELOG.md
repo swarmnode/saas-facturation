@@ -48,6 +48,14 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: lettrage dans le manuel utilisateur
+
+- Section dédiée : concept, automatique, page UI, manuel, impact FEC
+- Factures : paiement déclenche écritures BQ + lettrage auto
+- Avoirs : émission sur facture origine déclenche lettrage auto
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.3.133] — 2026-05-30

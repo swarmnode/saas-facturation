@@ -17,9 +17,15 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - genererFactureStream : même alignement (aperçu live)
 - genererAcompteStream : même alignement, mention Encaissé repositionnée
 - feat: bouton Émettre + Envoyer dans l'éditeur WYSIWYG pour les factures brouillon
+- Fix: migration 005 adresse2 clients + SQL copiés dans dist à chaque build
+
+- migration_005_client_adresse2.sql : ADD COLUMN IF NOT EXISTS adresse2
+- database.ts : MIGRATION5_PATH enregistré
+- package.json : npm run build copie aussi src/server/db/*.sql → dist/server/db/
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

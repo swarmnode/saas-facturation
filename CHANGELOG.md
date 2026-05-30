@@ -33,10 +33,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Bouton '✔ Accepté' dans la toolbar de l'éditeur pour devis envoyés
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: conserver l'ordre des onglets au rafraîchissement (activateByKey)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

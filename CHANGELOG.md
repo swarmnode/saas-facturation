@@ -70,10 +70,16 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - saveDoc : met à jour e-doc-numero et titre onglet après enregistrement
 - Badges manquants corrigés, autocomplete flottant corrigé
 - Fix: alignement à droite des colonnes numériques dans l'éditeur (Qté, PU, Remise, TVA, Total HT)
+- Fix: N° devis mis à jour après save + id mutable (évite création dupliquée)
+
+- id mutable via page.dataset.docId : le 2ème save fait un PUT, pas un POST
+- N° et titre onglet mis à jour après enregistrement
+- Total HT lignes en gras sur une ligne
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

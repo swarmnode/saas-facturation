@@ -29,6 +29,11 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Barre de progression + résumé envois ok/erreur
 - Feat: SIRET formaté en xxx xxx xxx xxxxx partout (éditeur, PDF x5, listes)
 - Feat: acceptation devis → client passe de 'prospect' à 'client' (RGPD)
+- Feat: fiche client — section SEPA (IBAN, BIC, mandat RUM/date/type)
+
+- Migration 006 : colonnes iban, bic, titulaire_compte, mandat_rum, mandat_date, mandat_type
+- Formulaire client : section <details> 'Mandat SEPA' collapsible
+- Sauvegarde automatique via FormData (PUT/POST déjà en place)
 
 
 ### Corrigé
@@ -57,6 +62,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

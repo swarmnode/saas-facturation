@@ -374,7 +374,7 @@ const DocEditor = (() => {
           <div class="e-doc-bottom-left">${bottomLeft}</div>
           <div class="e-doc-bottom-right">${bottomRight}</div>
         </div>
-        <div class="e-legal-footer" id="eDocLegalFooter"></div>
+
       </div>
     </div>`;
   }
@@ -387,12 +387,12 @@ const DocEditor = (() => {
     const tbody  = el.querySelector('.e-lignes-body');
     const docKey = el.dataset.docKey;
 
-    // Legal footer
-    const legalFooter = el.querySelector('#eDocLegalFooter');
-    if (legalFooter && _entreprise) {
-      const e = _entreprise;
-      legalFooter.textContent = [e.raison_sociale+(e.is_EI?' EI':''), 'SIRET '+e.siret, e.rcs_ville?'RCS '+e.rcs_ville:null, e.capital_social?'Capital '+Number(e.capital_social).toLocaleString('fr-FR')+' €':null].filter(Boolean).join(' — ');
-    }
+
+
+
+
+
+
 
     // Client search
     initClientSearch(el.querySelector('.ss-wrap'), el.querySelector('.e-client-preview'));

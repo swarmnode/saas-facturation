@@ -5,7 +5,21 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: prix d'achat HT et calcul de marge sur les articles
+
+- migration_010 : colonne prix_achat_ht FLOAT8 sur articles
+- ArticleService : prix_achat_ht dans creer() et mettreAJour()
+- Liste articles : colonnes Prix achat HT + Marge (brute + taux de marque)
+  en vert si positive, rouge si negative
+- Formulaire article : champ Prix achat HT + widget marge en temps reel
+  (marge brute, taux de marque, taux de marge) mis a jour a chaque frappe
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

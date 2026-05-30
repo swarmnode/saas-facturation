@@ -581,9 +581,9 @@ select.e-cell { cursor:pointer; }
 .e-readonly .e-td-del      { display: none; }
 
 /* Bottom zone: anchored to bottom of A4 page */
-.e-doc-bottom       { position:absolute; bottom:50px; left:50px; right:50px; display:flex; gap:32px; align-items:flex-start; border-top:1px solid #ddd; padding-top:14px; }
+.e-doc-bottom       { position:absolute; bottom:50px; left:50px; right:50px; display:flex; gap:32px; align-items:stretch; border-top:1px solid #ddd; padding-top:14px; }
 .e-doc-bottom-left  { flex:1; min-width:0; }
-.e-doc-bottom-right { min-width:220px; }
+.e-doc-bottom-right { min-width:220px; display:flex; flex-direction:column; justify-content:flex-end; }
 .e-signature-single { position:absolute; bottom:50px; left:50px; right:50px; border-top:1px solid #ddd; padding-top:14px; }
 
 /* Signature */

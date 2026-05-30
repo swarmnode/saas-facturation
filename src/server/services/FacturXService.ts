@@ -248,7 +248,7 @@ export class FacturXService {
 
       // ── Client ───────────────────────────────────────────────────────
       const clientNom = client.type_client === 'professionnel'
-        ? client.raison_sociale
+        ? (client.raison_sociale || `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim())
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
 
       const clientY = logoInfo ? 130 : 75;
@@ -387,7 +387,7 @@ export class FacturXService {
 
       // Client
       const clientNom = client.type_client === 'professionnel'
-        ? client.raison_sociale
+        ? (client.raison_sociale || `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim())
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
       drawClientBlock(doc, client, clientNom, clientY);
@@ -505,7 +505,7 @@ export class FacturXService {
 
       // Client
       const clientNom = client.type_client === 'professionnel'
-        ? client.raison_sociale
+        ? (client.raison_sociale || `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim())
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
       drawClientBlock(doc, client, clientNom, clientY);
@@ -617,7 +617,7 @@ export class FacturXService {
       doc.text(`${entreprise.email}`, 50, 123 + _a2off);
 
       const clientNom = client.type_client === 'professionnel'
-        ? client.raison_sociale
+        ? (client.raison_sociale || `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim())
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
       drawClientBlock(doc, client, clientNom, clientY);
@@ -735,7 +735,7 @@ export class FacturXService {
       doc.text(entreprise.email, 50, 123 + _a2off);
 
       const clientNom = client.type_client === 'professionnel'
-        ? client.raison_sociale
+        ? (client.raison_sociale || `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim())
         : `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
       const clientY = logoInfo ? 130 : 75;
       drawClientBlock(doc, client, clientNom, clientY);
@@ -805,7 +805,7 @@ export class FacturXService {
 
   static genererXML(facture: any, entreprise: any, client: any): string {
     const clientNom = client.type_client === 'professionnel'
-      ? client.raison_sociale
+      ? (client.raison_sociale || `${client.civilite ?? ''} ${client.prenom ?? ''} ${client.nom ?? ''}`.trim())
       : `${client.prenom ?? ''} ${client.nom ?? ''}`.trim();
 
     const lignesXML = (facture.lignes ?? []).map((l: any, i: number) => `

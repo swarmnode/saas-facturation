@@ -159,7 +159,8 @@ const DocEditor = (() => {
   function renderClientPreview(client, el) {
     if (!el) return;
     if (!client) { el.innerHTML = ''; return; }
-    const nom   = client.type_client === 'professionnel' ? (client.raison_sociale||'') : [client.civilite,client.prenom,client.nom].filter(Boolean).join(' ');
+    const parts = [client.civilite,client.prenom,client.nom].filter(Boolean).join(' ');
+    const nom   = (client.type_client === 'professionnel' ? (client.raison_sociale||'') : parts) || parts;
     const ville = [client.code_postal, client.ville].filter(Boolean).join(' ');
     el.innerHTML = `
       <div class="e-cp-name">${nom}</div>

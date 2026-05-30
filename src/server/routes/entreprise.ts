@@ -83,17 +83,21 @@ router.post('/update/:id', async (req, res, next) => {
 
 router.post('/', requirePerm('settings:w'), async (req, res, next) => {
   try {
+    const b = req.body;
     await query(`
       UPDATE entreprise SET raison_sociale=$1, forme_juridique=$2, is_EI=$3, siret=$4,
         tva_intracom=$5, adresse=$6, adresse2=$7, code_postal=$8, ville=$9, pays=$10, telephone=$11,
         email=$12, site_web=$13, regime_tva=$14, capital_social=$15, rcs_ville=$16,
-        updated_at=NOW() WHERE id=$17
-    `, [req.body.raison_sociale, req.body.forme_juridique, req.body.is_EI ? 1 : 0,
-        req.body.siret, req.body.tva_intracom || null, req.body.adresse,
-        req.body.adresse2 || null, req.body.code_postal, req.body.ville, req.body.pays || 'France',
-        req.body.telephone || null, req.body.email, req.body.site_web || null,
-        req.body.regime_tva || 'normal', req.body.capital_social ? Number(req.body.capital_social) : null,
-        req.body.rcs_ville || null, req.user!.entreprise_id]);
+        iban=$17, bic=$18, ics=$19,
+        updated_at=NOW() WHERE id=$20
+    `, [b.raison_sociale, b.forme_juridique, b.is_EI ? 1 : 0,
+        b.siret, b.tva_intracom || null, b.adresse,
+        b.adresse2 || null, b.code_postal, b.ville, b.pays || 'France',
+        b.telephone || null, b.email, b.site_web || null,
+        b.regime_tva || 'normal', b.capital_social ? Number(b.capital_social) : null,
+        b.rcs_ville || null,
+        b.iban || null, b.bic || null, b.ics || null,
+        req.user!.entreprise_id]);
     const r2 = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     res.json(r2.rows[0]);
   } catch(e) { next(e); }

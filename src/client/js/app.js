@@ -45,7 +45,7 @@ const api = {
 const fmt = {
   money:  n  => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n ?? 0),
   date:   d  => d ? new Date(d).toLocaleDateString('fr-FR') : '—',
-  badge:  s  => `<span class="badge badge-${s}">${s}</span>`,
+  badge:  s  => { const labels = { en_attente:'En attente', encaisse:'Encaissé', emis:'Émis', livre:'Livré', brouillon:'Brouillon', envoye:'Envoyé', signe:'Signé', accepte:'Accepté', refuse:'Refusé', emise:'Émise', payee:'Payée' }; return `<span class="badge badge-${s}">${labels[s]||s}</span>`; },
   modePaiement: m => ({ virement: 'Virement', cheque: 'Chèque', especes: 'Espèces',
     carte: 'Carte', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre' })[m] || m,
 };
@@ -2643,6 +2643,9 @@ function attachArticleAutocomplete(desInput, puInput, tvaSelect, uniteInput) {
 
   desInput.addEventListener('blur', () => setTimeout(removeAc, 200));
   desInput.addEventListener('keydown', e => { if (e.key === 'Escape') removeAc(); });
+  // Fermer si on clique ailleurs ou si on change d'onglet/vue
+  document.addEventListener('click', e => { if (dropdown && !dropdown.contains(e.target) && e.target !== desInput) removeAc(); }, true);
+  document.addEventListener('visibilitychange', removeAc);
 
   function showAc(items, q) {
     removeAc();

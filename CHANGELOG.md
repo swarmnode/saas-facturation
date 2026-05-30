@@ -11,9 +11,16 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ### Corrigé
 - Fix: bouton Enregistrer commence en '✓ Enregistré' pour les docs existants
+- Fix: totaux PDF alignés sur BOTTOM=744 pour facture, aperçu facture et acompte
+
+- genererFacture : BOTTOM=744, lineBreak:false, HT→TVA→TTC de haut en bas
+- genererFactureStream : même alignement (aperçu live)
+- genererAcompteStream : même alignement, mention Encaissé repositionnée
+- feat: bouton Émettre + Envoyer dans l'éditeur WYSIWYG pour les factures brouillon
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

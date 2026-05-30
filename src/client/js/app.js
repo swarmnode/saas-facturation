@@ -16,6 +16,7 @@ function can(perm) {
 
 function logout() {
   localStorage.removeItem('jwt');
+  localStorage.removeItem('facturpro_tabs');
   location.reload();
 }
 
@@ -100,6 +101,7 @@ const tabMgr = (() => {
     clients:          { title: 'Clients',          icon: '👥' },
     devis:            { title: 'Devis',            icon: '📋' },
     factures:         { title: 'Factures',         icon: '🧾' },
+    avoirs:           { title: 'Avoirs',           icon: '↩️' },
     acomptes:         { title: 'Acomptes',         icon: '💰' },
     'bons-livraison': { title: 'Bons de livraison', icon: '🚚' },
     articles:         { title: 'Articles',         icon: '📦' },
@@ -114,6 +116,21 @@ const tabMgr = (() => {
 
   const strip  = () => document.getElementById('tabStrip');
   const panels = () => document.getElementById('tabPanels');
+
+  function saveTabState() {
+    try {
+      localStorage.setItem('facturpro_tabs', JSON.stringify({
+        tabs: tabs.map(t => ({
+          type:     t.type,
+          viewName: t.viewName || null,
+          docType:  t.docType  || null,
+          docId:    t.docId    || null,
+          title:    t.title,
+          active:   t.id === activeId,
+        })),
+      }));
+    } catch(e) {}
+  }
 
   function renderStrip() {
     strip().innerHTML = tabs.map(t => `
@@ -131,7 +148,39 @@ const tabMgr = (() => {
     strip().querySelectorAll('[data-ctid]').forEach(btn => {
       btn.addEventListener('click', e => { e.stopPropagation(); closeTab(btn.dataset.ctid); });
     });
+    updateScrollButtons();
+    saveTabState();
   }
+
+  function updateScrollButtons() {
+    const s = strip();
+    const btnL = document.getElementById('tabScrollLeft');
+    const btnR = document.getElementById('tabScrollRight');
+    if (!btnL || !btnR) return;
+    const overflows = s.scrollWidth > s.clientWidth;
+    btnL.classList.toggle('visible', overflows && s.scrollLeft > 0);
+    btnR.classList.toggle('visible', overflows && s.scrollLeft < s.scrollWidth - s.clientWidth - 1);
+  }
+
+  // Init scroll buttons once DOM ready
+  setTimeout(() => {
+    const s = strip();
+    const btnL = document.getElementById('tabScrollLeft');
+    const btnR = document.getElementById('tabScrollRight');
+    if (!s || !btnL || !btnR) return;
+
+    btnL.addEventListener('click', () => { s.scrollBy({ left: -160, behavior: 'smooth' }); });
+    btnR.addEventListener('click', () => { s.scrollBy({ left:  160, behavior: 'smooth' }); });
+
+    // Scroll molette
+    s.addEventListener('wheel', e => {
+      e.preventDefault();
+      s.scrollBy({ left: e.deltaY * 1.5, behavior: 'smooth' });
+    }, { passive: false });
+
+    s.addEventListener('scroll', updateScrollButtons);
+    new ResizeObserver(updateScrollButtons).observe(s);
+  }, 0);
 
   function setActivePanel(tabId) {
     panels().querySelectorAll('.tab-panel').forEach(p =>
@@ -151,6 +200,9 @@ const tabMgr = (() => {
     activeId = tabId;
     renderStrip();
     setActivePanel(tabId);
+    // Scroller pour que l'onglet actif soit visible
+    const activeBtn = strip().querySelector(`.tab-btn.active`);
+    if (activeBtn) activeBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
     document.getElementById('pageTitle').textContent = tab.title;
     document.querySelectorAll('.nav-item').forEach(n =>
       n.classList.toggle('active', tab.type === 'view' && n.dataset.view === tab.viewName));
@@ -248,6 +300,22 @@ function updateSidebarLogo(logoPath) {
   }
 }
 
+// ── Sidebar collapse ─────────────────────────────────────────────────────
+(function() {
+  const app    = document.getElementById('app');
+  const btn    = document.getElementById('sidebarToggle');
+  if (!btn || !app) return;
+
+  const collapsed = localStorage.getItem('sidebar-collapsed') === '1';
+  if (collapsed) { app.classList.add('sidebar-collapsed'); btn.innerHTML = '&#8250;'; }
+
+  btn.addEventListener('click', () => {
+    const isNowCollapsed = app.classList.toggle('sidebar-collapsed');
+    btn.innerHTML = isNowCollapsed ? '&#8250;' : '&#8249;';
+    localStorage.setItem('sidebar-collapsed', isNowCollapsed ? '1' : '0');
+  });
+})();
+
 // ── Sidebar mobile ────────────────────────────────────────────────────────
 const sidebar        = document.querySelector('.sidebar');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -288,6 +356,7 @@ async function renderView(view, el) {
     case 'clients':         return renderClients(el);
     case 'devis':           return renderDevis(el);
     case 'factures':        return renderFactures(el);
+    case 'avoirs':          return renderAvoirs(el);
     case 'acomptes':        return renderAcomptes(el);
     case 'bons-livraison':  return renderBonsLivraison(el);
     case 'articles':        return renderArticles(el);
@@ -304,15 +373,49 @@ async function loadGlobalData() {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
+let _dashSort = { col: 'date', dir: -1 }; // tri par défaut : date desc
+
 async function renderDashboard(el) {
-  const [devisList, facturesList, acomptesList] = await Promise.all([
-    api.get('/api/devis'), api.get('/api/factures'), api.get('/api/acomptes'),
+  const [devisList, facturesList, avoirsList, acomptesList, blList] = await Promise.all([
+    api.get('/api/devis'),
+    api.get('/api/factures'),
+    api.get('/api/factures/avoirs/liste'),
+    api.get('/api/acomptes'),
+    api.get('/api/bons-livraison'),
   ]);
 
-  const caTotal     = facturesList.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.montant_ttc || 0), 0);
-  const devisEnCours = devisList.filter(d => ['brouillon','envoye'].includes(d.statut)).length;
+  const caTotal        = facturesList.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.montant_ttc || 0), 0);
+  const devisEnCours   = devisList.filter(d => ['brouillon','envoye'].includes(d.statut)).length;
   const facturesEmises = facturesList.filter(f => f.statut === 'emise').length;
   const acomptesAttente = acomptesList.filter(a => a.statut === 'en_attente').length;
+
+  // Fusion et tri chronologique
+  const typeLabels = { devis:'DEVIS', facture:'FACTURE', avoir:'AVOIR', acompte:'ACOMPTE', bl:'BL' };
+  const typeViews  = { devis:'devis', facture:'factures', avoir:'avoirs', acompte:'acomptes', bl:'bons-livraison' };
+
+  const all = [
+    ...devisList.map(d => ({ type:'devis',   doc:d, date: d.created_at, client: d.client_nom||d.client_nom_part||'', montant: d.montant_ttc })),
+    ...facturesList.map(f => ({ type:'facture', doc:f, date: f.created_at, client: f.client_nom||f.client_nom_part||'', montant: f.montant_ttc })),
+    ...avoirsList.map(a => ({ type:'avoir',   doc:a, date: a.created_at, client: a.client_nom||a.client_nom_part||'', montant: a.montant_ttc })),
+    ...acomptesList.map(a => ({ type:'acompte', doc:a, date: a.created_at, client: a.client_nom||a.client_nom_part||'', montant: a.montant_ttc })),
+    ...blList.map(b => ({ type:'bl',      doc:b, date: b.created_at, client: b.client_nom||b.client_nom_part||'', montant: null })),
+  ];
+
+  function sortAll(list) {
+    const { col, dir } = _dashSort;
+    return [...list].sort((a, b) => {
+      let va, vb;
+      if      (col === 'type')    { va = a.type;              vb = b.type; }
+      else if (col === 'client')  { va = a.client||'';        vb = b.client||''; }
+      else if (col === 'montant') { va = a.montant??-1;       vb = b.montant??-1; }
+      else if (col === 'statut')  { va = a.doc.statut||'';    vb = b.doc.statut||''; }
+      else                        { va = a.date||'';          vb = b.date||''; }
+      if (va < vb) return -dir;
+      if (va > vb) return  dir;
+      return 0;
+    });
+  }
+
 
   el.innerHTML = `
     <div class="grid-4">
@@ -337,22 +440,109 @@ async function renderDashboard(el) {
         <div class="card-sub">À encaisser</div>
       </div>
     </div>
-    <div class="grid-2">
-      <div class="card">
-        <div class="section-header">
-          <h2>Derniers devis</h2>
-          <a href="#" class="btn btn-outline btn-sm" onclick="navigate('devis')">Voir tout</a>
-        </div>
-        <div class="table-wrap">${tableDevis(devisList.slice(0, 5), true)}</div>
-      </div>
-      <div class="card">
-        <div class="section-header">
-          <h2>Dernières factures</h2>
-          <a href="#" class="btn btn-outline btn-sm" onclick="navigate('factures')">Voir tout</a>
-        </div>
-        <div class="table-wrap">${tableFactures(facturesList.slice(0, 5), true)}</div>
+    <div class="card" id="dashDocCard">
+      <div class="section-header"><h2>Tous les documents</h2></div>
+      <div class="table-wrap">
+        ${all.length ? `<table id="dashTable">
+          <thead><tr>
+            <th class="dash-th" data-col="type">Type</th>
+            <th>N°</th>
+            <th class="dash-th" data-col="client">Client</th>
+            <th class="dash-th text-right" data-col="montant">Montant TTC</th>
+            <th class="dash-th" data-col="statut">Statut</th>
+            <th class="dash-th" data-col="date">Date</th>
+          </tr></thead>
+          <tbody id="dashTbody"></tbody>
+        </table>` : '<div class="empty">Aucun document</div>'}
       </div>
     </div>`;
+
+  // Fonction de rendu du tbody (réutilisée après chaque tri)
+  function renderDashRows(list) {
+    const sorted = sortAll(list);
+    const tbody  = document.getElementById('dashTbody');
+    if (!tbody) return;
+    tbody.innerHTML = sorted.map(({ type, doc, date, client, montant }) => {
+      const label   = typeLabels[type];
+      const onClick = type === 'devis'   ? `DocEditor.openDevis(${doc.id})`
+                   : type === 'bl'       ? `DocEditor.openBL(${doc.id})`
+                   : type === 'acompte'  ? `DocEditor.openAcompte(${doc.id})`
+                   :                       `DocEditor.openFacture(${doc.id})`;
+      let btns = '';
+      if (type === 'devis') {
+        const d = doc;
+        btns = `
+          <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
+          ${!d.locked ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">Modifier</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
+          ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
+          ${d.statut === 'signe'  ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
+          ${['envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
+          ${['brouillon','envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : ''}
+          ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer">🗑️</button>` : ''}`;
+      } else if (type === 'facture') {
+        const f = doc;
+        btns = `
+          ${f.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${f.id})">Émettre</button>` : ''}
+          ${f.statut === 'emise'     ? `<button class="btn btn-primary btn-sm" onclick="payerFacture(${f.id})">Payer</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="previewFacture(${f.id})">👁 PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${f.id})">✉ Envoyer</button>
+          ${['emise','payee'].includes(f.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromFactureForm(${f.id})">🚚 BL</button>` : ''}
+          ${['emise','payee'].includes(f.statut) ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openAvoir(${f.id})">Avoir</button>` : ''}`;
+      } else if (type === 'avoir') {
+        const a = doc;
+        btns = `
+          ${a.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${a.id})">Émettre</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="previewFacture(${a.id})">👁 PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${a.id})">✉ Envoyer</button>
+          ${!a.locked ? `<button class="btn-trash" onclick="deleteAvoir(${a.id})" title="Supprimer">🗑️</button>` : ''}`;
+      } else if (type === 'acompte') {
+        const a = doc;
+        btns = `
+          ${a.statut === 'en_attente' ? `<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${a.id})">Encaisser</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${a.id}/apercu')">👁 PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="envoyerAcompte(${a.id})">✉ Envoyer</button>
+          ${!a.locked ? `<button class="btn-trash" onclick="deleteAcompte(${a.id})" title="Supprimer">🗑️</button>` : ''}`;
+      } else if (type === 'bl') {
+        const b = doc;
+        btns = `
+          <button class="btn btn-outline btn-sm" onclick="openPdf('/api/bons-livraison/${b.id}/apercu')">👁 PDF</button>
+          ${b.statut === 'brouillon' ? `<button class="btn-trash" onclick="supprimerBL(${b.id})" title="Supprimer">🗑️</button>` : ''}`;
+      }
+      return `
+        <tr class="data-row" onclick="${onClick}" style="cursor:pointer">
+          <td><span class="badge badge-type-${type}">${label}</span></td>
+          <td><strong>${doc.numero || '—'}</strong></td>
+          <td>${client || '—'}</td>
+          <td class="text-right">${montant != null ? fmt.money(montant) : '—'}</td>
+          <td>${fmt.badge(doc.statut)}</td>
+          <td>${fmt.date(date)}</td>
+        </tr>
+        <tr class="row-actions"><td colspan="6"><div class="btn-row">${btns}</div></td></tr>`;
+    }).join('');
+
+    // Mettre à jour les indicateurs de tri
+    document.querySelectorAll('.dash-th').forEach(th => {
+      const col = th.dataset.col;
+      th.innerHTML = th.textContent.replace(/ [▲▼]$/, '');
+      if (col === _dashSort.col) th.innerHTML += _dashSort.dir > 0 ? ' ▲' : ' ▼';
+    });
+  }
+
+  if (all.length) {
+    renderDashRows(all);
+
+    // Brancher les clics de tri
+    document.querySelectorAll('.dash-th').forEach(th => {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        _dashSort = { col, dir: _dashSort.col === col ? -_dashSort.dir : -1 };
+        renderDashRows(all);
+      });
+    });
+  }
 }
 
 function navigate(view) {
@@ -380,7 +570,10 @@ async function renderClients(el) {
             <td>${c.telephone || '—'}</td>
             <td><code>${c.siret || '—'}</code></td>
             <td>${fmt.badge(c.statut_rgpd)}</td>
-            <td><button class="btn btn-outline btn-sm" onclick="showClientForm(${c.id})">Éditer</button></td>
+            <td style="display:flex;gap:4px">
+              <button class="btn btn-outline btn-sm" onclick="showClientForm(${c.id})">Éditer</button>
+              <button class="btn-trash" onclick="deleteClient(${c.id})" title="Supprimer ce client">🗑️</button>
+            </td>
           </tr>`).join('') : '<tr><td colspan="7" class="empty">Aucun client</td></tr>'}</tbody>
       </table>
     </div>
@@ -507,7 +700,7 @@ async function showClientForm(id) {
 async function renderDevis(el) {
   const devis = await api.get('/api/devis');
   document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="showDevisForm()">+ Nouveau devis</button>`;
+    `<button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`;
 
   el.innerHTML = `<div class="card"><div class="table-wrap">${tableDevis(devis, true)}</div></div>`;
 }
@@ -530,15 +723,16 @@ function tableDevis(list, withActions = false) {
       </tr>
       ${withActions ? `<tr class="row-actions">
         <td colspan="7"><div class="btn-row">
-          <button class="btn btn-outline btn-sm" onclick="showDevisDetail(${d.id})">Voir</button>
+          
           <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 Aperçu PDF</button>
           <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
-          ${!d.locked ? `<button class="btn btn-outline btn-sm" onclick="showDevisEditForm(${d.id})">Modifier</button>` : ''}
+          ${!d.locked ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">Modifier</button>` : ''}
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
           ${d.statut === 'envoye'   ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
           ${d.statut === 'signe'    ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
           ${['envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${d.id})">🧾 Facturer</button>` : ''}
           ${['brouillon','envoye','signe'].includes(d.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${d.id})">🚚 BL</button>` : ''}
+          ${!d.locked ? `<button class="btn-trash" onclick="deleteDevis(${d.id})" title="Supprimer ce devis">🗑️</button>` : ''}
         </div></td>
       </tr>` : ''}`).join('')}
     </tbody></table>`;
@@ -914,7 +1108,7 @@ async function showDevisDetail(id) {
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 Aperçu PDF</button>
             <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
-            ${!d.locked ? `<button class="btn btn-outline btn-sm" onclick="showDevisEditForm(${d.id})">✏️ Modifier</button>` : ''}
+            ${!d.locked ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">✏️ Modifier</button>` : ''}
             <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉️ Envoyer</button>
             ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">✅ Signer</button>` : ''}
             ${d.statut === 'signe' ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">📝 Avenant</button>` : ''}
@@ -1321,6 +1515,15 @@ async function showFactureFromDevisForm(devisId) {
 
 async function showBLFromDevisForm(devisId) {
   const d = await api.get(`/api/devis/${devisId}`);
+  return DocEditor.openBL(null, {
+    client_id:    d.client_id,
+    devis_id:     devisId,
+    devis_numero: d.numero,
+    lignes: (d.lignes || []).map(l => ({ designation: l.designation, quantite: l.quantite, unite: l.unite })),
+  });
+}
+async function _showBLFromDevisFormOld(devisId) {
+  const d = await api.get(`/api/devis/${devisId}`);
 
   const html = `
     <form id="blFromDevisForm">
@@ -1405,7 +1608,7 @@ async function renderFactures(el) {
   document.getElementById('topbarActions').innerHTML = `
     <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
     <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
-    <button class="btn btn-primary" onclick="showFactureForm()">+ Nouvelle facture</button>`;
+    <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`;
 
   el.innerHTML = `<div class="card"><div class="table-wrap">${tableFactures(factures, true)}</div></div>`;
 }
@@ -1418,7 +1621,7 @@ function tableFactures(list, withActions = false) {
     </tr></thead>
     <tbody>${list.map(f => `
       <tr class="data-row">
-        <td><strong>${f.numero}</strong></td>
+        <td><strong>${f.numero}</strong>${f.type_facture === 'avoir' ? ' <span class="badge badge-avoir">Avoir</span>' : ''}</td>
         <td>${f.client_nom || f.client_nom_part || '—'}</td>
         <td class="text-right">${fmt.money(f.montant_ht)}</td>
         <td class="text-right"><strong>${fmt.money(f.montant_ttc)}</strong></td>
@@ -1428,18 +1631,28 @@ function tableFactures(list, withActions = false) {
       </tr>
       ${withActions ? `<tr class="row-actions">
         <td colspan="7"><div class="btn-row">
-          <button class="btn btn-outline btn-sm" onclick="showFactureDetail(${f.id})">Voir</button>
+          
           ${f.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${f.id})">Émettre</button>` : ''}
           ${f.statut === 'emise'     ? `<button class="btn btn-primary btn-sm" onclick="payerFacture(${f.id})">Payer</button>` : ''}
           <button class="btn btn-outline btn-sm" onclick="previewFacture(${f.id})">👁 Aperçu PDF</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${f.id})">✉ Envoyer</button>
-          ${['emise','payee'].includes(f.statut) ? `<button class="btn btn-outline btn-sm" onclick="showBLFromFactureForm(${f.id})">🚚 BL</button>` : ''}
+          ${['emise','payee'].includes(f.statut) && f.type_facture !== 'avoir' ? `<button class="btn btn-outline btn-sm" onclick="showBLFromFactureForm(${f.id})">🚚 BL</button>` : ''}
+          ${['emise','payee'].includes(f.statut) && f.type_facture !== 'avoir' ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openAvoir(${f.id})">Avoir</button>` : ''}
         </div></td>
       </tr>` : ''}`).join('')}
     </tbody></table>`;
 }
 
 async function showBLFromFactureForm(factureId) {
+  const f = await api.get(`/api/factures/${factureId}`);
+  return DocEditor.openBL(null, {
+    client_id:       f.client_id,
+    facture_id:      factureId,
+    facture_numero:  f.numero,
+    lignes: (f.lignes || []).map(l => ({ designation: l.designation, quantite: l.quantite, unite: l.unite })),
+  });
+}
+async function _showBLFromFactureFormOld(factureId) {
   const f = await api.get(`/api/factures/${factureId}`);
 
   const html = `
@@ -1712,7 +1925,7 @@ function showFactureForm() {
 async function renderBonsLivraison(el) {
   const bls = await api.get('/api/bons-livraison');
   document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="showBLForm()">+ Nouveau BL</button>`;
+    `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button>`;
 
   const badgeBL = s => {
     const map = { brouillon: 'badge-brouillon', emis: 'badge-envoye', livre: 'badge-payee' };
@@ -1736,16 +1949,16 @@ async function renderBonsLivraison(el) {
           <td>${badgeBL(b.statut)}</td>
           <td>
             <div style="display:flex;gap:4px">
-              <button class="btn btn-outline btn-sm" onclick="showBLDetail(${b.id})">Voir</button>
+              
               <button class="btn btn-outline btn-sm" onclick="previewBL(${b.id})">👁 Aperçu PDF</button>
               <button class="btn btn-outline btn-sm" onclick="envoyerBL(${b.id})">✉ Envoyer</button>
               ${!(b.devis_id || b.facture_id) ? `
-                <button class="btn btn-outline btn-sm" onclick="showBLEditForm(${b.id})">Modifier</button>
+                <button class="btn btn-outline btn-sm" onclick="DocEditor.openBL(${b.id})">Modifier</button>
                 ${b.statut !== 'livre' ? `<button class="btn btn-success btn-sm" onclick="livrerBL(${b.id})">Livré</button>` : `<button class="btn btn-success btn-sm" disabled style="opacity:.5;cursor:default">✓ Livré</button>`}
-                <button class="btn btn-danger btn-sm" onclick="supprimerBL(${b.id})">✕</button>` : ''}
+                <button class="btn-trash" onclick="supprimerBL(${b.id})" title="Supprimer">🗑️</button>` : ''}
               ${(b.devis_id || b.facture_id) && b.statut === 'brouillon' ? `
-                <button class="btn btn-outline btn-sm" onclick="showBLEditForm(${b.id})">Modifier</button>
-                <button class="btn btn-danger btn-sm" onclick="supprimerBL(${b.id})">✕</button>` : ''}
+                <button class="btn btn-outline btn-sm" onclick="DocEditor.openBL(${b.id})">Modifier</button>
+                <button class="btn-trash" onclick="supprimerBL(${b.id})" title="Supprimer">🗑️</button>` : ''}
               ${(b.devis_id || b.facture_id) && b.statut === 'emis' ? `
                 <button class="btn btn-success btn-sm" onclick="livrerBL(${b.id})">Livré</button>
                 <button class="btn btn-outline btn-sm" onclick="showDevisFromBLForm(${b.id})" title="Créer un devis">📋 Devis</button>
@@ -2273,10 +2486,38 @@ async function livrerBL(id) {
 }
 
 async function supprimerBL(id) {
-  if (!confirm('Supprimer ce brouillon ?')) return;
+  if (!confirm('Supprimer ce bon de livraison ?')) return;
   const r = await api.delete(`/api/bons-livraison/${id}`);
   if (r?.error) return alert(r.error);
   tabMgr.openViewTab('bons-livraison');
+}
+
+async function deleteDevis(id) {
+  if (!confirm('Supprimer ce devis ? Cette action est irréversible.')) return;
+  const r = await api.delete(`/api/devis/${id}`);
+  if (r?.error) return alert(r.error);
+  tabMgr.openViewTab('devis');
+}
+
+async function deleteAcompte(id) {
+  if (!confirm('Supprimer cet acompte ? Cette action est irréversible.')) return;
+  const r = await api.delete(`/api/acomptes/${id}`);
+  if (r?.error) return alert(r.error);
+  tabMgr.openViewTab('acomptes');
+}
+
+async function deleteAvoir(id) {
+  if (!confirm('Supprimer cet avoir ? Cette action est irréversible.')) return;
+  const r = await api.delete(`/api/factures/${id}`);
+  if (r?.error) return alert(r.error);
+  tabMgr.openViewTab('avoirs');
+}
+
+async function deleteClient(id) {
+  if (!confirm('Supprimer ce client ? Cette action est irréversible.')) return;
+  const r = await api.delete(`/api/clients/${id}`);
+  if (r?.error) return alert(r.error);
+  tabMgr.openViewTab('clients');
 }
 
 // ── Articles ──────────────────────────────────────────────────────────────
@@ -2289,7 +2530,7 @@ async function renderArticles(el) {
     <table>
       <thead><tr>
         <th>Réf.</th><th>Désignation</th><th>Description</th>
-        <th>Unité</th><th class="text-right">Prix HT</th><th>TVA</th><th></th>
+        <th>Unité</th><th class="text-right">Prix HT</th><th>TVA</th><th class="text-right">Stock</th><th></th>
       </tr></thead>
       <tbody>${articles.length ? articles.map(a => `
         <tr>
@@ -2299,13 +2540,14 @@ async function renderArticles(el) {
           <td>${a.unite || '—'}</td>
           <td class="text-right">${fmt.money(a.prix_unitaire_ht)}</td>
           <td>${a.tva_taux}%</td>
+          <td class="text-right">${a.quantite_stock != null ? `<span class="e-stock-badge">${a.quantite_stock}</span>` : '—'}</td>
           <td>
             <div style="display:flex;gap:4px">
               <button class="btn btn-outline btn-sm" onclick="showArticleForm(${a.id})">Éditer</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteArticle(${a.id})">Supprimer</button>
+              <button class="btn-trash" onclick="deleteArticle(${a.id})" title="Supprimer">🗑️</button>
             </div>
           </td>
-        </tr>`).join('') : '<tr><td colspan="7" class="empty">Aucun article</td></tr>'}</tbody>
+        </tr>`).join('') : '<tr><td colspan="8" class="empty">Aucun article</td></tr>'}</tbody>
     </table>
   </div></div>`;
 }
@@ -2315,14 +2557,18 @@ async function showArticleForm(id) {
   const tvaOpts = tvaOptions.map(t =>
     `<option value="${t.id}" ${t.id == (a.taux_tva_id ?? 1) ? 'selected' : ''}>${t.libelle}</option>`).join('');
 
+  const unites = ['heure','jour','demi-journée','semaine','mois','pièce','unité','forfait','lot','m²','m³','m','km','kg','L','tonne'];
+  const uniteVal = a.unite || '';
+  const uniteIsCustom = uniteVal && !unites.includes(uniteVal);
   const html = `
     <form id="articleForm">
       <div class="form-row">
         <div class="form-group"><label>Référence</label>
           <input name="reference" value="${a.reference || ''}" placeholder="ART-001"/>
         </div>
-        <div class="form-group"><label>Unité</label>
-          <input name="unite" value="${a.unite || ''}" placeholder="h, j, pièce, forfait…"/>
+        <div class="form-group"><label>Stock disponible</label>
+          <input name="quantite_stock" type="number" step="0.001" min="0"
+            value="${a.quantite_stock ?? ''}" placeholder="Laisser vide si non géré"/>
         </div>
       </div>
       <div class="form-group"><label>Désignation *</label>
@@ -2340,6 +2586,17 @@ async function showArticleForm(id) {
           <select name="taux_tva_id">${tvaOpts}</select>
         </div>
       </div>
+      <div class="form-group"><label>Unité de facturation
+        <small style="font-weight:normal;color:var(--text-muted)"> — affiché après la quantité sur les documents</small>
+      </label>
+        <select name="unite" id="articleUniteSelect">
+          <option value="">— Non précisé —</option>
+          ${unites.map(u => `<option value="${u}" ${uniteVal===u?'selected':''}>${u.charAt(0).toUpperCase()+u.slice(1)}</option>`).join('')}
+          <option value="__autre__" ${uniteIsCustom?'selected':''}>Autre…</option>
+        </select>
+        <input name="unite_custom" id="articleUniteCustom" value="${uniteIsCustom ? uniteVal : ''}"
+          placeholder="Saisir l'unité…" style="margin-top:6px;display:${uniteIsCustom?'block':'none'}"/>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
         <button type="submit" class="btn btn-primary">${id ? 'Enregistrer' : 'Créer'}</button>
@@ -2347,16 +2604,28 @@ async function showArticleForm(id) {
     </form>`;
 
   modal.show(id ? 'Modifier l\'article' : 'Nouvel article', html, body => {
+    const sel    = body.querySelector('#articleUniteSelect');
+    const custom = body.querySelector('#articleUniteCustom');
+    sel.addEventListener('change', () => {
+      custom.style.display = sel.value === '__autre__' ? 'block' : 'none';
+      if (sel.value === '__autre__') custom.focus();
+    });
+
     body.querySelector('#articleForm').onsubmit = async e => {
       e.preventDefault();
-      const fd   = new FormData(e.target);
+      const fd    = new FormData(e.target);
+      const unite = sel.value === '__autre__'
+        ? (custom.value.trim() || undefined)
+        : (sel.value || undefined);
+      const stock = fd.get('quantite_stock');
       const data = {
         reference:        fd.get('reference') || undefined,
         designation:      fd.get('designation'),
         description:      fd.get('description') || undefined,
-        unite:            fd.get('unite') || undefined,
+        unite,
         prix_unitaire_ht: parseFloat(fd.get('prix_unitaire_ht') || '0'),
         taux_tva_id:      parseInt(fd.get('taux_tva_id') || '1'),
+        quantite_stock:   stock ? parseFloat(stock) : null,
       };
       if (id) await api.put(`/api/articles/${id}`, data);
       else    await api.post('/api/articles', data);
@@ -2412,6 +2681,7 @@ function attachArticleAutocomplete(desInput, puInput, tvaSelect, uniteInput) {
         if (tvaSelect)  tvaSelect.value  = a.taux_tva_id;
         if (uniteInput) uniteInput.value = a.unite || '';
         removeAc();
+        desInput.dispatchEvent(new CustomEvent('article-selected', { detail: a, bubbles: true }));
         (puInput || uniteInput) && (puInput || uniteInput).focus();
       };
       dropdown.appendChild(div);
@@ -2638,6 +2908,41 @@ function attachConditionsPaiement(container) {
   });
 }
 
+// ── Avoirs ────────────────────────────────────────────────────────────────
+async function renderAvoirs(el) {
+  const avoirs = await api.get('/api/factures/avoirs/liste');
+  document.getElementById('topbarActions').innerHTML = '';
+
+  if (!avoirs.length) {
+    el.innerHTML = `<div class="card"><div class="empty">Aucun avoir. Créez-en un depuis une facture émise.</div></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+    <thead><tr>
+      <th>N°</th><th>Facture d'origine</th><th>Client</th><th>HT</th><th>TTC</th><th>Statut</th><th>Date</th>
+    </tr></thead>
+    <tbody>${avoirs.map(a => `
+      <tr class="data-row">
+        <td><strong>${a.numero}</strong></td>
+        <td>${a.facture_origine_numero || '—'}</td>
+        <td>${a.client_nom || a.client_nom_part || '—'}</td>
+        <td class="text-right">${fmt.money(a.montant_ht)}</td>
+        <td class="text-right"><strong>${fmt.money(a.montant_ttc)}</strong></td>
+        <td>${fmt.badge(a.statut)}</td>
+        <td>${fmt.date(a.date_emission)}</td>
+      </tr>
+      <tr class="row-actions"><td colspan="7"><div class="btn-row">
+        
+        ${a.statut === 'brouillon' ? `<button class="btn btn-success btn-sm" onclick="emettreFacture(${a.id})">Émettre</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="previewFacture(${a.id})">👁 Aperçu PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="envoyerFacture(${a.id})">✉ Envoyer</button>
+        ${!a.locked ? `<button class="btn-trash" onclick="deleteAvoir(${a.id})" title="Supprimer cet avoir">🗑️</button>` : ''}
+      </div></td></tr>`).join('')}
+    </tbody>
+  </table></div></div>`;
+}
+
 // ── Acomptes ──────────────────────────────────────────────────────────────
 async function renderAcomptes(el) {
   const acomptes = await api.get('/api/acomptes');
@@ -2658,10 +2963,11 @@ async function renderAcomptes(el) {
           <td>${fmt.date(a.date_encaissement)}</td>
           <td>
             <div style="display:flex;gap:4px">
-              <button class="btn btn-outline btn-sm" onclick="showAcompteDetail(${a.id})">Voir</button>
+              
               ${a.statut === 'en_attente' ? `<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${a.id})">Encaisser</button>` : ''}
               <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${a.id}/apercu')">👁 Aperçu PDF</button>
               <button class="btn btn-outline btn-sm" onclick="envoyerAcompte(${a.id})">✉ Envoyer</button>
+              ${!a.locked ? `<button class="btn-trash" onclick="deleteAcompte(${a.id})" title="Supprimer">🗑️</button>` : ''}
             </div>
           </td>
         </tr>`).join('') : '<tr><td colspan="8" class="empty">Aucun acompte</td></tr>'}</tbody>
@@ -3018,7 +3324,7 @@ async function renderParametres(el) {
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <input type="file" id="logoInput" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" style="display:none"/>
         <button type="button" class="btn btn-secondary" id="logoBtn">Choisir un logo</button>
-        ${entreprise.logo_path ? `<button type="button" class="btn btn-danger" id="logoDelBtn">Supprimer</button>` : ''}
+        ${entreprise.logo_path ? `<button type="button" class="btn-trash" id="logoDelBtn" title="Supprimer le logo">🗑️</button>` : ''}
         <span style="font-size:11px;color:var(--text-muted)">PNG, JPG, SVG — max 2 Mo</span>
       </div>
     </div>
@@ -3398,7 +3704,7 @@ async function renderBackupAuto(el) {
                 <td style="font-size:12px">${(f.size/1024/1024).toFixed(1)} Mo</td>
                 <td style="font-size:12px">${new Date(f.date).toLocaleString('fr-FR')}</td>
                 <td>
-                  <button class="btn btn-outline btn-sm btn-danger" onclick="deleteBackupFile('${f.name}', this)">Supprimer</button>
+                  <button class="btn-trash" onclick="deleteBackupFile('${f.name}', this)" title="Supprimer">🗑️</button>
                 </td>
               </tr>`).join('')}
             </tbody>
@@ -3585,7 +3891,7 @@ async function renderUtilisateurs(el) {
             <td>${u.role ?? (u.entreprises ? (u.entreprises[0]?.role ?? '—') : '—')}</td>
             <td>${u.actif ? '<span class="badge badge-encaisse">Actif</span>' : '<span class="badge badge-refuse">Inactif</span>'}</td>
             <td>${can('users:w') ? `<button class="btn btn-outline btn-sm" onclick="showUserForm(${u.id})">Modifier</button>
-              ${currentUser.is_super_admin && u.id !== currentUser.id ? `<button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="deleteUser(${u.id})">Suppr.</button>` : ''}` : ''}
+              ${currentUser.is_super_admin && u.id !== currentUser.id ? `<button class="btn-trash" onclick="deleteUser(${u.id})" title="Supprimer l'utilisateur">🗑️</button>` : ''}` : ''}
             </td>
           </tr>`).join('') : ''}
         </tbody>
@@ -3751,7 +4057,51 @@ async function initApp() {
   initTabFilter();
   updateUserUI();
   api.get('/api/entreprise').then(e => { if (e?.logo_path) updateSidebarLogo(e.logo_path); });
+  // Lire l'état sauvegardé AVANT tabMgr.init() qui l'écrase
+  const _savedTabState = (() => {
+    try { return JSON.parse(localStorage.getItem('facturpro_tabs') || 'null'); } catch(e) { return null; }
+  })();
+
   tabMgr.init();
+  await restoreTabState(_savedTabState);
+}
+
+async function restoreTabState(state) {
+  try {
+    if (!state) return;
+    const { tabs: saved } = state;
+    if (!saved?.length) return;
+
+    // Ouvrir l'onglet actif en premier pour que l'utilisateur voie quelque chose
+    const sorted = [...saved].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+
+    for (const t of sorted) {
+      try { await _openSavedTab(t); } catch(e) { /* tab introuvable, on ignore */ }
+    }
+  } catch(e) { console.warn('Restauration session échouée', e); }
+}
+
+async function _openSavedTab(t) {
+  if (t.type === 'view') {
+    if (t.viewName !== 'dashboard') tabMgr.openViewTab(t.viewName);
+    return;
+  }
+  if (t.type !== 'doc') return;
+  const id    = t.docId;
+  const isNew = !id || String(id).startsWith('new-');
+
+  if (isNew) {
+    // Brouillon non sauvegardé — restaurer depuis localStorage
+    DocEditor.restoreDraft(t.docType, id);
+    return;
+  }
+  switch (t.docType) {
+    case 'devis':                 await DocEditor.openDevis(id);   break;
+    case 'facture': case 'avoir': await DocEditor.openFacture(id); break;
+    case 'bl':                    await DocEditor.openBL(id);      break;
+    case 'acompte':               await DocEditor.openAcompte(id); break;
+    default: break;
+  }
 }
 
 initApp();

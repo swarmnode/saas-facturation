@@ -7,6 +7,7 @@ export interface BLLigneInput {
   quantite: number;
   unite?: string;
   article_id?: number;
+  numero_serie?: string;
 }
 
 export interface BLInput {
@@ -37,10 +38,10 @@ export class BonLivraisonService {
       const blId = ins.rows[0].id;
       for (const [i, l] of input.lignes.entries()) {
         await client.query(`
-          INSERT INTO bons_livraison_lignes (bl_id, position, designation, description, quantite, unite, article_id)
-          VALUES ($1,$2,$3,$4,$5,$6,$7)
+          INSERT INTO bons_livraison_lignes (bl_id, position, designation, description, quantite, unite, article_id, numero_serie)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         `, [blId, i + 1, l.designation, l.description ?? null,
-            l.quantite, l.unite ?? null, l.article_id ?? null]);
+            l.quantite, l.unite ?? null, l.article_id ?? null, l.numero_serie ?? null]);
       }
 
       return blId;

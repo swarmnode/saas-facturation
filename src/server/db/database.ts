@@ -11,6 +11,8 @@ types.setTypeParser(1114, (val: string) => new Date(val + 'Z').toISOString());
 const SCHEMA_PATH     = path.resolve(__dirname, 'schema.sql');
 const MIGRATION_PATH  = path.resolve(__dirname, 'migration_001_auth.sql');
 const MIGRATION2_PATH = path.resolve(__dirname, 'migration_002_backup_config.sql');
+const MIGRATION3_PATH = path.resolve(__dirname, 'migration_003_avoir.sql');
+const MIGRATION4_PATH = path.resolve(__dirname, 'migration_004_stock_serie.sql');
 
 let pool: Pool;
 
@@ -51,6 +53,12 @@ export async function initDb(): Promise<void> {
 
   const migration2 = fs.readFileSync(MIGRATION2_PATH, 'utf-8');
   await getPool().query(migration2);
+
+  const migration3 = fs.readFileSync(MIGRATION3_PATH, 'utf-8');
+  await getPool().query(migration3);
+
+  const migration4 = fs.readFileSync(MIGRATION4_PATH, 'utf-8');
+  await getPool().query(migration4);
 
   await createDefaultAdmin();
 }

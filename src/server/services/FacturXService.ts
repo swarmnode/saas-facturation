@@ -141,16 +141,19 @@ export class FacturXService {
       doc.moveTo(50, sepY).lineTo(545, sepY).strokeColor('#CCCCCC').stroke();
 
       const titleY = sepY + 10;
+      const isAvoir = facture.type_facture === 'avoir';
       doc.fontSize(16).font('Helvetica-Bold')
          .fillColor(brandColor)
-         .text('FACTURE', 50, titleY);
+         .text(isAvoir ? 'AVOIR' : 'FACTURE', 50, titleY);
       doc.fontSize(10).font('Helvetica').fillColor('#000000')
          .text(`N° ${facture.numero}`, 50, titleY + 22)
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
+      if (isAvoir && facture.facture_origine_numero)
+        doc.text(`Avoir sur facture : ${facture.facture_origine_numero}`, 50, titleY + 46);
       if (facture.date_echeance)
-        doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
+        doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, isAvoir ? titleY + 58 : titleY + 46);
       if (facture.objet)
-        doc.text(`Objet : ${facture.objet}`, 50, titleY + 58);
+        doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoir ? 70 : 58));
 
       // ── Tableau des lignes ───────────────────────────────────────────
       let y = sepY + 100;
@@ -175,24 +178,24 @@ export class FacturXService {
         y += 20;
       });
 
-      // ── Totaux ───────────────────────────────────────────────────────
-      doc.moveTo(50, y + 4).lineTo(545, y + 4).strokeColor('#CCCCCC').stroke();
-      y += 14;
-
-      const totY = (label: string, val: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-           .text(label, 340, y, { width: 126, align: 'left' })
-           .text(val,   470, y, { width:  70, align: 'right' });
-        y += 16;
+      // ── Totaux ancrés en bas à droite (marge basse ~50pt) ───────────────
+      const BOTTOM = 742; // position Y du bas de zone (marge basse 50pt + 50pt espace)
+      let ty = BOTTOM;
+      // Dessiner de bas en haut
+      const totLine = (label: string, val: string, bold = false, yOff: number) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
+           .text(label, 340, BOTTOM - yOff, { width: 126, align: 'left' })
+           .text(val,   470, BOTTOM - yOff, { width:  70, align: 'right' });
       };
-      totY('Total HT', formatMontant(facture.montant_ht));
-      totY('Total TVA', formatMontant(facture.montant_tva));
-      totY('Total TTC', formatMontant(facture.montant_ttc), true);
+      totLine('Total TTC', formatMontant(facture.montant_ttc), true, 0);
+      totLine('Total TVA', formatMontant(facture.montant_tva), false, 18);
+      totLine('Total HT',  formatMontant(facture.montant_ht),  false, 36);
+      doc.moveTo(340, BOTTOM - 44).lineTo(545, BOTTOM - 44).strokeColor('#CCCCCC').stroke();
 
       // ── Mention TVA spéciale ─────────────────────────────────────────
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, y + 10, { width: W });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - 44, { width: 260 });
       }
 
       // ── Mention acquittée ────────────────────────────────────────────
@@ -202,26 +205,12 @@ export class FacturXService {
           carte: 'Carte bancaire', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre',
         };
         const modeLabel = facture.mode_paiement ? (modesLabel[facture.mode_paiement] ?? facture.mode_paiement) : null;
-        const acquitteY = Math.max(y + 30, 680);
-        doc.rect(50, acquitteY, W, 26).fillColor('#E8F5E9').stroke();
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('#2E7D32')
-           .text('ACQUITTÉE', 62, acquitteY + 8);
-        doc.fontSize(9).font('Helvetica').fillColor('#2E7D32')
-           .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
-             160, acquitteY + 9, { width: 330 });
+        doc.rect(50, BOTTOM - 60, 260, 22).fillColor('#E8F5E9').stroke();
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#2E7D32').text('ACQUITTÉE', 58, BOTTOM - 55);
+        doc.fontSize(8).font('Helvetica').fillColor('#2E7D32')
+           .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`, 120, BOTTOM - 55, { width: 180 });
         doc.fillColor('#000000');
       }
-
-      // ── Pied de page légal ───────────────────────────────────────────
-      const footerY = 760;
-      doc.moveTo(50, footerY).lineTo(545, footerY).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(7).font('Helvetica').fillColor('#888888')
-         .text(
-           `${entreprise.raison_sociale}${entreprise.is_EI ? ' EI' : ''} — SIRET ${entreprise.siret}` +
-           (entreprise.rcs_ville ? ` — RCS ${entreprise.rcs_ville}` : '') +
-           (entreprise.capital_social ? ` — Capital ${formatMontant(entreprise.capital_social)}` : ''),
-           50, footerY + 8, { width: W, align: 'center' }
-         );
 
       doc.end();
       stream.on('finish', resolve);
@@ -321,29 +310,34 @@ export class FacturXService {
         y += 20;
       });
 
-      // Totaux
-      doc.moveTo(50, y + 4).lineTo(545, y + 4).strokeColor('#CCCCCC').stroke();
-      y += 14;
-      const totY = (label: string, val: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-           .text(label, 340, y, { width: 126, align: 'left' })
-           .text(val,   470, y, { width:  70, align: 'right' });
-        y += 16;
-      };
-      totY('Total HT', formatMontant(devis.montant_ht));
-      totY('Total TVA', formatMontant(devis.montant_tva));
-      totY('Total TTC', formatMontant(devis.montant_ttc), true);
+      // ── Totaux (droite) + Signature avec date (gauche) ancrés en bas ────
+      const bottomY = 700; // position fixe, indépendante du contenu
 
-      // Pied de page
-      const footerY = 760;
-      doc.moveTo(50, footerY).lineTo(545, footerY).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(7).font('Helvetica').fillColor('#888888')
-         .text(
-           `${entreprise.raison_sociale}${entreprise.is_EI ? ' EI' : ''} — SIRET ${entreprise.siret}` +
-           (entreprise.rcs_ville ? ` — RCS ${entreprise.rcs_ville}` : '') +
-           (entreprise.capital_social ? ` — Capital ${formatMontant(entreprise.capital_social)}` : ''),
-           50, footerY + 8, { width: W, align: 'center' }
-         );
+      // Totaux — droite
+      let ty = bottomY;
+      const totDevis = (label: string, val: string, bold = false) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
+           .fillColor('#000000')
+           .text(label, 340, ty, { width: 126, align: 'left' })
+           .text(val,   470, ty, { width:  70, align: 'right' });
+        ty += 16;
+      };
+      totDevis('Total HT',  formatMontant(devis.montant_ht));
+      totDevis('Total TVA', formatMontant(devis.montant_tva));
+      totDevis('Total TTC', formatMontant(devis.montant_ttc), true);
+
+      // Signature — gauche
+      const sigBoxX = 50, sigBoxW = 230, sigBoxH = 70;
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#555555')
+         .text('BON POUR ACCORD — SIGNATURE DU CLIENT', sigBoxX, bottomY, { width: sigBoxW });
+      const sigTop = bottomY + 14;
+      doc.rect(sigBoxX, sigTop, sigBoxW, sigBoxH).strokeColor('#BBBBBB').stroke();
+      // Ligne de date à l'intérieur du cadre
+      doc.fontSize(8).font('Helvetica').fillColor('#555555')
+         .text('Date :', sigBoxX + 8, sigTop + 8);
+      doc.moveTo(sigBoxX + 40, sigTop + 20).lineTo(sigBoxX + sigBoxW - 10, sigTop + 20).strokeColor('#CCCCCC').stroke();
+      doc.fontSize(7).font('Helvetica-Oblique').fillColor('#aaaaaa')
+         .text('Précédé de la mention « Bon pour accord »', sigBoxX, sigTop + sigBoxH + 4, { width: sigBoxW });
 
       doc.end();
       outputStream.on('finish', resolve);
@@ -411,10 +405,8 @@ export class FacturXService {
       doc.fontSize(10).font('Helvetica').fillColor('#000000')
          .text(`N° ${bl.numero}`, 50, titleY + 22)
          .text(`Date : ${formatDate(bl.date_emission)}`, 50, titleY + 34);
-      if (bl.date_livraison)
-        doc.text(`Date de livraison : ${formatDate(bl.date_livraison)}`, 50, titleY + 46);
       if (bl.lieu_livraison)
-        doc.text(`Lieu de livraison : ${bl.lieu_livraison}`, 50, titleY + (bl.date_livraison ? 58 : 46));
+        doc.text(`Lieu de livraison : ${bl.lieu_livraison}`, 50, titleY + 46);
       if (bl.devis_id)
         doc.text(`Réf. devis : ${bl.devis_ref ?? bl.devis_id}`, 350, titleY + 22, { width: 195 });
       if (bl.facture_id)
@@ -453,23 +445,16 @@ export class FacturXService {
         y += doc.heightOfString(bl.notes, { width: W }) + 10;
       }
 
-      // Zone signature
-      const sigY = Math.max(y + 30, 660);
+      // Zone signature destinataire — ancrée en bas de page
+      const sigY = 695; // position fixe
       doc.moveTo(50, sigY).lineTo(545, sigY).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(9).font('Helvetica').fillColor('#555555')
-         .text('Signature du destinataire :', 350, sigY + 8)
-         .text('(Bon pour accord de réception)', 350, sigY + 20, { width: 195, align: 'right' });
-      doc.rect(350, sigY + 35, 195, 50).strokeColor('#CCCCCC').stroke();
-
-      // Pied de page
-      const footerY = 760;
-      doc.moveTo(50, footerY).lineTo(545, footerY).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(7).font('Helvetica').fillColor('#888888')
-         .text(
-           `${entreprise.raison_sociale}${entreprise.is_EI ? ' EI' : ''} — SIRET ${entreprise.siret}` +
-           (entreprise.rcs_ville ? ` — RCS ${entreprise.rcs_ville}` : ''),
-           50, footerY + 8, { width: W, align: 'center' }
-         );
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#555555')
+         .text('SIGNATURE DU DESTINATAIRE — BON POUR ACCORD DE RÉCEPTION', 50, sigY + 10, { width: W });
+      // Ligne de date
+      doc.fontSize(8).font('Helvetica').fillColor('#555555').text('Date :', 50, sigY + 26);
+      doc.moveTo(90, sigY + 38).lineTo(340, sigY + 38).strokeColor('#CCCCCC').stroke();
+      // Cadre signature
+      doc.rect(50, sigY + 26, W, 70).strokeColor('#BBBBBB').stroke();
 
       doc.end();
       outputStream.on('finish', resolve);
@@ -595,16 +580,6 @@ export class FacturXService {
         doc.fillColor('#000000');
       }
 
-      const footerY = 760;
-      doc.moveTo(50, footerY).lineTo(545, footerY).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(7).font('Helvetica').fillColor('#888888')
-         .text(
-           `${entreprise.raison_sociale}${entreprise.is_EI ? ' EI' : ''} — SIRET ${entreprise.siret}` +
-           (entreprise.rcs_ville ? ` — RCS ${entreprise.rcs_ville}` : '') +
-           (entreprise.capital_social ? ` — Capital ${formatMontant(entreprise.capital_social)}` : ''),
-           50, footerY + 8, { width: W, align: 'center' }
-         );
-
       doc.end();
       outputStream.on('finish', resolve);
       outputStream.on('error', reject);
@@ -717,16 +692,6 @@ export class FacturXService {
              160, acquitteY + 9, { width: 330 });
         doc.fillColor('#000000');
       }
-
-      const footerY = 760;
-      doc.moveTo(50, footerY).lineTo(545, footerY).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(7).font('Helvetica').fillColor('#888888')
-         .text(
-           `${entreprise.raison_sociale}${entreprise.is_EI ? ' EI' : ''} — SIRET ${entreprise.siret}` +
-           (entreprise.rcs_ville ? ` — RCS ${entreprise.rcs_ville}` : '') +
-           (entreprise.capital_social ? ` — Capital ${formatMontant(entreprise.capital_social)}` : ''),
-           50, footerY + 8, { width: W, align: 'center' }
-         );
 
       doc.end();
       outputStream.on('finish', resolve);

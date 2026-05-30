@@ -29,6 +29,10 @@ router.get('/', requirePerm('factures:r'), async (req, res, next) => {
   try { res.json(await FactureService.lister(req.user!.entreprise_id)); } catch(e) { next(e); }
 });
 
+router.get('/avoirs/liste', requirePerm('factures:r'), async (req, res, next) => {
+  try { res.json(await FactureService.listerAvoirs(req.user!.entreprise_id)); } catch(e) { next(e); }
+});
+
 router.get('/:id', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const f = await FactureService.obtenir(Number(req.params.id));
@@ -251,6 +255,20 @@ if ($r -ne 0) { throw "MAPISendMail code $r" }
   } catch(e: any) {
     res.status(500).json({ error: e.message ?? 'Impossible d\'ouvrir le client mail via MAPI' });
   }
+});
+
+// Suppression d'un avoir brouillon uniquement
+router.delete('/:id', requirePerm('factures:w'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const fr = await query('SELECT type_facture, locked, statut FROM factures WHERE id=$1', [id]);
+    if (!fr.rows[0]) return res.status(404).json({ error: 'Introuvable' });
+    const f = fr.rows[0];
+    if (f.type_facture !== 'avoir') return res.status(400).json({ error: 'Seuls les avoirs peuvent être supprimés. Pour annuler une facture, créez un avoir.' });
+    if (f.locked) return res.status(400).json({ error: 'Impossible de supprimer un avoir déjà émis.' });
+    await query('DELETE FROM factures WHERE id=$1', [id]);
+    res.json({ ok: true });
+  } catch(e) { next(e); }
 });
 
 export default router;

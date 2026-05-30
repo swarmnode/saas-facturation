@@ -221,4 +221,15 @@ if ($r -ne 0) { throw "MAPISendMail code $r" }
   }
 });
 
+router.delete('/:id', requirePerm('acomptes:w'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const ar = await query('SELECT locked FROM acomptes WHERE id=$1', [id]);
+    if (!ar.rows[0]) return res.status(404).json({ error: 'Introuvable' });
+    if (ar.rows[0].locked) return res.status(400).json({ error: 'Impossible de supprimer un acompte encaissé.' });
+    await query('DELETE FROM acomptes WHERE id=$1', [id]);
+    res.json({ ok: true });
+  } catch(e) { next(e); }
+});
+
 export default router;

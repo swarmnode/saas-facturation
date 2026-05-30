@@ -256,4 +256,24 @@ router.get('/:id/pdf', async (req, res) => {
   res.sendFile(full);
 });
 
+router.delete('/:id', requirePerm('devis:w'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const dr = await query('SELECT locked, statut FROM devis WHERE id=$1', [id]);
+    if (!dr.rows[0]) return res.status(404).json({ error: 'Introuvable' });
+    if (dr.rows[0].locked) return res.status(400).json({ error: 'Impossible de supprimer un devis signé.' });
+
+    const chaines = await query(
+      `SELECT 1 FROM factures WHERE devis_id=$1 LIMIT 1
+       UNION ALL SELECT 1 FROM acomptes WHERE devis_id=$1 LIMIT 1
+       UNION ALL SELECT 1 FROM bons_livraison WHERE devis_id=$1 LIMIT 1`,
+      [id]
+    );
+    if (chaines.rows.length) return res.status(400).json({ error: 'Ce devis est lié à une facture, un acompte ou un BL. Supprimez-les d\'abord.' });
+
+    await query('DELETE FROM devis WHERE id=$1', [id]);
+    res.json({ ok: true });
+  } catch(e) { next(e); }
+});
+
 export default router;

@@ -8,6 +8,7 @@ export interface ArticleInput {
   prix_unitaire_ht: number;
   taux_tva_id: number;
   actif?: boolean;
+  quantite_stock?: number | null;
 }
 
 export class ArticleService {
@@ -39,11 +40,12 @@ export class ArticleService {
 
   static async creer(input: ArticleInput, entreprise_id: number) {
     const r = await query(`
-      INSERT INTO articles (reference, designation, description, unite, prix_unitaire_ht, taux_tva_id, entreprise_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO articles (reference, designation, description, unite, prix_unitaire_ht, taux_tva_id, entreprise_id, quantite_stock)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [input.reference ?? null, input.designation, input.description ?? null,
-        input.unite ?? null, input.prix_unitaire_ht, input.taux_tva_id, entreprise_id]);
+        input.unite ?? null, input.prix_unitaire_ht, input.taux_tva_id, entreprise_id,
+        input.quantite_stock ?? null]);
     return r.rows[0];
   }
 
@@ -52,8 +54,8 @@ export class ArticleService {
     if (!cur) throw new Error('Article introuvable');
     const r = await query(`
       UPDATE articles SET reference=$1, designation=$2, description=$3, unite=$4,
-        prix_unitaire_ht=$5, taux_tva_id=$6, actif=$7, updated_at=NOW()
-      WHERE id=$8
+        prix_unitaire_ht=$5, taux_tva_id=$6, actif=$7, quantite_stock=$8, updated_at=NOW()
+      WHERE id=$9
       RETURNING *
     `, [
       input.reference   ?? cur.reference,
@@ -63,6 +65,7 @@ export class ArticleService {
       input.prix_unitaire_ht ?? cur.prix_unitaire_ht,
       input.taux_tva_id      ?? cur.taux_tva_id,
       input.actif !== false ? 1 : 0,
+      input.quantite_stock !== undefined ? input.quantite_stock : cur.quantite_stock,
       id,
     ]);
     return r.rows[0];

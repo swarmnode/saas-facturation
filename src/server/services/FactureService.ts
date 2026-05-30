@@ -9,6 +9,7 @@ export interface FactureInput {
   client_id: number;
   entreprise_id: number;
   devis_id?: number;
+  facture_origine_id?: number;
   type_facture?: string;
   date_echeance?: string;
   conditions_paiement?: string;
@@ -23,6 +24,7 @@ export interface FactureInput {
     prix_unitaire_ht: number;
     taux_tva_id: number;
     remise_pct?: number;
+    numero_serie?: string;
   }>;
 }
 
@@ -57,17 +59,18 @@ export class FactureService {
     );
 
     return withTransaction(async (client) => {
-      const numero = await NumerotationService.getNextNumero('FACTURE', input.entreprise_id);
+      const typeDoc = input.type_facture === 'avoir' ? 'AVOIR' : 'FACTURE';
+      const numero  = await NumerotationService.getNextNumero(typeDoc, input.entreprise_id);
       const ins = await client.query(`
-        INSERT INTO factures (numero, client_id, entreprise_id, devis_id, type_facture,
+        INSERT INTO factures (numero, client_id, entreprise_id, devis_id, facture_origine_id, type_facture,
           date_echeance, conditions_paiement, mode_paiement, notes, tva_mode,
           montant_ht, montant_tva, montant_ttc)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
         RETURNING id
       `, [numero, input.client_id, input.entreprise_id, input.devis_id ?? null,
-          input.type_facture ?? 'standard', input.date_echeance ?? null,
-          input.conditions_paiement ?? null, input.mode_paiement ?? null,
-          input.notes ?? null, input.tva_mode ?? 'normal',
+          input.facture_origine_id ?? null, input.type_facture ?? 'standard',
+          input.date_echeance ?? null, input.conditions_paiement ?? null,
+          input.mode_paiement ?? null, input.notes ?? null, input.tva_mode ?? 'normal',
           totaux.ht, totaux.tva, totaux.ttc]);
 
       const factureId = ins.rows[0].id;
@@ -75,11 +78,12 @@ export class FactureService {
         await client.query(`
           INSERT INTO factures_lignes (facture_id, position, designation, description,
             quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
-            montant_ht, montant_tva, montant_ttc)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+            montant_ht, montant_tva, montant_ttc, numero_serie)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
         `, [factureId, l.position, l.designation, l.description ?? null,
             l.quantite, l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, l.taux_tva_valeur,
-            l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc]);
+            l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
+            l.numero_serie ?? null]);
       }
 
       const r = await client.query('SELECT * FROM factures WHERE id = $1', [factureId]);
@@ -87,19 +91,30 @@ export class FactureService {
     });
   }
 
-  static async lister(entreprise_id: number) {
+  static async lister(entreprise_id: number, type?: string) {
+    const typeFilter = type ? `AND f.type_facture = '${type}'` : `AND f.type_facture != 'avoir'`;
     const r = await query(`
-      SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
-      FROM factures f LEFT JOIN clients c ON f.client_id = c.id
-      WHERE f.entreprise_id = $1 ORDER BY f.created_at DESC
+      SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             fo.numero AS facture_origine_numero
+      FROM factures f
+      LEFT JOIN clients c ON f.client_id = c.id
+      LEFT JOIN factures fo ON fo.id = f.facture_origine_id
+      WHERE f.entreprise_id = $1 ${typeFilter} ORDER BY f.created_at DESC
     `, [entreprise_id]);
     return r.rows;
   }
 
+  static async listerAvoirs(entreprise_id: number) {
+    return this.lister(entreprise_id, 'avoir');
+  }
+
   static async obtenir(id: number) {
     const fr = await query(`
-      SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
-      FROM factures f LEFT JOIN clients c ON f.client_id = c.id
+      SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             fo.numero AS facture_origine_numero
+      FROM factures f
+      LEFT JOIN clients c ON f.client_id = c.id
+      LEFT JOIN factures fo ON fo.id = f.facture_origine_id
       WHERE f.id = $1
     `, [id]);
     const facture = fr.rows[0];

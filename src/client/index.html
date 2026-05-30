@@ -52,13 +52,16 @@
           <span class="nav-icon">📊</span> Tableau de bord
         </a>
         <a href="#" class="nav-item" data-view="clients" data-perm="clients:r">
-          <span class="nav-icon">👥</span> Clients
+          <span class="nav-icon">🧑</span> Clients
         </a>
         <a href="#" class="nav-item" data-view="devis" data-perm="devis:r">
           <span class="nav-icon">📋</span> Devis
         </a>
         <a href="#" class="nav-item" data-view="factures" data-perm="factures:r">
           <span class="nav-icon">🧾</span> Factures
+        </a>
+        <a href="#" class="nav-item" data-view="avoirs" data-perm="factures:r">
+          <span class="nav-icon">↩️</span> Avoirs
         </a>
         <a href="#" class="nav-item" data-view="acomptes" data-perm="acomptes:r">
           <span class="nav-icon">💰</span> Acomptes
@@ -82,6 +85,9 @@
     <!-- Overlay sidebar mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+    <!-- Sidebar toggle -->
+    <button id="sidebarToggle" title="Afficher/Masquer le menu">&#8249;</button>
+
     <!-- Main -->
     <main class="main">
       <header class="topbar">
@@ -100,7 +106,9 @@
         <div class="topbar-actions" id="topbarActions"></div>
       </header>
       <div class="tab-bar" id="tabBar">
+        <button class="tab-scroll-btn" id="tabScrollLeft" title="Défiler à gauche">&#8249;</button>
         <div class="tab-strip" id="tabStrip"></div>
+        <button class="tab-scroll-btn" id="tabScrollRight" title="Défiler à droite">&#8250;</button>
       </div>
       <div class="tab-panels" id="tabPanels"></div>
     </main>
@@ -129,5 +137,6 @@
   </div>
 
   <script src="/js/app.js"></script>
+  <script src="/js/editor.js"></script>
 </body>
 </html>

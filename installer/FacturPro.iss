@@ -25,9 +25,9 @@ PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
 ; WizardResizable removed (obsolete in IS 6.4+)
-SetupIconFile=
+SetupIconFile=facturpro.ico
 UninstallDisplayName={#AppName}
-UninstallDisplayIcon={app}\node\node.exe
+UninstallDisplayIcon={app}\facturpro.ico
 MinVersion=10.0
 DisableDirPage=no
 DisableProgramGroupPage=yes
@@ -56,14 +56,17 @@ Source: "scripts\Configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
 ; Script de désinstallation
 Source: "scripts\Uninstall.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
+; Icône application
+Source: "facturpro.ico"; DestDir: "{app}"; Flags: ignoreversion
+
 [Dirs]
 Name: "{app}\storage\logo"
 Name: "{app}\logs"
 
 [Icons]
-Name: "{group}\{#AppName}";           Filename: "{app}\FacturPro.url"
+Name: "{group}\{#AppName}";           Filename: "{app}\FacturPro.url"; IconFilename: "{app}\facturpro.ico"
 Name: "{group}\Désinstaller FacturPro"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#AppName}";   Filename: "{app}\FacturPro.url"; Tasks: desktopicon
+Name: "{commondesktop}\{#AppName}";   Filename: "{app}\FacturPro.url"; IconFilename: "{app}\facturpro.ico"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes supplémentaires :"

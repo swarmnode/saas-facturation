@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E4976"/>
+      <stop offset="100%" stop-color="#0D2640"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Fond arrondi -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- Document blanc -->
+  <path d="M112 72 H296 L384 160 V448 Q384 464 368 464 H144 Q128 464 128 448 V88 Q128 72 144 72 Z"
+        fill="white" filter="url(#shadow)"/>
+
+  <!-- Coin plié -->
+  <path d="M296 72 L384 160 H312 Q296 160 296 144 Z" fill="#B8CCDE"/>
+
+  <!-- Lettre F en bleu marine — construite comme des lignes de facture -->
+  <!-- Barre verticale gauche -->
+  <rect x="160" y="184" width="32" height="200" rx="10" fill="#1A3A5C"/>
+  <!-- Barre horizontale haute (pleine largeur) -->
+  <rect x="160" y="184" width="168" height="32" rx="10" fill="#1A3A5C"/>
+  <!-- Barre horizontale milieu (plus courte) -->
+  <rect x="192" y="252" width="124" height="32" rx="10" fill="#1A3A5C"/>
+
+  <!-- Lignes de facture en dessous (décoratives) -->
+  <rect x="160" y="328" width="168" height="12" rx="6" fill="#1A3A5C" opacity="0.18"/>
+  <rect x="160" y="348" width="128" height="12" rx="6" fill="#1A3A5C" opacity="0.18"/>
+  <rect x="160" y="368" width="168" height="12" rx="6" fill="#1A3A5C" opacity="0.18"/>
+
+  <!-- Badge vert "validé" en bas à droite -->
+  <circle cx="352" cy="404" r="68" fill="#0D2640"/>
+  <circle cx="352" cy="404" r="58" fill="#27AE60"/>
+  <!-- Euro sign -->
+  <text x="352" y="428"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="58" font-weight="800"
+    fill="white" text-anchor="middle">€</text>
+</svg>

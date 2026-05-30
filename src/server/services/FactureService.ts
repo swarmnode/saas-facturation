@@ -4,6 +4,7 @@ import { ScelleService } from './ScelleService';
 import { ArchiveService } from './ArchiveService';
 import { FacturXService } from './FacturXService';
 import { FecExportService } from './FecExportService';
+import { LettreService } from './LettreService';
 
 export interface FactureInput {
   client_id: number;
@@ -149,14 +150,29 @@ export class FactureService {
     await ArchiveService.archiver('FACTURE', id, facture.numero, final!);
     await FecExportService.enregistrerFacture(id);
 
+    // Lettrage automatique avoir ↔ facture d'origine
+    if (facture.type_facture === 'avoir' && facture.facture_origine_id) {
+      await LettreService.lettrerAvoir(id, facture.facture_origine_id, facture.entreprise_id);
+    }
+
     return this.obtenir(id);
   }
 
   static async marquerPayee(id: number, datePaiement?: string, modePaiement?: string) {
+    const fr = await query('SELECT entreprise_id FROM factures WHERE id = $1', [id]);
+    const entreprise_id = fr.rows[0]?.entreprise_id;
+
     await query(`
       UPDATE factures SET statut='payee', date_paiement=$1, mode_paiement=$2, updated_at=NOW()
       WHERE id=$3 AND locked=1
     `, [datePaiement ?? new Date().toISOString(), modePaiement ?? null, id]);
+
+    // Enregistrer les écritures de règlement en FEC et lettrer
+    await FecExportService.enregistrerPaiement(id);
+    if (entreprise_id) {
+      await LettreService.lettrerPaiement(id, entreprise_id);
+    }
+
     return this.obtenir(id);
   }
 }

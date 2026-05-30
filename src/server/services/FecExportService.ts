@@ -1,6 +1,48 @@
 import { query } from '../db/database';
 
+function compteEncaissement(mode?: string): [string, string] {
+  switch (mode) {
+    case 'cheque':  return ['5112', 'Chèques à encaisser'];
+    case 'especes': return ['530',  'Caisse'];
+    default:        return ['512',  'Banque'];
+  }
+}
+
 export class FecExportService {
+
+  // Enregistre les écritures de règlement (journal BQ) au moment du paiement.
+  static async enregistrerPaiement(factureId: number): Promise<void> {
+    const r = await query(`
+      SELECT f.*,
+             COALESCE(c.raison_sociale, c.prenom || ' ' || c.nom) AS client_nom,
+             COALESCE(c.siret, 'CLI' || c.id::text) AS client_num
+      FROM factures f LEFT JOIN clients c ON f.client_id = c.id
+      WHERE f.id = $1
+    `, [factureId]);
+    const f = r.rows[0];
+    if (!f) return;
+
+    const dateStr = (f.date_paiement ?? new Date().toISOString())
+      .replace(/[-T:Z.]/g, '').slice(0, 8);
+    const numBase = `RG-${f.numero}`;
+    const [cptEnc, libEnc] = compteEncaissement(f.mode_paiement);
+
+    const ins = async (sfx: string, cptNum: string, cptLib: string, lib: string, debit: number, credit: number) => {
+      await query(`
+        INSERT INTO fec_ecritures
+          (journal_code, journal_lib, ecriture_num, ecriture_date, compte_num, compte_lib,
+           comp_aux_num, comp_aux_lib, piece_ref, piece_date, ecriture_lib, debit, credit, facture_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        ON CONFLICT (ecriture_num) DO NOTHING
+      `, ['BQ', 'Banque', `${numBase}-${sfx}`, dateStr,
+          cptNum, cptLib, f.client_num, f.client_nom,
+          f.numero, dateStr, lib, debit, credit, factureId]);
+    };
+
+    await ins('1', cptEnc, libEnc, `Règlement ${f.numero}`, f.montant_ttc, 0);
+    await ins('2', '411', 'Clients', `Règlement ${f.numero}`, 0, f.montant_ttc);
+  }
+
   static async enregistrerFacture(factureId: number) {
     const r = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part, c.siret AS client_siret

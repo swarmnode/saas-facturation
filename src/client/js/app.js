@@ -592,6 +592,7 @@ async function renderView(view, el) {
     case 'bons-livraison':  return renderDocList('bons-livraison', el);
     case 'articles':        return renderArticles(el);
     case 'archives':        return renderArchives(el);
+    case 'lettrage':        return renderLettrage(el);
     case 'parametres':      return renderParametres(el);
   }
 }
@@ -3414,6 +3415,166 @@ function showAcompteForm() {
       tabMgr.openViewTab('acomptes');
     };
   });
+}
+
+// ── Lettrage ──────────────────────────────────────────────────────────────
+async function renderLettrage(el) {
+  el.innerHTML = `<div class="card"><p style="color:var(--text-muted)">Chargement…</p></div>`;
+
+  const ecritures = await api.get('/api/lettrage') ?? [];
+
+  // Grouper par client
+  const byClient = {};
+  for (const e of ecritures) {
+    const key = e.client_nom ?? 'Sans client';
+    if (!byClient[key]) byClient[key] = { nom: key, client_id: e.client_id, rows: [] };
+    byClient[key].rows.push(e);
+  }
+
+  // Filtre client
+  const clientNames = Object.keys(byClient).sort();
+  let filtreClient = clientNames[0] ?? '';
+
+  function renderTable() {
+    const clients = byClient[filtreClient]?.rows ?? [];
+    const nonLett = clients.filter(e => !e.ecriture_let);
+    const lett    = clients.filter(e =>  e.ecriture_let);
+
+    // Grouper les lettrées par lettre
+    const byLet = {};
+    for (const e of lett) {
+      if (!byLet[e.ecriture_let]) byLet[e.ecriture_let] = [];
+      byLet[e.ecriture_let].push(e);
+    }
+
+    const balNonLett = nonLett.reduce((s, e) => s + (+e.debit) - (+e.credit), 0);
+
+    const rowNonLett = nonLett.map(e => `
+      <tr>
+        <td><input type="checkbox" class="let-chk" data-id="${e.id}"></td>
+        <td>${e.ecriture_date}</td>
+        <td>${e.journal_code}</td>
+        <td>${e.ecriture_num}</td>
+        <td>${e.facture_numero ?? ''}</td>
+        <td>${e.ecriture_lib}</td>
+        <td style="text-align:right">${(+e.debit).toFixed(2)}</td>
+        <td style="text-align:right">${(+e.credit).toFixed(2)}</td>
+      </tr>`).join('');
+
+    const rowLett = Object.entries(byLet).map(([lettre, rows]) => {
+      const rowsHtml = rows.map(e => `
+        <tr>
+          <td></td>
+          <td>${e.ecriture_date}</td>
+          <td>${e.journal_code}</td>
+          <td>${e.ecriture_num}</td>
+          <td>${e.facture_numero ?? ''}</td>
+          <td>${e.ecriture_lib}</td>
+          <td style="text-align:right">${(+e.debit).toFixed(2)}</td>
+          <td style="text-align:right">${(+e.credit).toFixed(2)}</td>
+        </tr>`).join('');
+      return `
+        <tr style="background:var(--primary-light)">
+          <td colspan="8">
+            <strong>Lettre ${lettre}</strong>
+            — ${rows[0].date_let ?? ''}
+            <button class="btn-sm" style="margin-left:8px;background:var(--danger);color:#fff;border:none;border-radius:4px;padding:2px 8px;cursor:pointer"
+              onclick="deLettrageAction('${lettre}')">Délettrer</button>
+          </td>
+        </tr>
+        ${rowsHtml}`;
+    }).join('');
+
+    const thead = `<tr>
+      <th style="width:32px"></th>
+      <th>Date</th><th>Journal</th><th>N° écriture</th><th>Pièce</th>
+      <th>Libellé</th><th style="text-align:right">Débit</th><th style="text-align:right">Crédit</th>
+    </tr>`;
+
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+          <h3 style="margin:0;flex:1">Lettrage — compte 411 Clients</h3>
+          <select id="letClientFilter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px">
+            ${clientNames.map(n => `<option value="${n}" ${n === filtreClient ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+
+        ${nonLett.length ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <strong>Non lettrées</strong>
+            <span style="color:var(--text-muted);font-size:13px">
+              Solde non lettré : <strong style="color:${balNonLett > 0.005 ? 'var(--danger)' : 'var(--success)'}">${balNonLett.toFixed(2)} €</strong>
+            </span>
+          </div>
+          <div style="overflow-x:auto;margin-bottom:8px">
+            <table class="data-table" style="width:100%">
+              <thead>${thead}</thead>
+              <tbody id="letNonLettBody">${rowNonLett}</tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:20px">
+            <button id="btnLettreSel" class="btn-primary" style="padding:6px 16px">
+              ⚖️ Lettrer la sélection
+            </button>
+            <button id="btnLettreAll" class="btn-outline" style="padding:6px 16px">
+              ✓ Tout lettrer (si équilibré)
+            </button>
+          </div>
+        ` : `<p style="color:var(--success);font-weight:600;margin-bottom:20px">✓ Toutes les écritures sont lettrées</p>`}
+
+        ${lett.length ? `
+          <strong>Lettrées</strong>
+          <div style="overflow-x:auto;margin-top:8px">
+            <table class="data-table" style="width:100%">
+              <thead>${thead}</thead>
+              <tbody>${rowLett}</tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>`;
+  }
+
+  function refresh() { renderLettrage(el); }
+
+  window.deLettrageAction = async (lettre) => {
+    if (!confirm(`Délettrer la lettre ${lettre} ?`)) return;
+    const ok = await api.delete(`/api/lettrage/${lettre}`);
+    if (ok) refresh();
+  };
+
+  el.innerHTML = renderTable();
+
+  // Filtre client
+  el.querySelector('#letClientFilter')?.addEventListener('change', e => {
+    filtreClient = e.target.value;
+    el.innerHTML = renderTable();
+    bindActions();
+  });
+
+  function bindActions() {
+    el.querySelector('#letClientFilter')?.addEventListener('change', e => {
+      filtreClient = e.target.value;
+      el.innerHTML = renderTable();
+      bindActions();
+    });
+
+    el.querySelector('#btnLettreSel')?.addEventListener('click', async () => {
+      const ids = [...el.querySelectorAll('.let-chk:checked')].map(c => +c.dataset.id);
+      if (!ids.length) return alert('Sélectionnez au moins deux écritures à lettrer.');
+      const res = await api.post('/api/lettrage/lettrer', { ecriture_ids: ids });
+      if (res?.lettre) { alert(`Lettre ${res.lettre} attribuée.`); refresh(); }
+    });
+
+    el.querySelector('#btnLettreAll')?.addEventListener('click', async () => {
+      const ids = [...el.querySelectorAll('.let-chk')].map(c => +c.dataset.id);
+      if (!ids.length) return;
+      const res = await api.post('/api/lettrage/lettrer', { ecriture_ids: ids });
+      if (res?.lettre) { alert(`Lettre ${res.lettre} attribuée.`); refresh(); }
+    });
+  }
+
+  bindActions();
 }
 
 // ── Archives ──────────────────────────────────────────────────────────────

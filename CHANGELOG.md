@@ -69,10 +69,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Calcul immédiat (calcLigne + calcTotaux) à l'ajout d'une ligne
 - saveDoc : met à jour e-doc-numero et titre onglet après enregistrement
 - Badges manquants corrigés, autocomplete flottant corrigé
+- Fix: alignement à droite des colonnes numériques dans l'éditeur (Qté, PU, Remise, TVA, Total HT)
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

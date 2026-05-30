@@ -7,6 +7,13 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ### Ajouté
 - Feat: boutons Émettre + Envoyer dans l'éditeur WYSIWYG pour les factures brouillon
+- Feat: tri sur les en-têtes de colonnes dans toutes les listes de documents
+
+- renderDocList : tri cliquable via DOC_CONFIGS.sortKeys
+- _listSort[type] : état de tri persisté par type pendant la session
+- Indicateurs ▲/▼ sur la colonne active
+- CSS : .list-th hover sur primary-light
+- sortKeys ajoutés : devis, factures, avoirs, acomptes, BL
 
 
 ### Corrigé
@@ -30,6 +37,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

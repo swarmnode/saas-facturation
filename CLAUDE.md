@@ -1,0 +1,82 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```powershell
+npm run dev      # ts-node + nodemon hot-reload, http://localhost:3000
+npm run build    # tsc -> dist/
+npm start        # node dist/server/index.js (prod)
+```
+
+DB default: `postgresql://facturation:facturation@localhost:5432/facturation` (override with `DATABASE_URL` in `.env`).
+
+Admin default on first start: `admin@localhost` / `Admin1234!` (override with `ADMIN_EMAIL` / `ADMIN_DEFAULT_PASS`).
+
+### Installer (Inno Setup)
+```powershell
+.\installer\build.ps1   # compiles TS, builds prod payload, downloads portable Node + NSSM
+# Then compile installer\FacturPro.iss with Inno Setup 6+ -> FacturPro-Setup.exe
+```
+
+## Architecture
+
+**Entry point**: `src/server/index.ts` — Express app. All routes are under `/api/*` and protected by the `authenticate` JWT middleware, except `/api/auth`.
+
+**Database layer**: `src/server/db/database.ts`
+- Exports `query()`, `getPool()`, and `withTransaction<T>(fn)` (use for multi-step atomic operations).
+- `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
+- PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
+
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`.
+
+**Auth middleware**: `src/server/middleware/auth.ts`
+- `authenticate` — validates Bearer JWT, attaches `req.user` (`AuthUser` with `id`, `email`, `entreprise_id`, `role`, `is_super_admin`).
+- `requirePerm('resource:r|w')` — guards routes; `is_super_admin` bypasses all permission checks.
+- Roles: `admin`, `comptable`, `commercial`, `lecteur`. Permission matrix is in `ROLE_PERMS` in that file.
+
+**Multi-tenant**: every business entity (`clients`, `articles`, `devis`, `factures`, `acomptes`, `bons_livraison`) carries an `entreprise_id`. Routes scope queries to `req.user.entreprise_id`. A user can belong to multiple companies via `user_entreprises`.
+
+**Services** (`src/server/services/`):
+- `NumerotationService` — atomic `INSERT … ON CONFLICT DO UPDATE` on `sequence_numerotation`; produces `FAC-YYYY-NNNN`, `DEV-YYYY-NNNN`, etc. Never call raw `INSERT` for numbering.
+- `ScelleService` — chained SHA-256 in `journal_scellement`; must be called after emitting a fiscal document. The table is immutable (UPDATE/DELETE blocked by DB triggers).
+- `FacturXService` — PDFKit PDF generation + EN 16931 XML. Generates devis, factures, acomptes, bons-livraison as streams (`generer*Stream`) or to disk (`genererFacture`). Logo color is extracted at runtime with `sharp`.
+- `FecExportService` — writes accounting entries to `fec_ecritures` when a facture is emitted; exports them as tab-separated text (DGFiP FEC format). **Do not alter column names or order.**
+- `BackupScheduler` — `node-cron` job calling `pg_dump.exe` (path from `PG_BIN` env var). Config stored in `backup_config` table; reloaded via `loadAndSchedule()`.
+- `EmailService` — Nodemailer; uses SMTP config from `entreprise` table if present, otherwise falls back to Ethereal test account auto-created at runtime.
+
+**Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing.
+
+**PDF storage**: `storage/pdf/` — served at `/storage`. Logo is read from `storage/logo/logo_pdf.png` (preferred) or the path in `entreprise.logo_path`.
+
+**File uploads**: Logo is uploaded via `multer` at `POST /api/entreprise/logo` — stored to `storage/logo/logo_pdf.png`.
+
+**Error responses**: All errors go through `src/server/middleware/errorHandler.ts`. Messages containing `INALTÉR` or `ISCA` (immutability/sealing violations from DB triggers) return HTTP 403; everything else returns 500. Response body is always `{ error: string }`.
+
+**Tests**: `@playwright/test` is installed as a devDependency but there is no `npm test` script configured. Playwright tests (if any) must be run directly with `npx playwright test`.
+
+## Document lifecycle and auto-locking
+
+Documents are auto-locked by DB triggers the moment they reach a terminal status — any further UPDATE is blocked.
+
+| Document | Status that triggers lock | Allowed after lock |
+|---|---|---|
+| `devis` | `signe` | nothing (fully locked) |
+| `avenants` | `signe` | nothing |
+| `factures` | `emise` | `statut: emise → payee` only |
+| `acomptes` | `encaisse` | nothing |
+
+The `entreprise_id` column on `clients` and `articles` is **not** in `schema.sql` — it is added by `migration_001_auth.sql`. Always assume it exists at runtime, but be aware raw `schema.sql` alone does not define it.
+
+## Compliance invariants — never bypass
+
+**Immutability triggers**: `BEFORE UPDATE` triggers on `devis`, `factures`, `acomptes`, `avenants` block any modification once `locked = 1`. The only allowed transition on locked factures is `emise → payee`. Triggers are defined in `schema.sql` and re-applied at every startup (idempotent `CREATE OR REPLACE`).
+
+**Sealing chain**: `journal_scellement` rows must never be inserted outside of `ScelleService.scellerDocument()`. The cumulative SHA-256 chain links every document; `verifierChaine()` detects any break. Integrity is verifiable via `GET /api/factures/scellement/verifier`.
+
+**Numbering**: `NumerotationService.getNextNumero()` is the only safe way to allocate document numbers. It uses `ON CONFLICT DO UPDATE` to guarantee no gap and no duplicate, even under concurrent requests.
+
+**FEC**: `fec_ecritures` columns follow the exact DGFiP specification. `FecExportService.exporterCSV()` tab-separates them. Do not rename columns or change their order.
+
+**Archives**: `archive_documents` is immutable (UPDATE and DELETE blocked by triggers). Retention is 10 years.

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FacturPro — Devis & Facturation France</title>
+  <link rel="stylesheet" href="/css/styles.css"/>
+</head>
+<body>
+
+  <!-- Écran de connexion -->
+  <div id="loginOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:40px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.15)">
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="font-size:32px;margin-bottom:8px">⚡</div>
+        <h1 style="margin:0;font-size:22px">FacturPro</h1>
+        <p style="margin:4px 0 0;color:var(--text-muted);font-size:14px">Connexion à votre espace</p>
+      </div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Adresse e-mail</label>
+          <input id="loginEmail" name="email" type="email" required placeholder="vous@exemple.fr" autocomplete="username"/>
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input id="loginPassword" name="password" type="password" required placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+        <button id="loginBtn" class="btn btn-primary" type="submit" style="width:100%;margin-top:8px">Se connecter</button>
+        <div id="loginError" style="margin-top:10px"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sélecteur de société (affiché si multi-société) -->
+  <div id="companyOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:32px;width:100%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+      <h2 style="margin:0 0 20px;font-size:18px">Choisissez votre société</h2>
+      <div id="companyList"></div>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img id="sidebarLogo" src="" alt="logo" style="width:100%;max-width:200px;height:auto;max-height:72px;object-fit:contain;display:none;border-radius:3px"/>
+        <span class="brand-icon" id="brandIcon">⚡</span>
+        <span class="brand-name" id="brandName">FacturPro</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">📊</span> Tableau de bord
+        </a>
+        <a href="#" class="nav-item" data-view="clients" data-perm="clients:r">
+          <span class="nav-icon">👥</span> Clients
+        </a>
+        <a href="#" class="nav-item" data-view="devis" data-perm="devis:r">
+          <span class="nav-icon">📋</span> Devis
+        </a>
+        <a href="#" class="nav-item" data-view="factures" data-perm="factures:r">
+          <span class="nav-icon">🧾</span> Factures
+        </a>
+        <a href="#" class="nav-item" data-view="acomptes" data-perm="acomptes:r">
+          <span class="nav-icon">💰</span> Acomptes
+        </a>
+        <a href="#" class="nav-item" data-view="bons-livraison" data-perm="bl:r">
+          <span class="nav-icon">🚚</span> Bons de livraison
+        </a>
+        <a href="#" class="nav-item" data-view="articles" data-perm="articles:r">
+          <span class="nav-icon">📦</span> Articles
+        </a>
+        <a href="#" class="nav-item" data-view="archives" data-perm="factures:r">
+          <span class="nav-icon">🗄️</span> Archives
+        </a>
+        <a href="#" class="nav-item" data-view="parametres" data-perm="settings:r">
+          <span class="nav-icon">⚙️</span> Paramètres
+        </a>
+      </nav>
+      <div id="sidebarUser" style="margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);font-size:13px"></div>
+    </aside>
+
+    <!-- Overlay sidebar mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div style="display:flex;align-items:center;min-width:0;flex:1;gap:0">
+          <button id="hamburger" aria-label="Menu">
+            <span></span><span></span><span></span>
+          </button>
+          <h1 class="page-title" id="pageTitle">Tableau de bord</h1>
+        </div>
+        <div class="search-wrap" id="searchWrap">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="searchInput" placeholder="Filtrer…" autocomplete="off"/>
+          </div>
+        </div>
+        <div class="topbar-actions" id="topbarActions"></div>
+      </header>
+      <div class="tab-bar" id="tabBar">
+        <div class="tab-strip" id="tabStrip"></div>
+      </div>
+      <div class="tab-panels" id="tabPanels"></div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay" style="display:none">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Titre</h2>
+        <button class="btn-icon" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Modal 2 (imbriquée) -->
+  <div class="modal-overlay" id="modal2Overlay" style="display:none;z-index:1100">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal2Title">Titre</h2>
+        <button class="btn-icon" id="modal2Close">&#x2715;</button>
+      </div>
+      <div class="modal-body" id="modal2Body"></div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

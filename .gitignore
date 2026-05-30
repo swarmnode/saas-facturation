@@ -1,0 +1,29 @@
+node_modules/
+dist/
+database/app.db
+database/app.db-shm
+database/app.db-wal
+storage/pdf/*.pdf
+storage/pdf/*.xml
+storage/archive/*.json
+.env
+*.log
+*.err
+
+# Screenshots et artefacts de test
+*.png
+*.eml
+*.~lock.*
+diag.js
+take_screenshots.js
+test_flux.js
+scripts/
+database/
+
+# Anciens documents
+Manuel_FacturPro.docx
+
+# Installer — artefacts générés (gros binaires, ne pas versionner)
+installer/payload/
+installer/tools/
+installer/FacturPro-Setup.exe

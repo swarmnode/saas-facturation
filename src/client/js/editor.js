@@ -502,11 +502,16 @@ const DocEditor = (() => {
     const markDirty = () => { saveBtn.textContent='Enregistrer'; saveBtn.className='btn btn-primary btn-sm e-save-btn'; saveBtn.disabled=false; saveBtn.style.cursor=''; saveBtn.style.opacity=''; };
     page.addEventListener('input', markDirty);
     page.addEventListener('change', markDirty);
+    // currentId peut évoluer après le premier save (nouveau doc → id attribué)
+    let currentId = id;
+    if (page.dataset.docId) currentId = parseInt(page.dataset.docId);
     saveBtn.onclick = async () => {
       saveBtn.disabled=true; saveBtn.textContent='Enregistrement…';
-      const ok = await saveDoc(type, id, el, page);
-      if (ok) { saveBtn.textContent='✓ Enregistré'; saveBtn.className='btn btn-success btn-sm e-save-btn'; saveBtn.disabled=true; saveBtn.style.cursor='default'; saveBtn.style.opacity='1'; }
-      else { saveBtn.disabled=false; saveBtn.textContent='Enregistrer'; }
+      const ok = await saveDoc(type, currentId, el, page);
+      if (ok) {
+        currentId = parseInt(page.dataset.docId || currentId); // maj si nouveau doc
+        saveBtn.textContent='✓ Enregistré'; saveBtn.className='btn btn-success btn-sm e-save-btn'; saveBtn.disabled=true; saveBtn.style.cursor='default'; saveBtn.style.opacity='1';
+      } else { saveBtn.disabled=false; saveBtn.textContent='Enregistrer'; }
     };
   }
 
@@ -570,13 +575,15 @@ const DocEditor = (() => {
         : await api.post(`/api/${route}`, { ...data, entreprise_id: _entreprise.id });
       if (result?.error) { alert(result.error); return false; }
       if (el.dataset.docKey) clearDraft(el.dataset.docKey);
+      // Stocker l'id pour les saves suivants (évite de créer un nouveau doc à chaque save)
+      if (result?.id) page.dataset.docId = result.id;
       if (result?.numero) {
         const titleEl = el.querySelector('.e-tb-title');
-        if (titleEl) titleEl.textContent = `${DOC_LABELS[type]} ${result.numero}`;
-        const numEl = el.querySelector('.e-doc-numero');
-        if (numEl) numEl.textContent = `N° ${result.numero}`;
-        const tabTitle = document.querySelector(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`);
-        if (tabTitle) tabTitle.textContent = result.numero;
+        const numEl   = el.querySelector('.e-doc-numero');
+        const tabEl   = document.querySelector(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`);
+        if (titleEl) titleEl.textContent = `${DOC_LABELS[type]||type.toUpperCase()} ${result.numero}`;
+        if (numEl)   numEl.textContent   = `N° ${result.numero}`;
+        if (tabEl)   tabEl.textContent   = result.numero;
       }
       return true;
     } catch(e) { alert('Erreur lors de l\'enregistrement'); return false; }

@@ -42,6 +42,14 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Liste factures → bouton '🏦 Prélèvement SEPA' sur sélection cochée
 - Modal : date d'exécution + séquence FRST/RCUR/FNAL/OOFF
 - Vérifications : ICS requis, clients avec IBAN/BIC/RUM/date mandat
+- Feat: mode de règlement par défaut client + sélection SEPA automatique
+
+- Migration 008 : mode_reglement_defaut TEXT sur clients
+- Fiche client : dropdown mode règlement (virement, virement_sepa, prelevement_sepa★, chèque…)
+- Éditeur facture : mode_paiement pré-rempli à la sélection du client
+- Liste factures : bouton '🏦 Sélect. SEPA' filtre les clients prelevement_sepa
+- API /api/factures : inclut mode_reglement_defaut dans le listing
+- Workflow : client → mode_reglement_defaut → facture auto-remplie → SEPA groupé
 
 
 ### Corrigé
@@ -70,6 +78,7 @@ Affecte l'éditeur et les 6 générateurs PDF (facture, aperçu, devis, BL, acom
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

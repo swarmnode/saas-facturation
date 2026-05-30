@@ -2,8 +2,121 @@ import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
+import { PDFDocument as PdfLib, AFRelationship, PDFName } from 'pdf-lib';
 
 const STORAGE_PDF = path.resolve(process.cwd(), 'storage', 'pdf');
+
+// ── Embedding Factur-X XML dans le PDF (post-processing pdf-lib) ───────────
+async function embedFacturXML(pdfPath: string, xmlContent: string): Promise<void> {
+  const pdfBytes = fs.readFileSync(pdfPath);
+  const pdfDoc   = await PdfLib.load(pdfBytes);
+
+  // 1. Attacher le XML avec AFRelationship = Alternative (profil MINIMUM/EN16931)
+  await pdfDoc.attach(
+    Buffer.from(xmlContent, 'utf-8'),
+    'factur-x.xml',
+    {
+      mimeType:         'application/xml',
+      description:      'Factur-X XML invoice',
+      creationDate:     new Date(),
+      modificationDate: new Date(),
+      afRelationship:   AFRelationship.Alternative,
+    }
+  );
+
+  // 2. Ajouter l'entrée /AF au catalogue (Associated Files — requis Factur-X)
+  //    pdf-lib 1.17 ne le fait pas automatiquement, on l'injecte manuellement
+  const catalog = pdfDoc.catalog;
+  const names   = catalog.get(PDFName.of('Names'));
+  if (names) {
+    // Trouver la référence du fichier embarqué dans EmbeddedFiles
+    const embeddedFiles = (names as any).get?.(PDFName.of('EmbeddedFiles'));
+    if (embeddedFiles) {
+      const namesArray = (embeddedFiles as any).get?.(PDFName.of('Names'));
+      if (namesArray && (namesArray as any).array?.length >= 2) {
+        const fileRef = (namesArray as any).array[1];
+        const { PDFArray: PdfArray } = await import('pdf-lib');
+        const afArray = pdfDoc.context.obj([fileRef]);
+        catalog.set(PDFName.of('AF'), afArray);
+      }
+    }
+  }
+
+  // 3. Injecter les métadonnées XMP déclarant PDF/A-3b + profil Factur-X MINIMUM
+  const xmp = buildFacturXXMP();
+  const xmpBytes = Buffer.from(xmp, 'utf-8');
+  const metaStream = pdfDoc.context.stream(xmpBytes, {
+    Type:    'Metadata',
+    Subtype: 'XML',
+    Length:  xmpBytes.length,
+  });
+  pdfDoc.catalog.set(PDFName.of('Metadata'), pdfDoc.context.register(metaStream));
+
+  fs.writeFileSync(pdfPath, await pdfDoc.save());
+}
+
+function buildFacturXXMP(): string {
+  return `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+        xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
+      <pdfaid:part>3</pdfaid:part>
+      <pdfaid:conformance>B</pdfaid:conformance>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#">
+      <fx:DocumentType>INVOICE</fx:DocumentType>
+      <fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>
+      <fx:Version>1.0</fx:Version>
+      <fx:ConformanceLevel>MINIMUM</fx:ConformanceLevel>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#"
+        xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
+      <pdfaSchema:schemas>
+        <rdf:Bag>
+          <rdf:li rdf:parseType="Resource">
+            <pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema>
+            <pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#</pdfaSchema:namespaceURI>
+            <pdfaSchema:prefix>fx</pdfaSchema:prefix>
+            <pdfaSchema:property>
+              <rdf:Seq>
+                <rdf:li rdf:parseType="Resource">
+                  <pdfaProperty:name>DocumentFileName</pdfaProperty:name>
+                  <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+                  <pdfaProperty:category>external</pdfaProperty:category>
+                  <pdfaProperty:description>Nom du fichier XML embarqué</pdfaProperty:description>
+                </rdf:li>
+                <rdf:li rdf:parseType="Resource">
+                  <pdfaProperty:name>DocumentType</pdfaProperty:name>
+                  <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+                  <pdfaProperty:category>external</pdfaProperty:category>
+                  <pdfaProperty:description>INVOICE</pdfaProperty:description>
+                </rdf:li>
+                <rdf:li rdf:parseType="Resource">
+                  <pdfaProperty:name>Version</pdfaProperty:name>
+                  <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+                  <pdfaProperty:category>external</pdfaProperty:category>
+                  <pdfaProperty:description>Version du schéma XML Factur-X</pdfaProperty:description>
+                </rdf:li>
+                <rdf:li rdf:parseType="Resource">
+                  <pdfaProperty:name>ConformanceLevel</pdfaProperty:name>
+                  <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+                  <pdfaProperty:category>external</pdfaProperty:category>
+                  <pdfaProperty:description>Niveau de conformité Factur-X</pdfaProperty:description>
+                </rdf:li>
+              </rdf:Seq>
+            </pdfaSchema:property>
+          </rdf:li>
+        </rdf:Bag>
+      </pdfaSchema:schemas>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`
+;
+}
 
 function formatMontant(n: number): string {
   // Remplace l'espace insécable ( ,  ) par un espace normal
@@ -217,9 +330,9 @@ export class FacturXService {
       stream.on('error', reject);
     });
 
-    // ── Factur-X XML (profil MINIMUM EN 16931) ───────────────────────
-    const xmlPath = filePath.replace('.pdf', '_facturx.xml');
-    fs.writeFileSync(xmlPath, FacturXService.genererXML(facture, entreprise, client), 'utf-8');
+    // ── Factur-X : embedding XML dans le PDF (pdf-lib post-processing) ──
+    const xmlContent = FacturXService.genererXML(facture, entreprise, client);
+    await embedFacturXML(filePath, xmlContent);
 
     return fileName;
   }

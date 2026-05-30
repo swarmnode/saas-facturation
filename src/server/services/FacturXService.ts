@@ -423,34 +423,35 @@ export class FacturXService {
         y += 20;
       });
 
-      // ── Totaux (droite) + Signature avec date (gauche) ancrés en bas ────
-      const bottomY = 700; // position fixe, indépendante du contenu
+      // ── Totaux (droite) + Signature avec date (gauche) ──────────────────
+      // bottomY = haut de la zone : label sig + cadre + mention + totaux doivent tenir < 792pt
+      const bottomY  = 660;
+      const sigBoxX  = 50, sigBoxW = 230, sigBoxH = 70;
+      const sigTop   = bottomY + 14;            // haut du cadre
+      const sigBotY  = sigTop + sigBoxH;        // bas du cadre = 744
 
-      // Signature — gauche (dessinée en premier pour calculer le bas du cadre)
-      const sigBoxX = 50, sigBoxW = 230, sigBoxH = 70;
+      // Signature — gauche
       doc.fontSize(7).font('Helvetica-Bold').fillColor('#555555')
-         .text('BON POUR ACCORD — SIGNATURE DU CLIENT', sigBoxX, bottomY, { width: sigBoxW });
-      const sigTop = bottomY + 14;
+         .text('BON POUR ACCORD — SIGNATURE DU CLIENT', sigBoxX, bottomY, { width: sigBoxW, lineBreak: false });
       doc.rect(sigBoxX, sigTop, sigBoxW, sigBoxH).strokeColor('#BBBBBB').stroke();
-      // Ligne de date à l'intérieur du cadre
       doc.fontSize(8).font('Helvetica').fillColor('#555555')
-         .text('Date :', sigBoxX + 8, sigTop + 8);
-      doc.moveTo(sigBoxX + 40, sigTop + 20).lineTo(sigBoxX + sigBoxW - 10, sigTop + 20).strokeColor('#CCCCCC').stroke();
-      doc.fontSize(7).font('Helvetica-Oblique').fillColor('#aaaaaa')
-         .text('Précédé de la mention « Bon pour accord »', sigBoxX, sigTop + sigBoxH + 4, { width: sigBoxW });
-
-      // Totaux — droite, Total TTC aligné sur le bas du cadre signature
-      const DEVIS_TOTAL_BOTTOM = sigTop + sigBoxH; // = bottomY + 14 + sigBoxH
-      const totDevis = (label: string, val: string, bold = false, yOff: number) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
-           .text(label, 340, DEVIS_TOTAL_BOTTOM - yOff, { width: 126, align: 'left' })
-           .text(val,   470, DEVIS_TOTAL_BOTTOM - yOff, { width:  70, align: 'right' });
-      };
-      totDevis('Total TTC', formatMontant(devis.montant_ttc), true,  0);
-      totDevis('Total TVA', formatMontant(devis.montant_tva), false, 18);
-      totDevis('Total HT',  formatMontant(devis.montant_ht),  false, 36);
-      doc.moveTo(340, DEVIS_TOTAL_BOTTOM - 44).lineTo(545, DEVIS_TOTAL_BOTTOM - 44)
+         .text('Date :', sigBoxX + 8, sigTop + 8, { lineBreak: false });
+      doc.moveTo(sigBoxX + 40, sigTop + 20).lineTo(sigBoxX + sigBoxW - 10, sigTop + 20)
          .strokeColor('#CCCCCC').stroke();
+      doc.fontSize(7).font('Helvetica-Oblique').fillColor('#aaaaaa')
+         .text('Précédé de la mention « Bon pour accord »', sigBoxX, sigBotY + 4,
+               { width: sigBoxW, lineBreak: false });
+
+      // Totaux — droite, Total TTC aligné sur le bas du cadre
+      const totD = (label: string, val: string, bold: boolean, yOff: number) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
+           .text(label, 340, sigBotY - yOff, { width: 126, align: 'left',  lineBreak: false })
+           .text(val,   470, sigBotY - yOff, { width:  70, align: 'right', lineBreak: false });
+      };
+      totD('Total HT',  formatMontant(devis.montant_ht),  false, 36);
+      totD('Total TVA', formatMontant(devis.montant_tva), false, 18);
+      totD('Total TTC', formatMontant(devis.montant_ttc), true,   0);
+      doc.moveTo(340, sigBotY - 44).lineTo(545, sigBotY - 44).strokeColor('#CCCCCC').stroke();
 
       doc.end();
       outputStream.on('finish', resolve);

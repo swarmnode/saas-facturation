@@ -79,6 +79,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -105,6 +106,20 @@ Listes (dashboard, devis, détail) : Voir/Modifier · PDF · Envoyer · 🗑️ 
   - signé (lecture) : 📝 Avenant · 🧾 Facturer · 🚚 BL
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Refactor(A): editor.js réécrit — -400 lignes, architecture unifiée
+
+- ROUTES/LIST_VIEWS/DOC_LABELS : lookup tables remplaçant les ternaires
+- buildLogoHTML() : helper partagé (était dupliqué 3x)
+- buildCompanyHeader() : bloc société partagé (était dupliqué 3x)
+- buildDocHTML() : template unique pour devis/facture/avoir/BL
+  (remplace buildHTML + buildBLHTML)
+- initDoc() : init unifiée pour tous les types
+  (remplace initEditor + wiring openBL inline)
+- saveDoc() : sauvegarde unifiée pour tous les types
+  (remplace saveDoc devis/facture + save BL inline)
+- open() : entrée unique pour tous les types sauf acompte
+  (remplace open + openBL)
+- 1076 → 676 lignes (-37%)
 
 
 ## [2.0.9] — 2026-05-30

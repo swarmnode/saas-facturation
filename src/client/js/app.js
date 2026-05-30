@@ -100,11 +100,11 @@ const DOC_CONFIGS = {
       f.mode_paiement?`${fmt.modePaiement(f.mode_paiement)}<br><small>${fmt.date(f.date_paiement)}</small>`:'—',
     ],
     actions: f => [
-      f.statut==='brouillon' ? btn.success(`emettreFacture(${f.id})`, 'Émettre') : '',
+      ['emise','payee'].includes(f.statut) ? `<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Émis</button>` : '',
       f.statut==='emise'     ? btn.primary(`payerFacture(${f.id})`, '💳 Payer') : '',
       btn.outline(`DocEditor.openFacture(${f.id})`, 'Voir/Modifier'),
       btn.outline(`previewFacture(${f.id})`, '👁 PDF'),
-      btn.outline(`envoyerFacture(${f.id})`, '✉ Envoyer'),
+      f.statut==='brouillon' ? btn.outline(`emettreEtEnvoyer(${f.id})`, 'Émettre & Envoyer') : btn.outline(`envoyerFacture(${f.id})`, '✉ Envoyer'),
       ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? btn.outline(`showBLFromFactureForm(${f.id})`, '🚚 BL') : '',
       ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? btn.outline(`DocEditor.openAvoir(${f.id})`, 'Avoir') : '',
     ],
@@ -1794,6 +1794,14 @@ async function emettreFacture(id) {
   const d = await r.json();
   if (d.error) alert('Erreur : ' + d.error);
   tabMgr.openViewTab('factures');
+}
+
+async function emettreEtEnvoyer(id) {
+  if (!confirm('Émettre cette facture ? Elle sera verrouillée définitivement.')) return;
+  const r = await api.post(`/api/factures/${id}/emettre`);
+  if (r?.error) { alert(r.error); return; }
+  tabMgr.openViewTab('factures');
+  setTimeout(() => envoyerFacture(id), 400);
 }
 
 async function payerFacture(id) {

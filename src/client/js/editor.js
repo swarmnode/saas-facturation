@@ -322,7 +322,7 @@ const DocEditor = (() => {
 
     // Zone bas : totaux + signature
     const bottomLeft = isBL ? `
-      <div class="e-signature-label">Signature du destinataire — Bon pour accord de réception</div>
+      <div class="e-signature-label">Signature du destinataire</div>
       <div class="e-sig-dated-box"><div class="e-sig-date-row"><span class="e-sig-date-label">Date :</span><span class="e-sig-date-line"></span></div><div class="e-sig-space"></div></div>`
     : !isFacture ? `
       <div class="e-signature-label">Bon pour accord — Signature du client</div>

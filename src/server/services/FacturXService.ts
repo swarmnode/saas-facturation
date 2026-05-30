@@ -562,7 +562,7 @@ export class FacturXService {
       const sigY = 695; // position fixe
       doc.moveTo(50, sigY).lineTo(545, sigY).strokeColor('#CCCCCC').stroke();
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#555555')
-         .text('SIGNATURE DU DESTINATAIRE — BON POUR ACCORD DE RÉCEPTION', 50, sigY + 10, { width: W });
+         .text('SIGNATURE DU DESTINATAIRE', 50, sigY + 10, { width: W });
       // Ligne de date
       doc.fontSize(8).font('Helvetica').fillColor('#555555').text('Date :', 50, sigY + 26);
       doc.moveTo(90, sigY + 38).lineTo(340, sigY + 38).strokeColor('#CCCCCC').stroke();

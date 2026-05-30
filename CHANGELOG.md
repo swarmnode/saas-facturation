@@ -5,8 +5,19 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix: Express v5 catch-all route + Voir/Modifier + bouton imprimer
+
+- Express 5 : 'app.get(*' → 'app.get(/{*path}' (Dependabot upgrade)
+- Boutons 'Modifier' → 'Voir/Modifier' (non verrouillé) / 'Voir' (verrouillé)
+- Bouton 🖨️ dans tous les éditeurs WYSIWYG (devis, facture, BL, acompte)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications

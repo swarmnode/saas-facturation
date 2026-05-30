@@ -5,8 +5,16 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: boutons Émettre + Envoyer dans l'éditeur WYSIWYG pour les factures brouillon
+
+
 ### Corrigé
 - Fix: bouton Enregistrer commence en '✓ Enregistré' pour les docs existants
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ## [2.1.81] — 2026-05-30

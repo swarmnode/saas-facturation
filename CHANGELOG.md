@@ -45,10 +45,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: conserver l'ordre des onglets au rafraîchissement (activateByKey)
 - Fix: npm run build copie automatiquement src/client → dist/client
+- Fix: cache-busting sur scripts JS/CSS
 
 
 ### Documentation
 - Docs: link CHANGELOG in README, mention v2.0.9
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -5,6 +5,17 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: icone FacturPro (SVG + ICO multi-resolution)
+
+- facturpro.svg : document blanc + lettre F + badge euro vert
+- facturpro.ico : 7 resolutions (16 a 256px) via sharp
+- index.html : favicon <link rel="icon">
+- FacturPro.iss : SetupIconFile, UninstallDisplayIcon, raccourcis bureau/menu
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
 - Docs: mise à jour manuel utilisateur v2.0-v2.2
 
@@ -20,6 +31,7 @@ Couvre toutes les fonctionnalités ajoutées depuis v2.0 :
 - Factur-X EN 16931 explicité en section conformité
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ## [2.2.129] — 2026-05-30

@@ -426,20 +426,7 @@ export class FacturXService {
       // ── Totaux (droite) + Signature avec date (gauche) ancrés en bas ────
       const bottomY = 700; // position fixe, indépendante du contenu
 
-      // Totaux — droite
-      let ty = bottomY;
-      const totDevis = (label: string, val: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-           .fillColor('#000000')
-           .text(label, 340, ty, { width: 126, align: 'left' })
-           .text(val,   470, ty, { width:  70, align: 'right' });
-        ty += 16;
-      };
-      totDevis('Total HT',  formatMontant(devis.montant_ht));
-      totDevis('Total TVA', formatMontant(devis.montant_tva));
-      totDevis('Total TTC', formatMontant(devis.montant_ttc), true);
-
-      // Signature — gauche
+      // Signature — gauche (dessinée en premier pour calculer le bas du cadre)
       const sigBoxX = 50, sigBoxW = 230, sigBoxH = 70;
       doc.fontSize(7).font('Helvetica-Bold').fillColor('#555555')
          .text('BON POUR ACCORD — SIGNATURE DU CLIENT', sigBoxX, bottomY, { width: sigBoxW });
@@ -451,6 +438,19 @@ export class FacturXService {
       doc.moveTo(sigBoxX + 40, sigTop + 20).lineTo(sigBoxX + sigBoxW - 10, sigTop + 20).strokeColor('#CCCCCC').stroke();
       doc.fontSize(7).font('Helvetica-Oblique').fillColor('#aaaaaa')
          .text('Précédé de la mention « Bon pour accord »', sigBoxX, sigTop + sigBoxH + 4, { width: sigBoxW });
+
+      // Totaux — droite, Total TTC aligné sur le bas du cadre signature
+      const DEVIS_TOTAL_BOTTOM = sigTop + sigBoxH; // = bottomY + 14 + sigBoxH
+      const totDevis = (label: string, val: string, bold = false, yOff: number) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
+           .text(label, 340, DEVIS_TOTAL_BOTTOM - yOff, { width: 126, align: 'left' })
+           .text(val,   470, DEVIS_TOTAL_BOTTOM - yOff, { width:  70, align: 'right' });
+      };
+      totDevis('Total TTC', formatMontant(devis.montant_ttc), true,  0);
+      totDevis('Total TVA', formatMontant(devis.montant_tva), false, 18);
+      totDevis('Total HT',  formatMontant(devis.montant_ht),  false, 36);
+      doc.moveTo(340, DEVIS_TOTAL_BOTTOM - 44).lineTo(545, DEVIS_TOTAL_BOTTOM - 44)
+         .strokeColor('#CCCCCC').stroke();
 
       doc.end();
       outputStream.on('finish', resolve);

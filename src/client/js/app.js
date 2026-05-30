@@ -474,7 +474,7 @@ async function renderDashboard(el) {
         btns = `
           <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 PDF</button>
           <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
-          `<button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>`
+          <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
           ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
           ${d.statut === 'signe'  ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
@@ -726,7 +726,7 @@ function tableDevis(list, withActions = false) {
           
           <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 Aperçu PDF</button>
           <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
-          `<button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>`
+          <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
           <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉ Envoyer</button>
           ${d.statut === 'envoye'   ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">Signer</button>` : ''}
           ${d.statut === 'signe'    ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">Avenant</button>` : ''}
@@ -1108,7 +1108,7 @@ async function showDevisDetail(id) {
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="previewDevis(${d.id})">👁 Aperçu PDF</button>
             <button class="btn btn-outline btn-sm" onclick="dupliquerDevis(${d.id})">⧉ Dupliquer</button>
-            `<button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>`
+            <button class="btn btn-outline btn-sm" onclick="DocEditor.openDevis(${d.id})">${!d.locked ? "Voir/Modifier" : "Voir"}</button>
             <button class="btn btn-outline btn-sm" onclick="envoyerDevis(${d.id})">✉️ Envoyer</button>
             ${d.statut === 'envoye' ? `<button class="btn btn-success btn-sm" onclick="signerDevis(${d.id})">✅ Signer</button>` : ''}
             ${d.statut === 'signe' ? `<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${d.id})">📝 Avenant</button>` : ''}

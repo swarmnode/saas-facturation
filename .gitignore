@@ -17,8 +17,8 @@ storage/archive/*.json
 diag.js
 take_screenshots.js
 test_flux.js
-scripts/
-database/
+/scripts/
+/database/
 
 # Anciens documents
 Manuel_FacturPro.docx

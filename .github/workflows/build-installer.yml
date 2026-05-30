@@ -1,0 +1,52 @@
+name: Build Installer
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Inno Setup 6
+        run: choco install innosetup --no-progress -y
+        shell: powershell
+
+      - name: Cache Node.js portable + NSSM
+        uses: actions/cache@v4
+        with:
+          path: installer/tools
+          key: installer-tools-node20.19.1-nssm2.24
+
+      - name: Build payload (npm + tsc + Node portable + NSSM)
+        run: .\installer\build.ps1
+        shell: powershell
+
+      - name: Compile installer (.iss → .exe)
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\FacturPro.iss'
+        shell: powershell
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FacturPro-Setup
+          path: installer/FacturPro-Setup.exe
+          retention-days: 30
+
+      - name: Attach to GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ github.ref_name }} installer\FacturPro-Setup.exe --clobber
+        shell: powershell

@@ -510,11 +510,28 @@ const DocEditor = (() => {
           ins(btn('🚚 BL', 'btn-outline', () => showBLFromDevisForm(id)));
         } else {
           // brouillon ou envoye : bouton Accepter blanc cliquable
-          ins(btn('Accepter', 'btn-outline', async () => {
+          const accepterBtn = btn('Accepter', 'btn-outline', async () => {
+            accepterBtn.disabled = true;
+            accepterBtn.textContent = '…';
             const r = await api.post(`/api/devis/${id}/accepter`);
-            if (r?.error) return alert(r.error);
-            tabMgr.closeTab(el.dataset.tid); tabMgr.openViewTab('devis');
-          }));
+            if (r?.error) {
+              alert(r.error);
+              accepterBtn.disabled = false;
+              accepterBtn.textContent = 'Accepter';
+              return;
+            }
+            // Mise à jour en place : Accepter → ✓ Accepté + → BL
+            accepterBtn.textContent = '✓ Accepté';
+            accepterBtn.className = 'btn btn-success btn-sm';
+            accepterBtn.disabled = true;
+            accepterBtn.style.cursor = 'default';
+            accepterBtn.style.opacity = '1';
+            const blBtn = btn('🚚 → BL', 'btn-primary', () => showBLFromDevisForm(id));
+            tbRight.insertBefore(blBtn, accepterBtn.nextSibling);
+            const facturerBtn = btn('🧾 Facturer', 'btn-outline', () => showFactureFromDevisForm(id));
+            tbRight.insertBefore(facturerBtn, blBtn.nextSibling);
+          });
+          ins(accepterBtn);
           if (s === 'envoye') {
             ins(btn('Signer', 'btn-outline', async () => {
               if (!confirm('Signer ce devis ? Il sera verrouillé.')) return;

@@ -148,6 +148,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Ux: raccourcis clavier francais — Ctrl+E (Enregistrer), Ctrl+I (Imprimer)
 
 
 ## [2.6.186] — 2026-05-31

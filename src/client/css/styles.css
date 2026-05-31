@@ -419,6 +419,12 @@ tr.row-actions:hover td { background: transparent; }
 /* A4 paper */
 .a4-page { width:794px; min-height:1100px; background:#fff; box-shadow:0 4px 32px rgba(0,0,0,.22); padding:50px 50px 190px; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:10pt; color:#1a1a1a; position:relative; }
 
+/* Page break indicator (WYSIWYG) */
+.e-page-break td { padding:0 !important; background:transparent !important; border:none !important; }
+.e-page-break-inner { position:relative; height:48px; display:flex; align-items:center; justify-content:center; margin:0 -55px; }
+.e-page-break-inner::before { content:''; position:absolute; left:0; right:0; top:50%; border-top:2px dashed #94a3b8; }
+.e-page-break-label { background:#f1f5f9; color:#64748b; font-size:7.5pt; font-weight:600; padding:2px 14px; border-radius:10px; position:relative; z-index:1; letter-spacing:.06em; border:1px solid #cbd5e1; }
+
 /* Header */
 .e-page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
 .e-company-name { font-size:15pt; font-weight:700; margin-bottom:4px; }

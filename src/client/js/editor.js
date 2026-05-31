@@ -142,6 +142,39 @@ const DocEditor = (() => {
       : '';
   }
 
+  // Insère des indicateurs visuels de saut de page A4 dans le tableau des lignes.
+  // Appelé après chaque modification de lignes (ajout, suppression, chargement initial).
+  function refreshPageBreaks(el) {
+    const page  = el.querySelector('.a4-page');
+    const tbody = el.querySelector('.e-lignes-body');
+    if (!page || !tbody) return;
+
+    tbody.querySelectorAll('.e-page-break').forEach(r => r.remove());
+
+    const PAGE_PX   = 1122; // A4 à 96dpi : 297mm
+    const FOOTER_PX = 190;  // zone réservée signature + totaux
+    const cols = tbody.closest('table')?.querySelectorAll('thead th').length || 7;
+
+    const pageRect  = page.getBoundingClientRect();
+    const rows = Array.from(tbody.querySelectorAll('tr:not(.e-page-break)'));
+    if (!rows.length) return;
+
+    let pageNum = 1;
+    let breakAt = PAGE_PX - FOOTER_PX; // 932px : première limite
+
+    for (const row of rows) {
+      const rowBottom = row.getBoundingClientRect().bottom - pageRect.top;
+      if (rowBottom > breakAt) {
+        pageNum++;
+        const brk = document.createElement('tr');
+        brk.className = 'e-page-break';
+        brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
+        tbody.insertBefore(brk, row);
+        breakAt += PAGE_PX;
+      }
+    }
+  }
+
   function buildCompanyHeader(entreprise) {
     return `
       <div class="e-page-header">
@@ -255,7 +288,10 @@ const DocEditor = (() => {
       <td class="e-td-tva"><select class="e-cell e-tva-sel">${tvaOpts}</select></td>
       <td class="e-td-total e-ligne-total">${fmt(l.montant_ht||0)}</td>
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
-    tr.querySelector('.e-del-btn').onclick=()=>{tr.remove();calcTotaux(page);};
+    tr.querySelector('.e-del-btn').onclick=()=>{
+      tr.remove(); calcTotaux(page);
+      const edEl=page.closest('.e-editor-panel'); if(edEl) requestAnimationFrame(()=>refreshPageBreaks(edEl));
+    };
     tr.querySelectorAll('.e-qty,.e-pu,.e-remise,.e-tva-sel').forEach(i=>i.addEventListener('input',()=>{calcLigne(tr);calcTotaux(page);}));
     const desig=tr.querySelector('.e-desig');
     attachArticleAutocomplete(desig,tr.querySelector('.e-pu'),tr.querySelector('.e-tva-sel'));
@@ -280,7 +316,10 @@ const DocEditor = (() => {
       <td class="e-td-num"><input class="e-cell e-qty" type="number" style="text-align:right" value="${l.quantite||1}" min="0.001" step="0.001"${l._stock!=null?` max="${l._stock}"`:''}></td>
       <td class="e-td-tva"><input class="e-cell e-unite" value="${l.unite||''}" placeholder="heure…"></td>
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
-    tr.querySelector('.e-del-btn').onclick=()=>tr.remove();
+    tr.querySelector('.e-del-btn').onclick=()=>{
+      tr.remove();
+      const edEl=page.closest('.e-editor-panel'); if(edEl) requestAnimationFrame(()=>refreshPageBreaks(edEl));
+    };
     const desig=tr.querySelector('.e-desig');
     attachArticleAutocomplete(desig,null,null,tr.querySelector('.e-unite'));
     desig.addEventListener('article-selected',e=>{const art=e.detail;if(art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}});
@@ -442,9 +481,10 @@ const DocEditor = (() => {
     lignes.forEach(l => {
       const row = makeRow(l);
       tbody.appendChild(row);
-      if (!isBL) calcLigne(row); // met à jour la cellule Total HT de chaque ligne
+      if (!isBL) calcLigne(row);
     });
     if (!isBL) calcTotaux(page);
+    requestAnimationFrame(() => refreshPageBreaks(el));
 
     if (readonly) {
       // Mode lecture
@@ -462,6 +502,7 @@ const DocEditor = (() => {
         tbody.appendChild(row);
         calcLigne(row); calcTotaux(page);
         row.querySelector('.e-desig').focus();
+        requestAnimationFrame(() => refreshPageBreaks(el));
       };
 
       const previewBtn = el.querySelector('.e-preview-btn');

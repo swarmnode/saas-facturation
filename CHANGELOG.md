@@ -44,6 +44,20 @@ Frontend (app.js)
 - Balance agee : resume par tranche code couleur + detail tabele
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: stats completes — montant moyen, pipeline, top clients, delai acceptation
+
+Backend
+- /api/stats/kpis : + montant_moyen_ht, delai_moyen_acceptation (180j)
+- /api/stats/pipeline : entonnoir brouillons → envoyes → acceptes → factures
+- /api/stats/top-clients : top 10 par CA HT sur l'annee, avec part %
+
+Frontend
+- 6 KPI cards : CA facture, montant moyen, encaisse, en attente, retard, conversion+delai
+- Pipeline commercial : 4 etapes avec montants et fleches
+- Top clients : barres horizontales, rouge si concentration >= 30%
+- Layout en grille : KPIs + Pipeline/Balance + Graphique/Top + Balance detail
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -53,6 +67,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

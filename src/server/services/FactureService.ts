@@ -12,6 +12,7 @@ export interface FactureInput {
   devis_id?: number;
   facture_origine_id?: number;
   type_facture?: string;
+  type_avoir?: string;
   date_echeance?: string;
   conditions_paiement?: string;
   mode_paiement?: string;
@@ -64,12 +65,13 @@ export class FactureService {
       const numero  = await NumerotationService.getNextNumero(typeDoc, input.entreprise_id);
       const ins = await client.query(`
         INSERT INTO factures (numero, client_id, entreprise_id, devis_id, facture_origine_id, type_facture,
-          date_echeance, conditions_paiement, mode_paiement, notes, tva_mode,
+          type_avoir, date_echeance, conditions_paiement, mode_paiement, notes, tva_mode,
           montant_ht, montant_tva, montant_ttc)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         RETURNING id
       `, [numero, input.client_id, input.entreprise_id, input.devis_id ?? null,
           input.facture_origine_id ?? null, input.type_facture ?? 'standard',
+          input.type_avoir ?? 'valoir',
           input.date_echeance ?? null, input.conditions_paiement ?? null,
           input.mode_paiement ?? null, input.notes ?? null, input.tva_mode ?? 'normal',
           totaux.ht, totaux.tva, totaux.ttc]);
@@ -108,6 +110,63 @@ export class FactureService {
 
   static async listerAvoirs(entreprise_id: number) {
     return this.lister(entreprise_id, 'avoir');
+  }
+
+  static async mettreAJour(id: number, input: Partial<FactureInput>) {
+    const cur = await this.obtenir(id);
+    if (!cur) throw new Error('Facture introuvable');
+    if ((cur as any).locked) throw new Error('INALTÉRABILITÉ : cette facture est verrouillée.');
+
+    const tvaRes = await query('SELECT id, taux FROM taux_tva');
+    const tvaMap = new Map<number, number>(tvaRes.rows.map((r: any) => [r.id, r.taux]));
+
+    const lignes = input.lignes ?? (cur as any).lignes ?? [];
+    const lignesCalculees = lignes.map((l: any, i: number) => {
+      const taux   = tvaMap.get(l.taux_tva_id) ?? l.taux_tva_valeur ?? 0;
+      const remise = l.remise_pct ?? 0;
+      const mHT    = Math.round(l.quantite * l.prix_unitaire_ht * (1 - remise / 100) * 100) / 100;
+      const mTVA   = Math.round(mHT * taux) / 100;
+      return { ...l, position: i + 1, taux_tva_valeur: taux,
+               montant_ht: mHT, montant_tva: mTVA, montant_ttc: mHT + mTVA };
+    });
+    const totaux = lignesCalculees.reduce(
+      (acc: any, l: any) => ({ ht: acc.ht + l.montant_ht, tva: acc.tva + l.montant_tva, ttc: acc.ttc + l.montant_ttc }),
+      { ht: 0, tva: 0, ttc: 0 }
+    );
+
+    return withTransaction(async (client) => {
+      await client.query(`
+        UPDATE factures SET
+          client_id=$1, date_echeance=$2, conditions_paiement=$3, mode_paiement=$4,
+          notes=$5, tva_mode=$6, type_avoir=$7, objet=$8,
+          montant_ht=$9, montant_tva=$10, montant_ttc=$11, updated_at=NOW()
+        WHERE id=$12 AND locked=0
+      `, [
+        input.client_id ?? (cur as any).client_id,
+        input.date_echeance ?? null,
+        input.conditions_paiement ?? null,
+        input.mode_paiement ?? null,
+        input.notes ?? null,
+        input.tva_mode ?? (cur as any).tva_mode,
+        input.type_avoir ?? (cur as any).type_avoir ?? 'valoir',
+        (input as any).objet ?? (cur as any).objet ?? null,
+        totaux.ht, totaux.tva, totaux.ttc, id,
+      ]);
+
+      await client.query('DELETE FROM factures_lignes WHERE facture_id = $1', [id]);
+      for (const l of lignesCalculees) {
+        await client.query(`
+          INSERT INTO factures_lignes (facture_id, position, designation, description,
+            quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
+            montant_ht, montant_tva, montant_ttc, numero_serie)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        `, [id, l.position, l.designation, l.description ?? null,
+            l.quantite, l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, l.taux_tva_valeur,
+            l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
+            l.numero_serie ?? null]);
+      }
+      return this.obtenir(id);
+    });
   }
 
   static async obtenir(id: number) {

@@ -419,12 +419,28 @@ const DocEditor = (() => {
         <option value="franchise_293b" ${doc?.tva_mode==='franchise_293b'?'selected':''}>Franchise 293 B</option>
         <option value="autoliquidation" ${doc?.tva_mode==='autoliquidation'?'selected':''}>Autoliquidation</option>
       </select></div>
-      ${isPaid
+      ${isAvoir ? `
+        <div class="e-meta-row"><span class="e-meta-label">Type d'avoir</span>
+          <select class="e-meta-sel" name="type_avoir"
+            onchange="(sel=>{const r=sel.closest('.a4-page').querySelector('.e-avoir-reglement');if(r)r.style.display=sel.value==='remboursement'?'':'none';})(this)">
+            <option value="valoir"        ${(doc?.type_avoir||'valoir')==='valoir'        ?'selected':''}>À valoir sur prochaine facture</option>
+            <option value="remboursement" ${doc?.type_avoir==='remboursement'             ?'selected':''}>Remboursement au client</option>
+          </select>
+        </div>
+        <div class="e-avoir-reglement" style="display:${doc?.type_avoir==='remboursement'?'':'none'}">
+          <div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span>
+            <select class="e-meta-sel" name="mode_paiement">
+              <option value="">— Non précisé —</option>
+              ${MODES_PAIEMENT.map(([lbl,v])=>`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${lbl}</option>`).join('')}
+            </select>
+          </div>
+        </div>`
+      : isPaid
         ? `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><span style="font-size:9pt;color:#2e7d32;font-weight:600">${(MODES_PAIEMENT.find(([,v])=>v===doc?.mode_paiement)||[doc?.mode_paiement||'—'])[0]}</span></div>`
         : `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><select class="e-meta-sel" name="mode_paiement">
-        <option value="">— Non précisé —</option>
-        ${MODES_PAIEMENT.map(([label,v])=>`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${label}</option>`).join('')}
-      </select></div>`
+            <option value="">— Non précisé —</option>
+            ${MODES_PAIEMENT.map(([lbl,v])=>`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${lbl}</option>`).join('')}
+          </select></div>`
       }`
     : `
       <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.objet||'').replace(/"/g,'&quot;')}" placeholder="Objet du document…"></div>
@@ -737,10 +753,19 @@ const DocEditor = (() => {
       data.date_emission       = page.querySelector('[name=date_emission]')?.value||undefined;
       data.date_echeance       = page.querySelector('[name=date_echeance]')?.value||undefined;
       data.tva_mode            = page.querySelector('[name=tva_mode]')?.value||'normal';
-      data.mode_paiement       = page.querySelector('[name=mode_paiement]')?.value||undefined;
       data.conditions_paiement = page.querySelector('[name=conditions_paiement]')?.innerText.trim()||undefined;
       data.notes               = page.querySelector('[name=notes]')?.innerText.trim()||undefined;
-      if (type==='avoir') { data.type_facture='avoir'; data.facture_origine_id=page.dataset.factureOrigineId?parseInt(page.dataset.factureOrigineId):undefined; }
+      if (type==='avoir') {
+        data.type_facture = 'avoir';
+        data.facture_origine_id = page.dataset.factureOrigineId ? parseInt(page.dataset.factureOrigineId) : undefined;
+        data.type_avoir   = page.querySelector('[name=type_avoir]')?.value || 'valoir';
+        // mode de règlement uniquement pour les remboursements
+        data.mode_paiement = data.type_avoir === 'remboursement'
+          ? (page.querySelector('[name=mode_paiement]')?.value || undefined)
+          : undefined;
+      } else {
+        data.mode_paiement = page.querySelector('[name=mode_paiement]')?.value || undefined;
+      }
     }
 
     try {

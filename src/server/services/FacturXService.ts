@@ -276,6 +276,8 @@ export class FacturXService {
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
       if (isAvoir && facture.facture_origine_numero)
         doc.text(`Avoir sur facture : ${facture.facture_origine_numero}`, 50, titleY + 46);
+      if (isAvoir && facture.type_avoir === 'remboursement')
+        doc.text(`Remboursement au client`, 50, titleY + 58);
       if (facture.date_echeance && !isAvoir && facture.statut !== 'payee')
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)
@@ -696,6 +698,8 @@ export class FacturXService {
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
       if (isAvoirFS && facture.facture_origine_numero)
         doc.text(`Avoir sur facture : ${facture.facture_origine_numero}`, 50, titleY + 46);
+      if (isAvoirFS && facture.type_avoir === 'remboursement')
+        doc.text(`Remboursement au client`, 50, titleY + 58);
       if (facture.date_echeance && !isAvoirFS && facture.statut !== 'payee')
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)

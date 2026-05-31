@@ -47,6 +47,10 @@ router.post('/', requirePerm('factures:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+router.put('/:id', requirePerm('factures:w'), async (req, res, next) => {
+  try { res.json(await FactureService.mettreAJour(Number(req.params.id), req.body)); } catch(e) { next(e); }
+});
+
 router.post('/:id/emettre', requirePerm('factures:w'), async (req, res, next) => {
   try { res.json(await FactureService.emettre(Number(req.params.id))); } catch(e) { next(e); }
 });

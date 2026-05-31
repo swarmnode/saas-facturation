@@ -143,7 +143,8 @@ const DocEditor = (() => {
   }
 
   // Insère des indicateurs visuels de saut de page A4 dans le tableau des lignes.
-  // Utilise la même logique que FacturXService (en points PDF) selon le type de document.
+  // - devis/facture/avoir : calcul en points PDF (miroir de FacturXService)
+  // - bl : mesure DOM réelle (les descriptions sont visibles et rendent les lignes plus hautes)
   function refreshPageBreaks(el, type) {
     const page  = el.querySelector('.a4-page');
     const tbody = el.querySelector('.e-lignes-body');
@@ -151,36 +152,52 @@ const DocEditor = (() => {
 
     tbody.querySelectorAll('.e-page-break').forEach(r => r.remove());
 
-    // Constantes par type — miroir de FacturXService
-    const isBL = type === 'bl';
-    const PAGE_SAFE_BOT = isBL ? 690 : 642; // BL sigY=695, autres 642
-    const CONT_TOP      = 60;
-    const ROW_H_PT      = 20;
-    const ROW_H_DESC_PT = 32; // avec description (non applicable aux BL)
-
-    const hasLogo = !!page.querySelector('.e-logo');
-    const sepY    = hasLogo ? 185 : 150;
-    const startY  = sepY + 100;
-
     const cols = tbody.closest('table')?.querySelectorAll('thead th').length || 7;
     const rows = Array.from(tbody.querySelectorAll('tr:not(.e-page-break)'));
+    if (!rows.length) return;
 
-    let y = startY;
     let pageNum = 1;
 
-    for (const row of rows) {
-      const hasDesc = !isBL && !!(row.dataset.desc);
-      const rowH    = hasDesc ? ROW_H_DESC_PT : ROW_H_PT;
+    if (type === 'bl') {
+      // Mesure DOM : les lignes BL affichent la description en clair → hauteur variable
+      const PAGE_PX   = 1122; // A4 à 96dpi
+      const FOOTER_PX = 160;  // zone signature BL (e-doc-bottom) + marge
+      const pageRect  = page.getBoundingClientRect();
+      let breakAt = PAGE_PX - FOOTER_PX; // 962px
 
-      if (y + rowH > PAGE_SAFE_BOT) {
-        pageNum++;
-        const brk = document.createElement('tr');
-        brk.className = 'e-page-break';
-        brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
-        tbody.insertBefore(brk, row);
-        y = CONT_TOP;
+      for (const row of rows) {
+        const rowBottom = row.getBoundingClientRect().bottom - pageRect.top;
+        if (rowBottom > breakAt) {
+          pageNum++;
+          const brk = document.createElement('tr');
+          brk.className = 'e-page-break';
+          brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
+          tbody.insertBefore(brk, row);
+          breakAt += PAGE_PX;
+        }
       }
-      y += rowH;
+    } else {
+      // Calcul PDF en points (miroir de FacturXService) pour devis/facture/avoir
+      const PAGE_SAFE_BOT = 642;
+      const CONT_TOP      = 60;
+      const ROW_H_PT      = 20;
+      const ROW_H_DESC_PT = 32;
+      const hasLogo = !!page.querySelector('.e-logo');
+      const startY  = (hasLogo ? 185 : 150) + 100;
+
+      let y = startY;
+      for (const row of rows) {
+        const rowH = row.dataset.desc ? ROW_H_DESC_PT : ROW_H_PT;
+        if (y + rowH > PAGE_SAFE_BOT) {
+          pageNum++;
+          const brk = document.createElement('tr');
+          brk.className = 'e-page-break';
+          brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
+          tbody.insertBefore(brk, row);
+          y = CONT_TOP;
+        }
+        y += rowH;
+      }
     }
   }
 
@@ -317,6 +334,7 @@ const DocEditor = (() => {
   function makeBLRow(l={}, page) {
     const stockBadge=l._stock!=null?`<span class="e-stock-badge" title="Stock">${l._stock}</span>`:'';
     const tr=document.createElement('tr'); tr.className='e-ligne-row';
+    if (l.description) tr.dataset.desc = '1';
     tr.innerHTML=`
       <td class="e-td-desig">
         <div style="display:flex;align-items:center;gap:4px"><input class="e-cell e-desig" value="${(l.designation||'').replace(/"/g,'&quot;')}" placeholder="Désignation…" style="flex:1">${stockBadge}</div>

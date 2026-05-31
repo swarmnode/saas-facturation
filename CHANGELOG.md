@@ -218,9 +218,17 @@ Correction automatique prelevement_sepa -> virement_sepa :
 - FactureService.mettreAJour() : correction a la sauvegarde
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: fermer l'onglet du document supprime
+
+tabMgr.closeTabByDocId(id) : cherche le tab doc avec docId===id et le ferme.
+Appele avant openViewTab() dans toutes les fonctions de suppression :
+deleteDevis, deleteAvoir, deleteAcompte, supprimerBL, deleteClient, deleteArticle
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

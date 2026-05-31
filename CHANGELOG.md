@@ -26,6 +26,24 @@ Format CSV articles : Reference;Designation;Description;Unite;Prix_HT;
 Format CSV clients : Type;Raison_sociale;...;Adresse;Code_postal;Ville;...
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: page Statistiques — KPIs, balance agee, evolution CA 12 mois
+
+Backend (src/server/routes/stats.ts)
+- GET /api/stats/kpis?periode=mois|trimestre|annee
+  CA facture HT/TTC, encaisse, en attente, en retard, taux conversion devis
+- GET /api/stats/balance-agee
+  Creances emises non payees + synthese par tranche (non echu / 1-30j / 31-60j / 61-90j / 90j+)
+- GET /api/stats/evolution
+  CA facture HT vs encaisse HT par mois sur 12 mois glissants (avoirs deduits)
+
+Frontend (app.js)
+- Rubrique 'Statistiques' dans la barre de navigation (icone graphe)
+- renderStats(el) : 5 KPI cards + graphique SVG barres 12 mois + balance agee
+- Selecteur de periode (mois / trimestre / annee) sur les KPIs
+- Graphique SVG natif (pas de dependance externe)
+- Balance agee : resume par tranche code couleur + detail tabele
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -35,6 +53,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

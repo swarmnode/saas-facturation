@@ -33,9 +33,21 @@ WYSIWYG (editor.js + styles.css)
 - CSS : ligne pointillee grise + label 'Page N' pour chaque coupure
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: sauts de page WYSIWYG alignes sur la logique PDF (en points)
+
+Remplace la mesure CSS par une simulation identique a FacturXService :
+- PAGE_SAFE_BOT=642pt, CONT_TOP=60pt, ROW_H=20pt, ROW_H_DESC=32pt
+- startY = sepY+100 (250pt sans logo, 285pt avec)
+- Meme algorithme que la boucle forEach du PDF : si y+rowH > PAGE_SAFE_BOT
+  → insere le separateur, repart a y=CONT_TOP sur la page suivante
+- data-desc='1' sur les tr avec description pour capter le bon rowH
+- Le saut de page WYSIWYG correspond desormais exactement au saut PDF
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

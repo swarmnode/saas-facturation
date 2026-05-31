@@ -28,9 +28,14 @@ Format CSV clients : Type;Raison_sociale;...;Adresse;Code_postal;Ville;...
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
+### Corrigé
+- Fix: label import CSV en casse normale (text-transform:none)
+
+
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ## [2.6.186] — 2026-05-31

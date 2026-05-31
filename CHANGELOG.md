@@ -160,9 +160,21 @@ refreshPageBreaks(el, type) :
 makeBLRow : data-desc='1' si la ligne a une description (coherence)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: saut de page BL WYSIWYG — break apres les lignes si notes debordent
+
+Retour au calcul PDF en points pour les BL (PAGE_SAFE_BOT=690pt, ROW_H=20pt).
+Apres la boucle lignes : si y + NOTES_MARGIN(50pt) > PAGE_SAFE_BOT,
+la section notes+signature deborde -> break insere apres la derniere ligne.
+
+Pour BL-2026-0015 (20 lignes) :
+  y = 272 + 20x20 = 672pt, 672+50=722 > 690 -> break apres ligne 20
+Correspond au PDF : lignes sur page 1, notes+signature sur page 2.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

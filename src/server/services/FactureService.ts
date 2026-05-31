@@ -61,8 +61,12 @@ export class FactureService {
     );
 
     return withTransaction(async (client) => {
-      const typeDoc = input.type_facture === 'avoir' ? 'AVOIR' : 'FACTURE';
-      const numero  = await NumerotationService.getNextNumero(typeDoc, input.entreprise_id);
+      const typeDoc   = input.type_facture === 'avoir' ? 'AVOIR' : 'FACTURE';
+      const numero    = await NumerotationService.getNextNumero(typeDoc, input.entreprise_id);
+      const typeAvoir = input.type_avoir ?? 'valoir';
+      const modePaiementCreer = (typeAvoir === 'remboursement' && input.mode_paiement === 'prelevement_sepa')
+        ? 'virement_sepa'
+        : (input.mode_paiement ?? null);
       const ins = await client.query(`
         INSERT INTO factures (numero, client_id, entreprise_id, devis_id, facture_origine_id, type_facture,
           type_avoir, date_echeance, conditions_paiement, mode_paiement, notes, tva_mode,
@@ -71,9 +75,9 @@ export class FactureService {
         RETURNING id
       `, [numero, input.client_id, input.entreprise_id, input.devis_id ?? null,
           input.facture_origine_id ?? null, input.type_facture ?? 'standard',
-          input.type_avoir ?? 'valoir',
+          typeAvoir,
           input.date_echeance ?? null, input.conditions_paiement ?? null,
-          input.mode_paiement ?? null, input.notes ?? null, input.tva_mode ?? 'normal',
+          modePaiementCreer, input.notes ?? null, input.tva_mode ?? 'normal',
           totaux.ht, totaux.tva, totaux.ttc]);
 
       const factureId = ins.rows[0].id;
@@ -135,6 +139,12 @@ export class FactureService {
     );
 
     return withTransaction(async (client) => {
+      const typeAvoir = input.type_avoir ?? (cur as any).type_avoir ?? 'valoir';
+      // Un remboursement ne peut pas passer par prélèvement SEPA (sens inverse)
+      const modePaiement = (typeAvoir === 'remboursement' && input.mode_paiement === 'prelevement_sepa')
+        ? 'virement_sepa'
+        : (input.mode_paiement ?? null);
+
       await client.query(`
         UPDATE factures SET
           client_id=$1, date_echeance=$2, conditions_paiement=$3, mode_paiement=$4,
@@ -145,10 +155,10 @@ export class FactureService {
         input.client_id ?? (cur as any).client_id,
         input.date_echeance ?? null,
         input.conditions_paiement ?? null,
-        input.mode_paiement ?? null,
+        modePaiement,
         input.notes ?? null,
         input.tva_mode ?? (cur as any).tva_mode,
-        input.type_avoir ?? (cur as any).type_avoir ?? 'valoir',
+        typeAvoir,
         (input as any).objet ?? (cur as any).objet ?? null,
         totaux.ht, totaux.tva, totaux.ttc, id,
       ]);

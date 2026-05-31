@@ -422,7 +422,7 @@ const DocEditor = (() => {
       ${isAvoir ? `
         <div class="e-meta-row"><span class="e-meta-label">Type d'avoir</span>
           <select class="e-meta-sel" name="type_avoir"
-            onchange="(sel=>{const r=sel.closest('.a4-page').querySelector('.e-avoir-reglement');if(r)r.style.display=sel.value==='remboursement'?'':'none';})(this)">
+            onchange="(sel=>{const page=sel.closest('.a4-page');const r=page.querySelector('.e-avoir-reglement');if(r)r.style.display=sel.value==='remboursement'?'':'none';if(sel.value==='remboursement'){const m=page.querySelector('[name=mode_paiement]');if(m&&m.value==='prelevement_sepa')m.value='virement_sepa';}})(this)">
             <option value="valoir"        ${(doc?.type_avoir||'valoir')==='valoir'        ?'selected':''}>À valoir sur prochaine facture</option>
             <option value="remboursement" ${doc?.type_avoir==='remboursement'             ?'selected':''}>Remboursement au client</option>
           </select>

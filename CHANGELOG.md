@@ -41,6 +41,27 @@ Applique dans :
   (champ TVA Intracom ajoute au formulaire rapide)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: type d'avoir (a valoir / remboursement) + PUT factures
+
+Migration 011 : colonne type_avoir TEXT DEFAULT 'valoir' sur factures
+
+Backend
+- FactureInput : champ type_avoir
+- FactureService.creer() : insere type_avoir
+- FactureService.mettreAJour() : nouvelle methode (edit brouillons)
+- Route PUT /api/factures/:id : appelle mettreAJour()
+
+WYSIWYG (editor.js)
+- buildDocHTML avoir : select 'Type d avoir' (a valoir / remboursement)
+  - Mode de reglement affiche uniquement si remboursement, masque sinon
+  - Toggle onchange via closest('.a4-page')
+- saveDoc avoir : type_avoir + mode_paiement conditionnel
+
+PDF (FacturXService)
+- genererFacture + genererFactureStream : mention 'Remboursement au client'
+  affichee sous 'Avoir sur facture' si type_avoir === remboursement
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -174,6 +195,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

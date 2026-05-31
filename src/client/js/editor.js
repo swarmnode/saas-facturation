@@ -25,7 +25,7 @@ const DocEditor = (() => {
   const DOC_LABELS = {
     devis:   'DEVIS',
     facture: 'FACTURE',
-    avoir:   'AVOIR',
+    avoir:   'FACTURE D\'AVOIR',
     bl:      'BON DE LIVRAISON',
     acompte: 'ACOMPTE',
   };

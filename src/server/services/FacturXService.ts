@@ -270,14 +270,14 @@ export class FacturXService {
       const isAvoir = facture.type_facture === 'avoir';
       doc.fontSize(16).font('Helvetica-Bold')
          .fillColor(brandColor)
-         .text(isAvoir ? 'AVOIR' : 'FACTURE', 50, titleY);
+         .text(isAvoir ? 'FACTURE D\'AVOIR' : 'FACTURE', 50, titleY);
       doc.fontSize(10).font('Helvetica').fillColor('#000000')
          .text(`N° ${facture.numero}`, 50, titleY + 22)
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
       if (isAvoir && facture.facture_origine_numero)
         doc.text(`Avoir sur facture : ${facture.facture_origine_numero}`, 50, titleY + 46);
-      if (facture.date_echeance && facture.statut !== 'payee')
-        doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, isAvoir ? titleY + 58 : titleY + 46);
+      if (facture.date_echeance && !isAvoir && facture.statut !== 'payee')
+        doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)
         doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoir ? 70 : 58));
 
@@ -688,14 +688,18 @@ export class FacturXService {
       const sepY = logoInfo ? 185 : 150;
       doc.moveTo(50, sepY).lineTo(545, sepY).strokeColor('#CCCCCC').stroke();
       const titleY = sepY + 10;
-      doc.fontSize(16).font('Helvetica-Bold').fillColor(brandColor).text('FACTURE', 50, titleY);
+      const isAvoirFS = facture.type_facture === 'avoir';
+      doc.fontSize(16).font('Helvetica-Bold').fillColor(brandColor)
+         .text(isAvoirFS ? 'FACTURE D\'AVOIR' : 'FACTURE', 50, titleY);
       doc.fontSize(10).font('Helvetica').fillColor('#000000')
          .text(`N° ${facture.numero}`, 50, titleY + 22)
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
-      if (facture.date_echeance && facture.statut !== 'payee')
+      if (isAvoirFS && facture.facture_origine_numero)
+        doc.text(`Avoir sur facture : ${facture.facture_origine_numero}`, 50, titleY + 46);
+      if (facture.date_echeance && !isAvoirFS && facture.statut !== 'payee')
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)
-        doc.text(`Objet : ${facture.objet}`, 50, titleY + 58);
+        doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoirFS ? 58 : 58));
 
       let y = sepY + 100;
       const colX = [50, 240, 300, 355, 410, 470];

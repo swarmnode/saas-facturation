@@ -21,6 +21,7 @@ import searchRouter        from './routes/search';
 import sepaRouter          from './routes/sepa';
 import lettrageRouter      from './routes/lettrage';
 import statsRouter         from './routes/stats';
+import auditRouter         from './routes/audit';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/search',          searchRouter);
 app.use('/api/sepa',            sepaRouter);
 app.use('/api/lettrage',        lettrageRouter);
 app.use('/api/stats',           statsRouter);
+app.use('/api/audit',           auditRouter);
 
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.resolve(__dirname, '../client/index.html'));

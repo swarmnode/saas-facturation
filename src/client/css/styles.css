@@ -469,6 +469,10 @@ tr.row-actions:hover td { background: transparent; }
 .e-th-del   { width:3%; }
 
 .e-ligne-row:nth-child(even) { background:#f7f8fa; }
+.e-ligne-row.drag-over { outline:2px dashed var(--primary); background:#e8f0f8!important; }
+.drag-handle { cursor:grab; color:#bbb; font-size:14px; padding:0 4px 0 0; user-select:none; }
+.drag-handle:hover { color:#888; }
+.e-ligne-row[draggable="true"] { cursor:default; }
 .e-td-desig { padding:4px 6px; vertical-align:top; }
 .e-td-num                { padding:4px 6px; vertical-align:top; text-align:right; }
 .e-td-num input.e-cell  { text-align:right; direction:ltr; }

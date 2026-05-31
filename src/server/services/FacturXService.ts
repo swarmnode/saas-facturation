@@ -198,6 +198,26 @@ function lightenColor(hex: string, amount = 0.92): string {
   return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
 }
 
+function drawCGV(doc: any, entreprise: any): void {
+  const cgv = (entreprise.cgv_texte || '').trim();
+  const mention = (entreprise.mention_legale || '').trim();
+  if (!cgv && !mention) return;
+  const y = 762;
+  doc.moveTo(50, y - 4).lineTo(545, y - 4).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
+  doc.lineWidth(1);
+  let cur = y;
+  if (mention) {
+    doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#888888')
+       .text(mention, 50, cur, { width: 495, lineBreak: true });
+    cur += doc.heightOfString(mention, { width: 495, fontSize: 6.5 }) + 3;
+  }
+  if (cgv) {
+    doc.fontSize(6.5).font('Helvetica').fillColor('#888888')
+       .text(cgv, 50, cur, { width: 495, lineBreak: true });
+  }
+  doc.fillColor('#000000');
+}
+
 export class FacturXService {
   static async genererFacture(facture: any, entreprise: any, client: any): Promise<string> {
     if (!fs.existsSync(STORAGE_PDF)) fs.mkdirSync(STORAGE_PDF, { recursive: true });
@@ -360,6 +380,7 @@ export class FacturXService {
         doc.fillColor('#000000').lineWidth(1);
       }
 
+      drawCGV(doc, entreprise);
       doc.end();
       stream.on('finish', resolve);
       stream.on('error', reject);
@@ -511,6 +532,7 @@ export class FacturXService {
       totD('Total TTC', formatMontant(devis.montant_ttc), true,   0);
       doc.moveTo(340, sigBotY - 44).lineTo(545, sigBotY - 44).strokeColor('#CCCCCC').stroke();
 
+      drawCGV(doc, entreprise);
       doc.end();
       outputStream.on('finish', resolve);
       outputStream.on('error', reject);
@@ -634,6 +656,7 @@ export class FacturXService {
       // Cadre signature
       doc.rect(50, sigY + 26, W, 70).strokeColor('#BBBBBB').stroke();
 
+      drawCGV(doc, entreprise);
       doc.end();
       outputStream.on('finish', resolve);
       outputStream.on('error', reject);
@@ -779,6 +802,7 @@ export class FacturXService {
         doc.fillColor('#000000').lineWidth(1);
       }
 
+      drawCGV(doc, entreprise);
       doc.end();
       outputStream.on('finish', resolve);
       outputStream.on('error', reject);

@@ -373,6 +373,89 @@ router.get('/repartitions', requirePerm('factures:r'), async (req, res, next) =>
   } catch(e) { next(e); }
 });
 
+// ── Attestation anti-fraude TVA ───────────────────────────────────────────────
+router.get('/attestation', requirePerm('settings:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const er  = await query('SELECT * FROM entreprise WHERE id=$1', [eid]);
+    const ent = er.rows[0];
+    const date = new Date().toLocaleDateString('fr-FR', { year:'numeric', month:'long', day:'numeric' });
+    const annee = new Date().getFullYear();
+
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+      <style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;color:#222;line-height:1.6}
+        h1{color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:8px}
+        h2{color:#1a3a5c;font-size:15px;margin-top:24px}
+        .cadre{border:1px solid #ccc;padding:16px;border-radius:4px;margin:16px 0}
+        .sign{margin-top:40px;display:flex;justify-content:space-between}
+        @media print{body{margin:20px}}</style>
+    </head><body>
+      <h1>Attestation de conformité</h1>
+      <p><strong>Logiciel :</strong> FacturPro — SaaS de devis et facturation conforme au droit français</p>
+      <p><strong>Éditeur :</strong> FacturPro (logiciel open source — AGPL v3)</p>
+      <p><strong>Date d'édition :</strong> ${date}</p>
+
+      <div class="cadre">
+        <strong>Entreprise utilisatrice</strong><br/>
+        ${ent.raison_sociale || '—'}<br/>
+        SIRET : ${ent.siret || '—'}<br/>
+        ${ent.adresse ? ent.adresse + ', ' + ent.code_postal + ' ' + ent.ville : ''}
+      </div>
+
+      <h2>Article 88 de la loi de finances 2016 (entrée en vigueur le 1er janvier 2018)</h2>
+      <p>Le logiciel FacturPro satisfait aux obligations de la loi anti-fraude TVA par les mécanismes suivants :</p>
+
+      <h2>1. Inaltérabilité</h2>
+      <p>Les données de transactions (factures, avoirs, acomptes) sont verrouillées dès leur émission par des triggers de base de données PostgreSQL (<code>BEFORE UPDATE</code>). Toute tentative de modification est bloquée au niveau du moteur de base de données. La seule transition autorisée est le passage du statut <em>émise</em> à <em>payée</em>.</p>
+
+      <h2>2. Sécurisation</h2>
+      <p>Chaque document fiscal émis est signé par un hash SHA-256 cumulatif (<em>journal_scellement</em>). Ce journal chaîne tous les documents : toute altération, même directement en base, est détectable via la route <code>GET /api/factures/scellement/verifier</code>. Le journal est protégé par des triggers qui interdisent toute modification ou suppression.</p>
+
+      <h2>3. Conservation</h2>
+      <p>Les snapshots JSON de chaque document émis sont archivés dans la table <em>archive_documents</em>, immuable (triggers UPDATE/DELETE bloqués). La rétention est configurée pour 10 ans, conformément à l'article L. 102 B du Livre des Procédures Fiscales.</p>
+
+      <h2>4. Archivage</h2>
+      <p>Le Fichier des Écritures Comptables (FEC) est généré automatiquement à chaque émission de facture et exportable au format DGFiP (texte tabulé) via <code>GET /api/factures/export/fec</code>. Les colonnes respectent exactement la spécification technique de la DGFiP.</p>
+
+      <h2>5. Numérotation sans rupture</h2>
+      <p>La numérotation des documents (<em>FAC-AAAA-NNNN</em>, <em>DEV-AAAA-NNNN</em>, etc.) est garantie séquentielle et sans doublon par un mécanisme <code>INSERT … ON CONFLICT DO UPDATE</code> atomique sur la table <em>sequence_numerotation</em>.</p>
+
+      <div class="sign">
+        <div>
+          <p>Fait à _________________________, le ${date}</p>
+          <p>Signature du représentant légal :</p>
+          <br/><br/>
+          <p>_________________________ &nbsp;&nbsp; _________________________</p>
+          <p style="font-size:12px">Nom &amp; qualité &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Cachet</p>
+        </div>
+      </div>
+
+      <p style="margin-top:32px;font-size:11px;color:#888">Document généré par FacturPro le ${date}. Ce document atteste de la conformité technique du logiciel. Il ne constitue pas une attestation comptable ou juridique et doit être complété par votre expert-comptable si requis par l'administration fiscale.</p>
+    </body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `inline; filename="attestation_conformite_${annee}.html"`);
+    res.send(html);
+  } catch(e) { next(e); }
+});
+
+// ── Notifications in-app ─────────────────────────────────────────────────────
+router.get('/notifications', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const [retard, expires] = await Promise.all([
+      query(`SELECT COUNT(*) AS n FROM factures WHERE entreprise_id=$1 AND statut='emise'
+             AND type_facture!='avoir' AND date_echeance IS NOT NULL AND date_echeance::date < CURRENT_DATE`, [eid]),
+      query(`SELECT COUNT(*) AS n FROM devis WHERE entreprise_id=$1 AND statut='envoye'
+             AND date_validite IS NOT NULL AND date_validite::date < CURRENT_DATE`, [eid]),
+    ]);
+    res.json({
+      factures_retard: parseInt(retard.rows[0].n),
+      devis_expires:   parseInt(expires.rows[0].n),
+    });
+  } catch(e) { next(e); }
+});
+
 // ── Déclaration TVA (CA3) ─────────────────────────────────────────────────────
 // ?annee=2026&mois=5  ou  ?annee=2026&trimestre=2  ou  ?annee=2026
 router.get('/ca3', requirePerm('factures:r'), async (req, res, next) => {

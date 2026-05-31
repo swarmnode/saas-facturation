@@ -529,6 +529,69 @@ const DocEditor = (() => {
     </div>`;
   }
 
+  // ── Drag & drop pour réordonner les lignes ────────────────────────────────
+  function initDragRows(tbody, page, type, el) {
+    let dragSrc = null;
+
+    function onDragStart(e) {
+      dragSrc = this;
+      e.dataTransfer.effectAllowed = 'move';
+      this.style.opacity = '0.4';
+    }
+    function onDragEnd() {
+      this.style.opacity = '';
+      tbody.querySelectorAll('.e-ligne-row').forEach(r => r.classList.remove('drag-over'));
+    }
+    function onDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      tbody.querySelectorAll('.e-ligne-row').forEach(r => r.classList.remove('drag-over'));
+      this.classList.add('drag-over');
+    }
+    function onDrop(e) {
+      e.stopPropagation();
+      if (dragSrc !== this) {
+        // Insérer dragSrc avant this
+        const allRows = [...tbody.querySelectorAll('.e-ligne-row:not(.e-page-break)')];
+        const srcIdx  = allRows.indexOf(dragSrc);
+        const tgtIdx  = allRows.indexOf(this);
+        if (srcIdx < tgtIdx) tbody.insertBefore(dragSrc, this.nextSibling);
+        else tbody.insertBefore(dragSrc, this);
+        if (type !== 'bl') calcTotaux(page);
+        requestAnimationFrame(() => refreshPageBreaks(el, type));
+      }
+      this.classList.remove('drag-over');
+    }
+
+    // Attacher les events aux lignes existantes et futures
+    function attachDrag(row) {
+      if (row.dataset.draggable) return;
+      row.dataset.draggable = '1';
+      // Ajouter poignée au début de la 1ère cellule
+      const firstTd = row.querySelector('td');
+      if (firstTd && !firstTd.querySelector('.drag-handle')) {
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle';
+        handle.innerHTML = '⠿';
+        handle.title = 'Glisser pour réordonner';
+        firstTd.insertBefore(handle, firstTd.firstChild);
+      }
+      row.setAttribute('draggable', 'true');
+      row.addEventListener('dragstart', onDragStart);
+      row.addEventListener('dragend',   onDragEnd);
+      row.addEventListener('dragover',  onDragOver);
+      row.addEventListener('drop',      onDrop);
+    }
+
+    tbody.querySelectorAll('.e-ligne-row').forEach(attachDrag);
+    // Observer pour les nouvelles lignes ajoutées
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (n.classList?.contains('e-ligne-row')) attachDrag(n);
+      }));
+    }).observe(tbody, { childList: true });
+  }
+
   // ── Init unifié ────────────────────────────────────────────────────────────
 
   function initDoc(type, id, el, doc) {
@@ -626,6 +689,21 @@ const DocEditor = (() => {
       if (previewBtn && id) previewBtn.onclick = () => openPdf(`/api/${ROUTES[type]}/${id}/apercu`);
 
       buildEditToolbar(type, id, doc, el, page);
+
+      // Raccourcis clavier
+      el.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          el.querySelector('.e-save-btn')?.click();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+          e.preventDefault();
+          window.print();
+        }
+      });
+
+      // Drag & drop pour réordonner les lignes
+      initDragRows(tbody, page, type, el);
     }
 
     el.querySelector('.e-close-btn').onclick = () => tabMgr.closeTab(el.dataset.tid);

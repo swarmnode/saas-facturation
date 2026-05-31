@@ -108,6 +108,7 @@ const DOC_CONFIGS = {
     topbar:   () => `
       <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
+      <button class="btn btn-outline" onclick="window.open('/api/stats/attestation','_blank')">📋 Attestation</button>
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
       <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
       <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
@@ -127,6 +128,7 @@ const DOC_CONFIGS = {
     ],
     actions: f => [
       ['emise','payee'].includes(f.statut) ? `<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Émis</button>` : '',
+      (f.statut==='emise' && f.date_echeance && new Date(f.date_echeance) < new Date()) ? btn.warning(`relancerFacture(${f.id})`, '📨 Relancer') : '',
       f.statut==='emise'     ? btn.primary(`payerFacture(${f.id})`, '💳 Payer') : '',
       btn.outline(`DocEditor.openFacture(${f.id})`, 'Voir/Modifier'),
       btn.outline(`previewFacture(${f.id})`, '👁 PDF'),
@@ -604,6 +606,7 @@ async function renderView(view, el) {
     case 'dashboard':       return renderDashboard(el);
     case 'stats':           return renderStats(el);
     case 'decl-tva':        return renderDeclTVA(el);
+    case 'audit':           return renderAudit(el);
     case 'clients':         return renderClients(el);
     case 'devis':           return renderDocList('devis', el);
     case 'factures':        return renderDocList('factures', el);
@@ -622,10 +625,52 @@ async function loadGlobalData() {
     api.get('/api/clients/taux-tva'),
     api.get('/api/clients'),
   ]);
+  loadNotifications();
+}
+
+async function loadNotifications() {
+  try {
+    const notifs = await api.get('/api/stats/notifications');
+    if (!notifs) return;
+    const bf = document.getElementById('badge-factures');
+    const bd = document.getElementById('badge-devis');
+    if (bf) { bf.textContent = notifs.factures_retard; bf.style.display = notifs.factures_retard > 0 ? '' : 'none'; bf.title = `${notifs.factures_retard} facture(s) en retard`; }
+    if (bd) { bd.textContent = notifs.devis_expires;   bd.style.display = notifs.devis_expires   > 0 ? '' : 'none'; bd.title = `${notifs.devis_expires} devis expiré(s)`; }
+  } catch {}
+  // Refresh toutes les 5 minutes
+  setTimeout(loadNotifications, 5 * 60 * 1000);
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let _dashSort = { col: 'date', dir: -1 }; // tri par défaut : date desc
+
+// ── Journal d'audit ───────────────────────────────────────────────────────
+async function renderAudit(el) {
+  document.getElementById('topbarActions').innerHTML = '';
+  el.innerHTML = '<div class="card"><p style="color:var(--text-muted)">Chargement…</p></div>';
+  const logs = await api.get('/api/audit') ?? [];
+  const ACTION_LABELS = {
+    login: '🔐 Connexion', emettre_facture: '📤 Émission facture',
+    payer_facture: '💳 Paiement', emettre_avoir: '↩️ Avoir émis',
+    supprimer: '🗑️ Suppression', relancer: '📨 Relance',
+  };
+  el.innerHTML = `<div class="card">
+    <h2 style="margin-bottom:16px;color:var(--primary)">Journal d'audit <span style="font-size:13px;font-weight:400;color:var(--text-muted)">(200 dernières entrées)</span></h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Ressource</th><th>IP</th></tr></thead>
+        <tbody>${logs.length ? logs.map(l => `<tr>
+          <td style="white-space:nowrap;font-size:12px">${new Date(l.created_at).toLocaleString('fr-FR')}</td>
+          <td style="font-size:12px">${l.user_email||'—'}</td>
+          <td>${ACTION_LABELS[l.action]||l.action}</td>
+          <td style="font-size:12px">${l.ressource ? `${l.ressource}${l.ressource_id?' #'+l.ressource_id:''}` : '—'}${l.details ? ' <span style="color:var(--text-muted)">'+(JSON.stringify(l.details).slice(0,60))+'</span>' : ''}</td>
+          <td style="font-size:11px;color:var(--text-muted)">${l.ip||'—'}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="empty">Aucune entrée</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
 
 // ── Déclaration TVA (CA3) ─────────────────────────────────────────────────
 async function renderDeclTVA(el) {
@@ -1521,6 +1566,59 @@ async function envoyerAvecPdf(apercuUrl, filename, emailVal, titre, corps) {
 
 function previewDevis(id)   { openPdf(`/api/devis/${id}/apercu`); }
 function previewFacture(id) { openPdf(`/api/factures/${id}/apercu`); }
+
+async function relancerFacture(id) {
+  const [facture, client, entreprise] = await Promise.all([
+    api.get(`/api/factures/${id}`),
+    null, // sera récupéré via facture.client_id
+    api.get('/api/entreprise'),
+  ]);
+  const clientData = await api.get(`/api/clients/${facture.client_id}`);
+  const emailDest  = clientData?.email || '';
+  const retardJours = facture.date_echeance
+    ? Math.max(0, Math.floor((Date.now() - new Date(facture.date_echeance)) / 864e5))
+    : 0;
+
+  const sujetDefaut = `Relance — Facture ${facture.numero} en attente de règlement`;
+  const corpsDefaut = `Madame, Monsieur,
+
+Sauf erreur ou omission de notre part, la facture ${facture.numero} d'un montant de ${facture.montant_ttc} € TTC émise le ${new Date(facture.date_emission).toLocaleDateString('fr-FR')} demeure impayée${retardJours > 0 ? ` (${retardJours} jour(s) de retard)` : ''}.
+
+Nous vous remercions de bien vouloir régulariser cette situation dans les meilleurs délais.
+
+Cordialement,
+${entreprise?.raison_sociale || ''}`;
+
+  modal.open('Relance client — ' + facture.numero, `
+    <form id="relanceForm">
+      <div class="form-group"><label>Destinataire *</label>
+        <input name="email" type="email" value="${emailDest}" required/>
+      </div>
+      <div class="form-group"><label>Objet</label>
+        <input name="sujet" value="${sujetDefaut.replace(/"/g,'&quot;')}"/>
+      </div>
+      <div class="form-group"><label>Message</label>
+        <textarea name="corps" rows="10">${corpsDefaut}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button type="submit" class="btn btn-primary">📨 Envoyer la relance</button>
+        <button type="button" class="btn btn-outline" onclick="modal.close()">Annuler</button>
+      </div>
+    </form>`);
+
+  document.getElementById('relanceForm').onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const r  = await api.post(`/api/factures/${id}/relancer`, {
+      email:  fd.get('email'),
+      sujet:  fd.get('sujet'),
+      corps:  fd.get('corps'),
+    });
+    if (r?.error) { alert('Erreur : ' + r.error); return; }
+    modal.close();
+    alert(`Relance envoyée à ${fd.get('email')}`);
+  };
+}
 
 async function envoyerFacture(id) {
   const [facture, entreprise] = await Promise.all([
@@ -4383,6 +4481,32 @@ async function renderParametres(el) {
     el.querySelector('#saveAlert').innerHTML =
       '<div class="alert alert-success" style="margin-top:12px">Paramètres enregistrés.</div>';
     setTimeout(() => { el.querySelector('#saveAlert').innerHTML = ''; }, 3000);
+  };
+
+  // ── Section CGV / Mentions légales ────────────────────────────────────────
+  const cgvSection = document.createElement('div');
+  cgvSection.className = 'card';
+  cgvSection.style.marginTop = '24px';
+  cgvSection.innerHTML = `
+    <h3 style="margin-bottom:16px;color:var(--primary)">CGV et mentions légales</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Ces textes apparaissent en bas de chaque devis et facture (en petites lettres, avant impression).</p>
+    <form id="cgvForm">
+      <div class="form-group"><label>Mention légale (ligne de titre)</label>
+        <input name="mention_legale" value="${(entreprise.mention_legale||'').replace(/"/g,'&quot;')}" placeholder="Ex : Membre de la Chambre des Métiers du Var — RCS Toulon B 000 000 000"/>
+      </div>
+      <div class="form-group"><label>CGV — Conditions Générales de Vente</label>
+        <textarea name="cgv_texte" rows="6" placeholder="Article 1 — Sauf accord particulier…">${entreprise.cgv_texte||''}</textarea>
+      </div>
+      <div id="cgvAlert"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer CGV</button>
+    </form>`;
+  el.querySelector('#entrepriseForm').closest('.card').after(cgvSection);
+  cgvSection.querySelector('#cgvForm').onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    await api.post('/api/entreprise', { ...Object.fromEntries(new FormData(el.querySelector('#entrepriseForm'))), ...Object.fromEntries(fd), is_EI: el.querySelector('[name=is_EI]')?.checked });
+    cgvSection.querySelector('#cgvAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">CGV enregistrées.</div>';
+    setTimeout(() => { cgvSection.querySelector('#cgvAlert').innerHTML = ''; }, 2000);
   };
 
   el.querySelector('#logoBtn').onclick = () => el.querySelector('#logoInput').click();

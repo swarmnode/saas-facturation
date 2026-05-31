@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { query } from '../db/database';
 import { authenticate } from '../middleware/auth';
+import { logAudit } from './audit';
 
 const router = Router();
 const JWT_EXPIRY = '8h';
@@ -65,6 +66,9 @@ router.post('/login', async (req, res, next) => {
     });
 
     res.json({ token, entreprise_id: ent.id, role: user.is_super_admin ? 'admin' : ent.role });
+    // Log asynchrone après réponse
+    try { await query(`INSERT INTO audit_log (entreprise_id, user_id, user_email, action, ip) VALUES ($1,$2,$3,'login',$4)`,
+      [ent.id, user.id, user.email, req.ip]); } catch {}
   } catch(e) { next(e); }
 });
 

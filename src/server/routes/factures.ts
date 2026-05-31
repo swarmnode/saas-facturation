@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { logAudit } from './audit';
 import { FactureService } from '../services/FactureService';
 import { FecExportService } from '../services/FecExportService';
 import { ScelleService } from '../services/ScelleService';
@@ -73,16 +74,18 @@ router.put('/:id', requirePerm('factures:w'), async (req, res, next) => {
 });
 
 router.post('/:id/emettre', requirePerm('factures:w'), async (req, res, next) => {
-  try { res.json(await FactureService.emettre(Number(req.params.id))); } catch(e) { next(e); }
+  try {
+    const result = await FactureService.emettre(Number(req.params.id));
+    await logAudit(req, 'emettre_facture', 'factures', Number(req.params.id), { numero: (result as any)?.numero });
+    res.json(result);
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/payer', requirePerm('factures:w'), async (req, res, next) => {
   try {
-    res.json(await FactureService.marquerPayee(
-      Number(req.params.id),
-      req.body.date_paiement,
-      req.body.mode_paiement
-    ));
+    const result = await FactureService.marquerPayee(Number(req.params.id), req.body.date_paiement, req.body.mode_paiement);
+    await logAudit(req, 'payer_facture', 'factures', Number(req.params.id), { mode: req.body.mode_paiement });
+    res.json(result);
   } catch(e) { next(e); }
 });
 
@@ -93,6 +96,40 @@ router.get('/:id/pdf', async (req, res) => {
   const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
   if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });
   res.sendFile(full);
+});
+
+// Relance client — POST /api/factures/:id/relancer
+router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) => {
+  try {
+    const id      = Number(req.params.id);
+    const { email, sujet, corps } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+
+    const { EmailService } = await import('../services/EmailService');
+    const facture = await FactureService.obtenir(id);
+    if (!facture) return res.status(404).json({ error: 'Introuvable' });
+
+    // Joindre le PDF de la facture
+    const er = await query('SELECT * FROM entreprise WHERE id=$1', [(facture as any).entreprise_id]);
+    const cr = await query('SELECT * FROM clients WHERE id=$1', [(facture as any).client_id]);
+    const { PassThrough } = await import('stream');
+    const pass   = new PassThrough();
+    const chunks: Buffer[] = [];
+    pass.on('data', (c: Buffer) => chunks.push(c));
+    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      pass.on('end', () => resolve(Buffer.concat(chunks)));
+      pass.on('error', reject);
+      FacturXService.genererFactureStream(facture, er.rows[0], cr.rows[0], pass).catch(reject);
+    });
+
+    const result = await EmailService.envoyerEmail({
+      to:          email,
+      subject:     sujet || `Relance — ${(facture as any).numero}`,
+      text:        corps || '',
+      attachments: [{ filename: `${(facture as any).numero}.pdf`, content: pdfBuffer }],
+    });
+    res.json({ ok: true, preview_url: result?.previewUrl ?? null });
+  } catch(e: any) { next(e); }
 });
 
 router.get('/:id/apercu', requirePerm('factures:r'), async (req, res, next) => {

@@ -181,4 +181,18 @@ export class EmailService {
 
     return { previewUrl: test ? (nodemailer.getTestMessageUrl(info) || undefined) : undefined };
   }
+
+  // Email générique (relances, etc.)
+  static async envoyerEmail(opts: { to: string; subject: string; text: string; attachments?: any[] }): Promise<{ previewUrl?: string }> {
+    const er = await query('SELECT * FROM entreprise LIMIT 1');
+    const { transporter, test } = await getTransporter(er.rows[0]);
+    const info: SentMessageInfo = await transporter.sendMail({
+      from:        er.rows[0]?.smtp_from || er.rows[0]?.email || 'noreply@facturpro.local',
+      to:          opts.to,
+      subject:     opts.subject,
+      text:        opts.text,
+      attachments: opts.attachments,
+    });
+    return { previewUrl: test ? (nodemailer.getTestMessageUrl(info) || undefined) : undefined };
+  }
 }

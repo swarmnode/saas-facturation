@@ -415,25 +415,52 @@ export class FacturXService {
       let y = sepY + 100;
       const colX = [50, 240, 300, 355, 410, 470];
       const headers = ['Désignation', 'Qté', 'P.U. HT', 'Remise', 'TVA', 'Total HT'];
-      doc.rect(50, y, W, 18).fill(brandColor);
-      doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
-      headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
-      y += 22;
-      doc.fillColor('#000000').font('Helvetica').fontSize(8);
+
+      const PAGE_SAFE_BOT = 642;   // 792 - 150 : espace réservé pour sig + totaux
+      const CONT_TOP      = 60;    // Y de reprise du tableau sur les pages suivantes
+      const ROW_H         = 20;
+      const DESC_H        = 12;    // hauteur supplémentaire si description présente
+
+      function drawTableHeader() {
+        doc.rect(50, y, W, 18).fill(brandColor);
+        doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
+        headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
+        y += 22;
+        doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      }
+
+      drawTableHeader();
+
       (devis.lignes ?? []).forEach((l: any, idx: number) => {
-        if (idx % 2 === 0) doc.rect(50, y - 2, W, 18).fill(brandColorLight);
+        const rowH = l.description ? ROW_H + DESC_H : ROW_H;
+        // Saut de page si plus assez de place
+        if (y + rowH > PAGE_SAFE_BOT) {
+          doc.addPage();
+          y = CONT_TOP;
+          drawTableHeader();
+        }
+        if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
         doc.fillColor('#000000');
-        doc.text(l.designation, colX[0], y, { width: 186 });
-        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54 });
-        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50 });
-        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50 });
-        doc.text(mentionTVA('normal', l.taux_tva_valeur), colX[4], y, { width: 56 });
-        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70, align: 'right' });
-        y += 20;
+        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: false });
+        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54,  lineBreak: false });
+        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50,  lineBreak: false });
+        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50,  lineBreak: false });
+        doc.text(mentionTVA('normal', l.taux_tva_valeur), colX[4], y, { width: 56,  lineBreak: false });
+        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70,  lineBreak: false, align: 'right' });
+        if (l.description) {
+          doc.fontSize(7).fillColor('#666666')
+             .text(l.description, colX[0] + 2, y + ROW_H - 2, { width: 184, lineBreak: false });
+          doc.fontSize(8).fillColor('#000000');
+        }
+        y += rowH;
       });
 
+      // Si le curseur dépasse la zone footer, on ajoute une page pour sig+totaux
+      if (y > PAGE_SAFE_BOT) {
+        doc.addPage();
+      }
+
       // ── Totaux (droite) + Signature avec date (gauche) ──────────────────
-      // bottomY = haut de la zone : label sig + cadre + mention + totaux doivent tenir < 792pt
       const bottomY  = 660;
       const sigBoxX  = 50, sigBoxW = 230, sigBoxH = 70;
       const sigTop   = bottomY + 14;            // haut du cadre

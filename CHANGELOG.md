@@ -5,6 +5,26 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix: saut de page automatique dans le PDF devis
+
+- PAGE_SAFE_BOT = 642pt (laisse 150pt pour sig + totaux)
+- Avant chaque ligne : si y + hauteur_ligne > PAGE_SAFE_BOT → addPage()
+  et redessin de l'entête tableau sur la nouvelle page (CONT_TOP = 60)
+- Après la boucle : si y dépasse encore la zone footer → addPage()
+- Description de ligne rendue en 7pt sous la désignation (+12pt par ligne)
+- Hauteur de ligne variable : 20pt sans description, 32pt avec
+- Signature + totaux toujours à bottomY=660 sur la dernière page
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+## [2.5.148] — 2026-05-31
+
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: manuel v2.5 — prix achat/marge articles + installation port
@@ -585,6 +605,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.5.148]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.148
 [2.5.146]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.146
 [2.4.140]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.4.140
 [2.3.133]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.3.133

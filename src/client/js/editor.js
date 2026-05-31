@@ -692,7 +692,7 @@ const DocEditor = (() => {
 
       // Raccourcis clavier
       el.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
           e.preventDefault();
           el.querySelector('.e-save-btn')?.click();
         }

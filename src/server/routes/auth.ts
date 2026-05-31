@@ -34,7 +34,7 @@ router.post('/login', async (req, res, next) => {
       entreprises = er.rows.map(e => ({ ...e, role: 'admin' }));
     } else {
       const er = await query(`
-        SELECT e.id, e.raison_sociale, e.siret, ue.role
+        SELECT e.id, e.raison_sociale, e.siret, ue.role, ue.voir_tout
         FROM user_entreprises ue JOIN entreprise e ON ue.entreprise_id = e.id
         WHERE ue.user_id = $1 ORDER BY e.raison_sociale
       `, [user.id]);
@@ -55,17 +55,19 @@ router.post('/login', async (req, res, next) => {
     const ent = entreprises.find(e => e.id === Number(targetId));
     if (!ent) return res.status(403).json({ error: 'Accès refusé à cette société' });
 
+    const role = user.is_super_admin ? 'admin' : ent.role;
     const token = issueToken({
       id: user.id,
       email: user.email,
       nom: user.nom,
       prenom: user.prenom,
       entreprise_id: ent.id,
-      role: user.is_super_admin ? 'admin' : ent.role,
+      role,
       is_super_admin: !!user.is_super_admin,
+      voir_tout: role === 'commercial' ? !!ent.voir_tout : true,
     });
 
-    res.json({ token, entreprise_id: ent.id, role: user.is_super_admin ? 'admin' : ent.role });
+    res.json({ token, entreprise_id: ent.id, role });
     // Log asynchrone après réponse
     try { await query(`INSERT INTO audit_log (entreprise_id, user_id, user_email, action, ip) VALUES ($1,$2,$3,'login',$4)`,
       [ent.id, user.id, user.email, req.ip]); } catch {}
@@ -79,13 +81,15 @@ router.post('/select-entreprise', authenticate, async (req, res, next) => {
     const user = req.user!;
 
     let role = 'admin';
+    let voir_tout = true;
     if (!user.is_super_admin) {
       const uer = await query(
-        'SELECT role FROM user_entreprises WHERE user_id=$1 AND entreprise_id=$2',
+        'SELECT role, voir_tout FROM user_entreprises WHERE user_id=$1 AND entreprise_id=$2',
         [user.id, entreprise_id]
       );
       if (!uer.rows[0]) return res.status(403).json({ error: 'Accès refusé à cette société' });
       role = uer.rows[0].role;
+      voir_tout = role === 'commercial' ? !!uer.rows[0].voir_tout : true;
     }
 
     const ur = await query('SELECT nom, prenom FROM utilisateurs WHERE id=$1', [user.id]);
@@ -97,6 +101,7 @@ router.post('/select-entreprise', authenticate, async (req, res, next) => {
       entreprise_id: Number(entreprise_id),
       role,
       is_super_admin: user.is_super_admin,
+      voir_tout,
     });
 
     res.json({ token, entreprise_id: Number(entreprise_id), role });

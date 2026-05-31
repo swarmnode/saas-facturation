@@ -42,11 +42,14 @@ export class AcompteService {
     return r.rows[0] ?? null;
   }
 
-  static async lister(entreprise_id: number) {
+  static async lister(entreprise_id: number, commercial_id?: number) {
+    const commercialFilter = commercial_id
+      ? `AND a.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = ${commercial_id} AND entreprise_id = ${entreprise_id})`
+      : '';
     const r = await query(`
       SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
       FROM acomptes a LEFT JOIN clients c ON a.client_id = c.id
-      WHERE a.entreprise_id = $1 ORDER BY a.created_at DESC
+      WHERE a.entreprise_id = $1 ${commercialFilter} ORDER BY a.created_at DESC
     `, [entreprise_id]);
     return r.rows;
   }

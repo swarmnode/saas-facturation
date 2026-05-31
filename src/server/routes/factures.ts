@@ -27,11 +27,17 @@ router.get('/scellement/verifier', requirePerm('factures:r'), async (_req, res, 
 });
 
 router.get('/', requirePerm('factures:r'), async (req, res, next) => {
-  try { res.json(await FactureService.lister(req.user!.entreprise_id)); } catch(e) { next(e); }
+  try {
+    const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
+    res.json(await FactureService.lister(req.user!.entreprise_id, undefined, commercial_id));
+  } catch(e) { next(e); }
 });
 
 router.get('/avoirs/liste', requirePerm('factures:r'), async (req, res, next) => {
-  try { res.json(await FactureService.listerAvoirs(req.user!.entreprise_id)); } catch(e) { next(e); }
+  try {
+    const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
+    res.json(await FactureService.listerAvoirs(req.user!.entreprise_id, commercial_id));
+  } catch(e) { next(e); }
 });
 
 router.get('/:id/avoirs-cumul', requirePerm('factures:r'), async (req, res, next) => {

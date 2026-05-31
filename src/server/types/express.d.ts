@@ -6,6 +6,7 @@ declare module 'express-serve-static-core' {
       entreprise_id: number;
       role: string;
       is_super_admin: boolean;
+      voir_tout: boolean;
     };
   }
 }

@@ -14,7 +14,7 @@ router.get('/', requirePerm('users:r'), async (req, res, next) => {
     if (user.is_super_admin) {
       const r = await query(`
         SELECT u.id, u.email, u.nom, u.prenom, u.is_super_admin, u.actif, u.created_at,
-          json_agg(json_build_object('entreprise_id', ue.entreprise_id, 'raison_sociale', e.raison_sociale, 'role', ue.role)
+          json_agg(json_build_object('entreprise_id', ue.entreprise_id, 'raison_sociale', e.raison_sociale, 'role', ue.role, 'voir_tout', ue.voir_tout)
             ORDER BY e.raison_sociale) FILTER (WHERE ue.id IS NOT NULL) AS entreprises
         FROM utilisateurs u
         LEFT JOIN user_entreprises ue ON ue.user_id = u.id
@@ -96,13 +96,12 @@ router.post('/', requirePerm('users:w'), async (req, res, next) => {
     const newUser = r.rows[0];
 
     // Affectation aux sociétés
-    const ents: { entreprise_id: number; role: string }[] = Array.isArray(entreprises) ? entreprises : [];
+    const ents: { entreprise_id: number; role: string; voir_tout?: boolean }[] = Array.isArray(entreprises) ? entreprises : [];
     for (const ue of ents) {
-      // Un non-super_admin ne peut affecter qu'à sa propre société
       if (!caller.is_super_admin && ue.entreprise_id !== caller.entreprise_id) continue;
       await query(
-        'INSERT INTO user_entreprises (user_id, entreprise_id, role) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-        [newUser.id, ue.entreprise_id, ue.role ?? 'lecteur']
+        'INSERT INTO user_entreprises (user_id, entreprise_id, role, voir_tout) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+        [newUser.id, ue.entreprise_id, ue.role ?? 'lecteur', !!ue.voir_tout]
       );
     }
 
@@ -154,8 +153,8 @@ router.put('/:id', async (req, res, next) => {
       for (const ue of entreprises) {
         if (!caller.is_super_admin && ue.entreprise_id !== caller.entreprise_id) continue;
         await query(
-          'INSERT INTO user_entreprises (user_id, entreprise_id, role) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-          [id, ue.entreprise_id, ue.role ?? 'lecteur']
+          'INSERT INTO user_entreprises (user_id, entreprise_id, role, voir_tout) VALUES ($1,$2,$3,$4) ON CONFLICT (user_id, entreprise_id) DO UPDATE SET role=$3, voir_tout=$4',
+          [id, ue.entreprise_id, ue.role ?? 'lecteur', !!ue.voir_tout]
         );
       }
     }

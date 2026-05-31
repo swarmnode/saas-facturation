@@ -47,13 +47,13 @@ export class DevisService {
       const numero = await NumerotationService.getNextNumero('DEVIS', input.entreprise_id);
       const ins = await client.query(`
         INSERT INTO devis (numero, client_id, entreprise_id, objet, date_validite,
-          conditions_paiement, notes, is_free, montant_ht, montant_tva, montant_ttc)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+          conditions_paiement, notes, is_free, montant_ht, montant_tva, montant_ttc, created_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
         RETURNING id
       `, [numero, input.client_id, input.entreprise_id, input.objet ?? null,
           input.date_validite ?? null, input.conditions_paiement ?? null,
           input.notes ?? null, input.is_free ? 1 : 0,
-          totaux.ht, totaux.tva, totaux.ttc]);
+          totaux.ht, totaux.tva, totaux.ttc, (input as any).created_by ?? null]);
 
       const devisId = ins.rows[0].id;
       for (const l of lignesCalculees) {
@@ -72,20 +72,16 @@ export class DevisService {
     });
   }
 
-  static async lister(entreprise_id: number, statut?: string) {
-    if (statut) {
-      const r = await query(`
-        SELECT d.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
-        FROM devis d LEFT JOIN clients c ON d.client_id = c.id
-        WHERE d.entreprise_id = $1 AND d.statut = $2 ORDER BY d.created_at DESC
-      `, [entreprise_id, statut]);
-      return r.rows;
-    }
+  static async lister(entreprise_id: number, commercial_id?: number) {
+    const filter = commercial_id
+      ? 'AND d.created_by = $2'
+      : '';
+    const params: any[] = commercial_id ? [entreprise_id, commercial_id] : [entreprise_id];
     const r = await query(`
       SELECT d.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
       FROM devis d LEFT JOIN clients c ON d.client_id = c.id
-      WHERE d.entreprise_id = $1 ORDER BY d.created_at DESC
-    `, [entreprise_id]);
+      WHERE d.entreprise_id = $1 ${filter} ORDER BY d.created_at DESC
+    `, params);
     return r.rows;
   }
 

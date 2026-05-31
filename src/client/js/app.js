@@ -634,14 +634,19 @@ async function renderStats(el) {
   let periode = 'mois';
 
   async function load() {
-    const [kpis, balance, evolution, pipeline, topClients] = await Promise.all([
+    const [kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions] = await Promise.all([
       api.get(`/api/stats/kpis?periode=${periode}`),
       api.get('/api/stats/balance-agee'),
       api.get('/api/stats/evolution'),
       api.get('/api/stats/pipeline'),
       api.get('/api/stats/top-clients'),
+      api.get('/api/stats/tresorerie'),
+      api.get('/api/stats/top-articles'),
+      api.get('/api/stats/marge'),
+      api.get('/api/stats/comparaison'),
+      api.get('/api/stats/repartitions'),
     ]);
-    render(kpis, balance, evolution, pipeline, topClients);
+    render(kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions);
   }
 
   function periodeLabel(p) {
@@ -707,7 +712,54 @@ async function renderStats(el) {
     </div>`;
   }
 
-  function render(kpis, balance, evolution, pipeline, topClients) {
+  function svgDonut(slices, total) {
+    if (!total) return '<p style="color:var(--text-muted);font-size:13px">Aucune donnée</p>';
+    const COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f43f5e','#0ea5e9'];
+    const R = 70, r = 35, cx = 90, cy = 90;
+    let angle = -Math.PI / 2, paths = '', legend = '';
+    slices.forEach((s, i) => {
+      const pct = s.val / total;
+      const a2  = angle + pct * 2 * Math.PI;
+      const large = pct > 0.5 ? 1 : 0;
+      const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
+      const x2 = cx + R * Math.cos(a2),   y2 = cy + R * Math.sin(a2);
+      const ix1= cx + r * Math.cos(angle), iy1= cy + r * Math.sin(angle);
+      const ix2= cx + r * Math.cos(a2),   iy2= cy + r * Math.sin(a2);
+      const col = COLORS[i % COLORS.length];
+      paths += `<path d="M${ix1},${iy1}L${x1},${y1}A${R},${R} 0 ${large},1 ${x2},${y2}L${ix2},${iy2}A${r},${r} 0 ${large},0 ${ix1},${iy1}Z" fill="${col}"><title>${s.label}: ${Math.round(pct*100)}%</title></path>`;
+      legend += `<div style="display:flex;align-items:center;gap:5px;font-size:11px;margin-bottom:3px"><span style="width:10px;height:10px;border-radius:2px;background:${col};flex-shrink:0"></span>${s.label} <span style="color:var(--text-muted)">${Math.round(pct*100)}%</span></div>`;
+      angle = a2;
+    });
+    return `<div style="display:flex;gap:16px;align-items:center"><svg viewBox="0 0 180 180" style="width:130px;height:130px;flex-shrink:0">${paths}</svg><div>${legend}</div></div>`;
+  }
+
+  function svgBarDouble(data, key1, key2, col1, col2, label1, label2) {
+    const maxVal = Math.max(...data.map(d => Math.max(d[key1]||0, d[key2]||0)), 1);
+    const W = 680, H = 180, padL = 50, padB = 30, padR = 10, padT = 10;
+    const chartW = W - padL - padR, chartH = H - padT - padB;
+    const barW = chartW / data.length, subW = barW * 0.35;
+    let grid = '', bars = '', labels = '', yLabels = '';
+    for (let i = 0; i <= 4; i++) {
+      const v = maxVal / 4 * i, y = padT + chartH - chartH * i / 4;
+      grid    += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+      yLabels += `<text x="${padL-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#9ca3af">${Math.round(v/1000)}k</text>`;
+    }
+    data.forEach((d, i) => {
+      const x  = padL + i * barW + barW * 0.1;
+      const h1 = Math.max(1, chartH * (d[key1]||0) / maxVal);
+      const h2 = Math.max(1, chartH * (d[key2]||0) / maxVal);
+      bars += `<rect x="${x}" y="${padT+chartH-h1}" width="${subW}" height="${h1}" fill="${col1}" rx="2" opacity="0.85"><title>${d.label||d.mois} ${label1}: ${Math.round(d[key1]||0)}</title></rect>`;
+      bars += `<rect x="${x+subW+2}" y="${padT+chartH-h2}" width="${subW}" height="${h2}" fill="${col2}" rx="2" opacity="0.85"><title>${d.label||d.mois} ${label2}: ${Math.round(d[key2]||0)}</title></rect>`;
+      labels += `<text x="${x+subW}" y="${H-padB+14}" text-anchor="middle" font-size="9" fill="#6b7280">${(d.label||d.mois||'').slice(0,3)}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:180px">
+      ${grid}${yLabels}${bars}${labels}
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+chartH}" stroke="#d1d5db" stroke-width="1"/>
+      <line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#d1d5db" stroke-width="1"/>
+    </svg>`;
+  }
+
+  function render(kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions) {
     const tauxConv = kpis.devis_envoyes > 0
       ? Math.round(kpis.devis_acceptes / kpis.devis_envoyes * 100) : 0;
 
@@ -794,7 +846,84 @@ async function renderStats(el) {
       ${card(`Détail des créances (${balance.rows.length})`, `<div class="table-wrap"><table class="data-table">
         <thead><tr><th>N°</th><th>Client</th><th style="text-align:right">Montant TTC</th><th>Échéance</th><th>Statut</th></tr></thead>
         <tbody>${balanceRows}</tbody>
-      </table></div>`)}`;
+      </table></div>`)}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        ${card(`DSO : ${treso.dso_jours}j <span style="font-weight:400;font-size:12px;color:var(--text-muted)">— délai moyen de paiement</span> — Prévisions 90j <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(${treso.previsions.length} facture(s))</span>`, (() => {
+          if (!treso.previsions.length) return '<p style="color:var(--text-muted);font-size:13px">Aucune échéance dans les 90 prochains jours</p>';
+          const groupes = {};
+          treso.previsions.forEach(p => {
+            const d = new Date(p.echeance), now = new Date();
+            let label;
+            const diff = Math.ceil((d - now) / 864e5);
+            if (diff < 0) label = 'En retard';
+            else if (diff <= 7) label = 'Cette semaine';
+            else if (diff <= 14) label = 'Semaine prochaine';
+            else if (diff <= 30) label = 'Dans 30 jours';
+            else label = 'Dans 90 jours';
+            if (!groupes[label]) groupes[label] = { total: 0, nb: 0 };
+            groupes[label].total += p.montant_ttc; groupes[label].nb++;
+          });
+          const ordre = ['En retard','Cette semaine','Semaine prochaine','Dans 30 jours','Dans 90 jours'];
+          const colors = { 'En retard': '#ef4444', 'Cette semaine': '#f97316', 'Semaine prochaine': '#f59e0b', 'Dans 30 jours': '#3b82f6', 'Dans 90 jours': '#94a3b8' };
+          return ordre.filter(k => groupes[k]).map(k =>
+            `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+              <span style="color:${colors[k]};font-weight:600">${k}</span>
+              <span><strong>${fmt.money(groupes[k].total)}</strong> <span style="color:var(--text-muted);font-size:12px">(${groupes[k].nb})</span></span>
+            </div>`).join('');
+        })())}
+
+        ${card('Comparaison N vs N-1 ' + `<span style="font-size:11px;font-weight:400;color:var(--text-muted)"><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin:0 4px 0 8px"></span>${new Date().getFullYear()} <span style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:2px;margin:0 4px 0 8px"></span>${new Date().getFullYear()-1}</span>`,
+          svgBarDouble(comparaison, 'ca_n', 'ca_n1', '#3b82f6', '#94a3b8', String(new Date().getFullYear()), String(new Date().getFullYear()-1))
+        )}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        ${card(`Top articles — ${new Date().getFullYear()}`, (() => {
+          if (!topArt.length) return '<p style="color:var(--text-muted);font-size:13px">Aucune facture cette année</p>';
+          const maxHT = Math.max(...topArt.map(a => a.total_ht), 1);
+          return topArt.map((a, i) => `<div style="margin-bottom:9px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>${i+1}. <strong>${a.designation}</strong> <span style="color:var(--text-muted)">${a.total_qte} unités</span></span>
+              <strong>${fmt.money(a.total_ht)}</strong>
+            </div>
+            <div style="height:5px;border-radius:3px;background:var(--border)">
+              <div style="height:100%;border-radius:3px;width:${Math.round(a.total_ht/maxHT*100)}%;background:var(--primary)"></div>
+            </div>
+          </div>`).join('');
+        })())}
+
+        ${card('Marge du catalogue (articles avec prix achat)', (() => {
+          if (!marge.length) return '<p style="color:var(--text-muted);font-size:13px">Aucun article avec prix d\'achat renseigné</p>';
+          return `<table class="data-table" style="font-size:12px"><thead><tr><th>Article</th><th style="text-align:right">P.V. HT</th><th style="text-align:right">P.A. HT</th><th style="text-align:right">Taux marque</th></tr></thead><tbody>${
+            marge.map(m => {
+              const color = m.taux_marque < 20 ? '#ef4444' : m.taux_marque < 40 ? '#f59e0b' : '#22c55e';
+              return `<tr><td>${m.designation}</td><td style="text-align:right">${fmt.money(m.prix_vente)}</td><td style="text-align:right">${fmt.money(m.prix_achat)}</td><td style="text-align:right;color:${color};font-weight:700">${m.taux_marque} %</td></tr>`;
+            }).join('')
+          }</tbody></table>`;
+        })())}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;margin-bottom:8px">
+        ${card(`Répartition par mode de règlement — ${new Date().getFullYear()}`, (() => {
+          const total = repartitions.reglement.reduce((s, r) => s + r.ca_ht, 0);
+          const modeLabels = { virement:'Virement bancaire', virement_sepa:'Virement SEPA', cheque:'Chèque', especes:'Espèces', carte:'Carte bancaire', prelevement:'Prélèvement', prelevement_sepa:'Prélèvement SEPA', paypal:'PayPal', autre:'Autre', non_precise:'Non précisé' };
+          return svgDonut(repartitions.reglement.map(r => ({ label: modeLabels[r.mode]||r.mode, val: r.ca_ht })), total);
+        })())}
+
+        ${card(`Répartition TVA — ${new Date().getFullYear()}`, (() => {
+          const totalHT = repartitions.tva.reduce((s, r) => s + r.base_ht, 0);
+          const rows = repartitions.tva.map(r => {
+            const pct = totalHT > 0 ? Math.round(r.base_ht / totalHT * 100) : 0;
+            return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+              <span><strong>TVA ${r.taux} %</strong></span>
+              <span style="text-align:right">Base : ${fmt.money(r.base_ht)} <span style="color:var(--text-muted);font-size:11px">(${pct}%)</span><br><span style="font-size:11px;color:var(--text-muted)">TVA : ${fmt.money(r.tva)}</span></span>
+            </div>`;
+          }).join('') || '<p style="color:var(--text-muted);font-size:13px">Aucune donnée</p>';
+          const totalTVA = repartitions.tva.reduce((s, r) => s + r.tva, 0);
+          return rows + (totalHT ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-weight:700"><span>Total</span><span>${fmt.money(totalHT)} HT — TVA ${fmt.money(totalTVA)}</span></div>` : '');
+        })())}
+      </div>`;
   }
 
   window.statsPeriode = async (p) => { periode = p; await load(); };

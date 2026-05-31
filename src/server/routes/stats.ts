@@ -217,4 +217,160 @@ router.get('/evolution', requirePerm('factures:r'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+// ── DSO + Prévisions trésorerie ───────────────────────────────────────────────
+router.get('/tresorerie', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const [dso, prev] = await Promise.all([
+      // DSO = délai moyen émission → paiement (365 derniers jours)
+      query(`SELECT ROUND(AVG(
+               date_paiement::date - date_emission::date
+             )::numeric, 1) AS jours
+             FROM factures
+             WHERE entreprise_id=$1 AND statut='payee'
+               AND date_paiement IS NOT NULL AND date_emission IS NOT NULL
+               AND date_paiement::date >= CURRENT_DATE - INTERVAL '365 days'`, [eid]),
+
+      // Prévisions : factures émises non payées avec échéance, 90 prochains jours
+      query(`SELECT f.numero, f.montant_ttc, f.date_echeance::date AS echeance,
+                    COALESCE(c.raison_sociale, TRIM(c.prenom||' '||c.nom)) AS client_nom
+             FROM factures f LEFT JOIN clients c ON c.id=f.client_id
+             WHERE f.entreprise_id=$1 AND f.statut='emise' AND f.type_facture!='avoir'
+               AND f.date_echeance IS NOT NULL
+               AND f.date_echeance::date <= CURRENT_DATE + INTERVAL '90 days'
+             ORDER BY f.date_echeance ASC`, [eid]),
+    ]);
+    res.json({
+      dso_jours: parseFloat(dso.rows[0].jours) || 0,
+      previsions: prev.rows.map((r: any) => ({
+        numero:      r.numero,
+        client_nom:  r.client_nom,
+        montant_ttc: parseFloat(r.montant_ttc),
+        echeance:    r.echeance,
+      })),
+    });
+  } catch(e) { next(e); }
+});
+
+// ── Top articles ──────────────────────────────────────────────────────────────
+router.get('/top-articles', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const annee = new Date().getFullYear();
+    const r = await query(`
+      SELECT fl.designation,
+             SUM(fl.quantite)   AS total_qte,
+             SUM(fl.montant_ht) AS total_ht,
+             COUNT(DISTINCT f.id) AS nb_factures
+      FROM factures_lignes fl
+      JOIN factures f ON f.id = fl.facture_id
+      WHERE f.entreprise_id=$1 AND f.type_facture!='avoir'
+        AND f.statut IN ('emise','payee')
+        AND EXTRACT(YEAR FROM f.date_emission::timestamp) = $2
+      GROUP BY fl.designation
+      ORDER BY total_ht DESC LIMIT 10
+    `, [eid, annee]);
+    res.json(r.rows.map((row: any) => ({
+      designation:  row.designation,
+      total_qte:    parseFloat(row.total_qte),
+      total_ht:     parseFloat(row.total_ht),
+      nb_factures:  parseInt(row.nb_factures),
+    })));
+  } catch(e) { next(e); }
+});
+
+// ── Marge du catalogue ────────────────────────────────────────────────────────
+router.get('/marge', requirePerm('articles:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const r = await query(`
+      SELECT designation, prix_unitaire_ht, prix_achat_ht,
+             ROUND(((prix_unitaire_ht - prix_achat_ht) / NULLIF(prix_unitaire_ht,0) * 100)::numeric, 1) AS taux_marque
+      FROM articles
+      WHERE entreprise_id=$1 AND prix_achat_ht IS NOT NULL AND actif=1 AND prix_unitaire_ht > 0
+      ORDER BY taux_marque ASC
+    `, [eid]);
+    res.json(r.rows.map((row: any) => ({
+      designation:    row.designation,
+      prix_vente:     parseFloat(row.prix_unitaire_ht),
+      prix_achat:     parseFloat(row.prix_achat_ht),
+      taux_marque:    parseFloat(row.taux_marque),
+    })));
+  } catch(e) { next(e); }
+});
+
+// ── Comparaison N vs N-1 ──────────────────────────────────────────────────────
+router.get('/comparaison', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const annee = new Date().getFullYear();
+    const r = await query(`
+      SELECT gs AS mois_num,
+             to_char(to_date(gs::text,'MM'),'Mon') AS mois_label,
+             COALESCE(SUM(f.montant_ht) FILTER (
+               WHERE f.statut IN ('emise','payee')
+                 AND EXTRACT(YEAR FROM f.date_emission::timestamp) = $2
+             ), 0) AS ca_n,
+             COALESCE(SUM(f.montant_ht) FILTER (
+               WHERE f.statut IN ('emise','payee')
+                 AND EXTRACT(YEAR FROM f.date_emission::timestamp) = $2 - 1
+             ), 0) AS ca_n1
+      FROM generate_series(1,12) gs
+      LEFT JOIN factures f
+        ON f.entreprise_id = $1 AND f.type_facture != 'avoir'
+        AND EXTRACT(MONTH FROM f.date_emission::timestamp) = gs
+        AND EXTRACT(YEAR  FROM f.date_emission::timestamp) IN ($2::int, ($2::int - 1))
+      GROUP BY gs ORDER BY gs
+    `, [eid, annee]);
+    res.json(r.rows.map((row: any) => ({
+      mois:      parseInt(row.mois_num),
+      label:     row.mois_label,
+      ca_n:      parseFloat(row.ca_n),
+      ca_n1:     parseFloat(row.ca_n1),
+    })));
+  } catch(e) { next(e); }
+});
+
+// ── Répartitions ──────────────────────────────────────────────────────────────
+router.get('/repartitions', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const annee = new Date().getFullYear();
+    const [reglement, tva] = await Promise.all([
+      // Répartition par mode de règlement
+      query(`SELECT COALESCE(mode_paiement,'non_precise') AS mode,
+                    COUNT(*) AS nb, COALESCE(SUM(montant_ht),0) AS ca_ht
+             FROM factures
+             WHERE entreprise_id=$1 AND type_facture!='avoir'
+               AND statut IN ('emise','payee')
+               AND EXTRACT(YEAR FROM date_emission::timestamp) = $2
+             GROUP BY mode ORDER BY ca_ht DESC`, [eid, annee]),
+
+      // Répartition par taux TVA
+      query(`SELECT t.taux,
+                    COALESCE(SUM(fl.montant_ht),0)  AS base_ht,
+                    COALESCE(SUM(fl.montant_tva),0) AS tva
+             FROM factures_lignes fl
+             JOIN factures f ON f.id=fl.facture_id
+             JOIN taux_tva t ON t.id=fl.taux_tva_id
+             WHERE f.entreprise_id=$1 AND f.type_facture!='avoir'
+               AND f.statut IN ('emise','payee')
+               AND EXTRACT(YEAR FROM f.date_emission::timestamp) = $2
+             GROUP BY t.taux ORDER BY t.taux DESC`, [eid, annee]),
+    ]);
+    res.json({
+      reglement: reglement.rows.map((r: any) => ({
+        mode:   r.mode,
+        nb:     parseInt(r.nb),
+        ca_ht:  parseFloat(r.ca_ht),
+      })),
+      tva: tva.rows.map((r: any) => ({
+        taux:     parseFloat(r.taux),
+        base_ht:  parseFloat(r.base_ht),
+        tva:      parseFloat(r.tva),
+      })),
+    });
+  } catch(e) { next(e); }
+});
+
 export default router;

@@ -58,6 +58,26 @@ Frontend
 - Layout en grille : KPIs + Pipeline/Balance + Graphique/Top + Balance detail
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: stats — DSO, tresorerie, top articles, marge, N/N-1, repartitions
+
+Backend (5 nouvelles routes)
+- /api/stats/tresorerie : DSO (jours moyens paiement) + previsions 90j groupees par semaine
+- /api/stats/top-articles : top 10 articles par CA HT sur l'annee
+- /api/stats/marge : taux de marque catalogue (articles avec prix achat)
+- /api/stats/comparaison : CA mensuel N vs N-1 sur 12 mois
+- /api/stats/repartitions : repartition CA par mode de reglement + ventilation TVA
+
+Frontend (renderStats)
+- svgDonut() : graphique camembert SVG natif pour les repartitions
+- svgBarDouble() : graphique barres double couleur (N vs N-1)
+- DSO + Previsions tresorerie (groupes En retard / Cette semaine / +)
+- Comparaison N vs N-1 en barres doubles
+- Top articles avec barres horizontales proportionnelles
+- Marge catalogue : tableau taux marque code couleur (rouge<20% / orange<40% / vert)
+- Repartition reglement : donut SVG avec legende
+- Repartition TVA : tableau base HT + TVA par taux avec total
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -67,6 +87,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

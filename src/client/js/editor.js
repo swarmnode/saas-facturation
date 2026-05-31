@@ -371,6 +371,19 @@ const DocEditor = (() => {
     return tr;
   }
 
+  // Ouvre le PDF aperçu (identique au PDF émis) dans un nouvel onglet pour impression.
+  // Fallback window.print() si le document n'est pas encore sauvegardé.
+  function imprimerDocEditor(el) {
+    const page = el?.querySelector('.a4-page');
+    const type = page?.dataset.docType;
+    const id   = page?.dataset.docId;
+    if (id && type && ROUTES[type]) {
+      openPdf(`/api/${ROUTES[type]}/${id}/apercu`);
+    } else {
+      alert('Enregistrez le document avant d\'imprimer (Ctrl+S).');
+    }
+  }
+
   // ── Builder HTML unifié ───────────────────────────────────────────────────
 
   // Valeurs de mode de paiement : identiques à payerFacture() dans app.js
@@ -493,7 +506,7 @@ const DocEditor = (() => {
       </div>
       <div class="e-tb-right">
         ${doc?.id?`<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>`:''}
-        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Imprimer</button>
+        <button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>
         <button class="btn btn-primary btn-sm e-save-btn">Enregistrer</button>
       </div>
     </div>
@@ -599,7 +612,8 @@ const DocEditor = (() => {
     const page   = el.querySelector('.a4-page');
     const tbody  = el.querySelector('.e-lignes-body');
     const docKey = el.dataset.docKey;
-    page.dataset.docType = type; // pour refreshPageBreaks dans les handlers
+    page.dataset.docType = type;
+    if (id) page.dataset.docId = String(id);
 
 
 
@@ -700,7 +714,7 @@ const DocEditor = (() => {
         }
         if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
           e.preventDefault();
-          window.print();
+          imprimerDocEditor(el);
         }
       };
       document.addEventListener('keydown', _kbHandler);
@@ -722,7 +736,7 @@ const DocEditor = (() => {
     const route    = ROUTES[type];
     toolbar.innerHTML = `
       <button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>
-      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Imprimer</button>
+      <button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>
       ${type==='devis'?`
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
         ${doc?.statut==='signe'?`<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${id})">📝 Avenant</button><button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${id})">🧾 Facturer</button><button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${id})">🚚 BL</button>`:''}
@@ -899,6 +913,7 @@ const DocEditor = (() => {
           el.dataset.docKey = String(result.id);
           const label = result.numero || `${DOC_LABELS[type]} ${result.id}`;
           tabMgr.promoteTab(el.dataset.tid, result.id, label);
+          page.dataset.docId = String(result.id); // pour imprimerDocEditor
         }
       }
       if (result?.numero) {
@@ -964,7 +979,7 @@ const DocEditor = (() => {
           <div class="e-tb-left"><button class="btn btn-outline btn-sm e-close-btn">← Retour</button><span class="e-tb-title">ACOMPTE ${ac.numero}</span></div>
           <div class="e-tb-right">
             <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${id}/apercu')">👁 Aperçu PDF</button>
-            <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Imprimer</button>
+            <button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>
             ${ac.statut==='en_attente'?`<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${id})">Encaisser</button>`:''}
           </div>
         </div>

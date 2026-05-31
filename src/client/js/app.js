@@ -765,7 +765,7 @@ async function renderClients(el) {
   document.getElementById('topbarActions').innerHTML = `
     <button class="btn btn-primary" onclick="showClientForm()">+ Nouveau client</button>
     <button class="btn btn-outline" onclick="exportCSV('/api/clients/export','clients')">⬇ Exporter CSV</button>
-    <label class="btn btn-outline" style="cursor:pointer;margin:0">⬆ Importer CSV
+    <label class="btn btn-outline" style="cursor:pointer;margin:0;text-transform:none">⬆ Importer CSV
       <input type="file" accept=".csv" style="display:none" onchange="importCSV('/api/clients/import',this,()=>renderClients(el))">
     </label>`;
 
@@ -2855,7 +2855,7 @@ async function renderArticles(el) {
   document.getElementById('topbarActions').innerHTML = `
     <button class="btn btn-primary" onclick="showArticleForm()">+ Nouvel article</button>
     <button class="btn btn-outline" onclick="exportCSV('/api/articles/export','articles')">⬇ Exporter CSV</button>
-    <label class="btn btn-outline" style="cursor:pointer;margin:0">⬆ Importer CSV
+    <label class="btn btn-outline" style="cursor:pointer;margin:0;text-transform:none">⬆ Importer CSV
       <input type="file" accept=".csv" style="display:none" onchange="importCSV('/api/articles/import',this,()=>renderArticles(el))">
     </label>`;
 

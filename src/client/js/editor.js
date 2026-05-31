@@ -570,6 +570,39 @@ const DocEditor = (() => {
     if (!isBL) calcTotaux(page);
     requestAnimationFrame(() => refreshPageBreaks(el, type));
 
+    // Info cumul avoirs : dans l'avoir (solde dispo) et dans la facture (avoirs émis)
+    if (type === 'avoir' && doc?.facture_origine_id) {
+      (async () => {
+        const cumul = await api.get(`/api/factures/${doc.facture_origine_id}/avoirs-cumul`);
+        if (!cumul || cumul.error) return;
+        const totauxEl = page.querySelector('.e-totaux-inner');
+        if (!totauxEl) return;
+        const dispo = cumul.disponible_ttc;
+        const color = dispo < 0.01 ? '#c62828' : '#1a5c38';
+        const bg    = dispo < 0.01 ? '#ffebee' : '#f0fdf4';
+        const info  = document.createElement('div');
+        info.style.cssText = `margin-top:10px;padding:8px 10px;border-radius:6px;background:${bg};font-size:8pt;color:${color};line-height:1.7`;
+        info.innerHTML = `<strong>Facture d'origine :</strong> ${fmt(cumul.facture_ttc)}<br>`
+          + `<strong>Avoirs déjà émis :</strong> ${fmt(cumul.avoirs_ttc)}${cumul.avoirs_nb > 0 ? ` (${cumul.avoirs_nb})` : ''}<br>`
+          + `<strong>Disponible :</strong> ${fmt(dispo)}`;
+        totauxEl.after(info);
+      })();
+    }
+
+    if (type === 'facture' && doc?.id) {
+      (async () => {
+        const cumul = await api.get(`/api/factures/${doc.id}/avoirs-cumul`);
+        if (!cumul || cumul.error || cumul.avoirs_nb === 0) return;
+        const toolbar = el.querySelector('.e-tb-right');
+        if (!toolbar) return;
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-size:8pt;color:#888;white-space:nowrap';
+        badge.title = cumul.avoirs_numeros?.join(', ') || '';
+        badge.textContent = `Avoirs : ${fmt(cumul.avoirs_ttc)} / Disponible : ${fmt(cumul.disponible_ttc)}`;
+        toolbar.insertBefore(badge, toolbar.firstChild);
+      })();
+    }
+
     if (readonly) {
       // Mode lecture
       page.classList.add('e-readonly');

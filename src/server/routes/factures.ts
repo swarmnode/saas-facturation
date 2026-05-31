@@ -33,6 +33,27 @@ router.get('/avoirs/liste', requirePerm('factures:r'), async (req, res, next) =>
   try { res.json(await FactureService.listerAvoirs(req.user!.entreprise_id)); } catch(e) { next(e); }
 });
 
+router.get('/:id/avoirs-cumul', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const f  = await FactureService.obtenir(id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
+    const factureTtc  = Math.abs(parseFloat((f as any).montant_ttc));
+    const avoirsTtc   = await FactureService.getAvoirsCumul(id);
+    const avoirsRes   = await (await import('../db/database')).query(`
+      SELECT COUNT(*) AS nb, ARRAY_AGG(numero ORDER BY created_at) AS numeros
+      FROM factures WHERE facture_origine_id=$1 AND type_facture='avoir' AND statut IN ('emise','payee')
+    `, [id]);
+    res.json({
+      facture_ttc:   factureTtc,
+      avoirs_ttc:    avoirsTtc,
+      avoirs_nb:     parseInt(avoirsRes.rows[0].nb),
+      avoirs_numeros: avoirsRes.rows[0].numeros ?? [],
+      disponible_ttc: Math.max(0, factureTtc - avoirsTtc),
+    });
+  } catch(e) { next(e); }
+});
+
 router.get('/:id', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const f = await FactureService.obtenir(Number(req.params.id));

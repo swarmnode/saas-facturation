@@ -195,11 +195,42 @@ export class FactureService {
     return { ...facture, lignes: lr.rows };
   }
 
+  // Retourne le cumul TTC des avoirs déjà émis sur une facture d'origine.
+  static async getAvoirsCumul(factureOrigineId: number, excludeId?: number): Promise<number> {
+    const r = await query(`
+      SELECT COALESCE(SUM(ABS(montant_ttc)), 0) AS total
+      FROM factures
+      WHERE facture_origine_id = $1
+        AND type_facture = 'avoir'
+        AND statut IN ('emise', 'payee')
+        ${excludeId ? `AND id != ${excludeId}` : ''}
+    `, [factureOrigineId]);
+    return parseFloat(r.rows[0].total) || 0;
+  }
+
   static async emettre(id: number) {
     const fr = await query('SELECT * FROM factures WHERE id = $1', [id]);
     const facture = fr.rows[0];
     if (!facture) throw new Error('Facture introuvable');
     if (facture.locked) throw new Error('INALTÉRABILITÉ : cette facture est verrouillée (Loi anti-fraude TVA 2018).');
+
+    // Validation du plafond pour les avoirs
+    if (facture.type_facture === 'avoir' && facture.facture_origine_id) {
+      const origineRes = await query('SELECT montant_ttc, numero FROM factures WHERE id = $1', [facture.facture_origine_id]);
+      if (origineRes.rows[0]) {
+        const maxTtc    = Math.abs(parseFloat(origineRes.rows[0].montant_ttc));
+        const cumul     = await this.getAvoirsCumul(facture.facture_origine_id, id);
+        const montant   = Math.abs(parseFloat(facture.montant_ttc));
+        const disponible = maxTtc - cumul;
+        if (montant > disponible + 0.01) {
+          throw new Error(
+            `Impossible d'émettre cet avoir : son montant (${montant.toFixed(2)} €) dépasse le solde disponible ` +
+            `(${disponible.toFixed(2)} €) sur la facture ${origineRes.rows[0].numero}. ` +
+            `Avoirs déjà émis : ${cumul.toFixed(2)} € sur ${maxTtc.toFixed(2)} €.`
+          );
+        }
+      }
+    }
 
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [facture.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [facture.client_id]);

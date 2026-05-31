@@ -26,6 +26,21 @@ Verifications
 - FAC-2026-0015 (22 lignes facture) : 2 pages PDF
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: calcul auto TVA intracommunautaire depuis le SIRET
+
+Fonction tvaFromSiret(siret) :
+  cle = (12 + 3 * (SIREN mod 97)) mod 97
+  resultat = 'FR' + cle(2 chiffres) + SIREN
+
+Declencheur : blur sur le champ SIRET, uniquement si TVA Intracom vide
+Feedback visuel : fond vert 1,5s apres auto-remplissage
+
+Applique dans :
+- showClientForm() : formulaire complet Clients
+- openQuickClientCreate() : formulaire rapide depuis l'editeur WYSIWYG
+  (champ TVA Intracom ajoute au formulaire rapide)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -135,6 +150,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -373,4 +373,87 @@ router.get('/repartitions', requirePerm('factures:r'), async (req, res, next) =>
   } catch(e) { next(e); }
 });
 
+// ── Déclaration TVA (CA3) ─────────────────────────────────────────────────────
+// ?annee=2026&mois=5  ou  ?annee=2026&trimestre=2  ou  ?annee=2026
+router.get('/ca3', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid       = req.user!.entreprise_id;
+    const annee     = parseInt(String(req.query.annee))     || new Date().getFullYear();
+    const mois      = req.query.mois      ? parseInt(String(req.query.mois))      : null;
+    const trimestre = req.query.trimestre ? parseInt(String(req.query.trimestre)) : null;
+
+    const MOIS_FR = ['','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+    let dateFilter: string;
+    let periodeLabel: string;
+    if (mois) {
+      dateFilter   = `AND EXTRACT(YEAR  FROM f.date_emission::timestamp)=${annee} AND EXTRACT(MONTH FROM f.date_emission::timestamp)=${mois}`;
+      periodeLabel = `${MOIS_FR[mois]} ${annee}`;
+    } else if (trimestre) {
+      const m1 = (trimestre - 1) * 3 + 1, m2 = m1 + 2;
+      dateFilter   = `AND EXTRACT(YEAR FROM f.date_emission::timestamp)=${annee} AND EXTRACT(MONTH FROM f.date_emission::timestamp) BETWEEN ${m1} AND ${m2}`;
+      periodeLabel = `T${trimestre} ${annee} (${MOIS_FR[m1]}–${MOIS_FR[m2]})`;
+    } else {
+      dateFilter   = `AND EXTRACT(YEAR FROM f.date_emission::timestamp)=${annee}`;
+      periodeLabel = String(annee);
+    }
+
+    const [tvaCollectee, avoirs, franchise, entreprise] = await Promise.all([
+      // TVA collectée par taux (hors avoirs)
+      query(`SELECT t.taux, t.libelle,
+                    SUM(fl.montant_ht)  AS base_ht,
+                    SUM(fl.montant_tva) AS tva
+             FROM factures_lignes fl
+             JOIN factures f ON f.id=fl.facture_id
+             JOIN taux_tva t ON t.id=fl.taux_tva_id
+             WHERE f.entreprise_id=$1 AND f.type_facture!='avoir'
+               AND f.statut IN ('emise','payee') ${dateFilter}
+             GROUP BY t.taux, t.libelle ORDER BY t.taux DESC`, [eid]),
+
+      // Avoirs émis (à déduire)
+      query(`SELECT COALESCE(SUM(fl.montant_ht),0) AS base_ht,
+                    COALESCE(SUM(fl.montant_tva),0) AS tva,
+                    COUNT(DISTINCT f.id) AS nb
+             FROM factures_lignes fl
+             JOIN factures f ON f.id=fl.facture_id
+             WHERE f.entreprise_id=$1 AND f.type_facture='avoir'
+               AND f.statut IN ('emise','payee') ${dateFilter}`, [eid]),
+
+      // Opérations en franchise 293 B
+      query(`SELECT COALESCE(SUM(f.montant_ht),0) AS ht, COUNT(*) AS nb
+             FROM factures f
+             WHERE f.entreprise_id=$1 AND f.tva_mode='franchise_293b'
+               AND f.type_facture!='avoir' AND f.statut IN ('emise','payee') ${dateFilter}`, [eid]),
+
+      query('SELECT raison_sociale, siret, tva_intracom, adresse, code_postal, ville FROM entreprise WHERE id=$1', [eid]),
+    ]);
+
+    const totalBrut = tvaCollectee.rows.reduce((s: number, r: any) => s + parseFloat(r.tva), 0);
+    const avoirTva  = parseFloat(avoirs.rows[0].tva);
+
+    res.json({
+      periode:       periodeLabel,
+      annee, mois, trimestre,
+      entreprise:    entreprise.rows[0] ?? {},
+      tva_collectee: tvaCollectee.rows.map((r: any) => ({
+        taux:     parseFloat(r.taux),
+        libelle:  r.libelle,
+        base_ht:  parseFloat(r.base_ht),
+        tva:      parseFloat(r.tva),
+      })),
+      avoirs: {
+        base_ht: parseFloat(avoirs.rows[0].base_ht),
+        tva:     avoirTva,
+        nb:      parseInt(avoirs.rows[0].nb),
+      },
+      franchise: {
+        ht: parseFloat(franchise.rows[0].ht),
+        nb: parseInt(franchise.rows[0].nb),
+      },
+      total_tva_brute:  totalBrut,
+      total_tva_nette:  totalBrut - avoirTva,
+    });
+  } catch(e) { next(e); }
+});
+
 export default router;

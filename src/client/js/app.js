@@ -603,6 +603,7 @@ async function renderView(view, el) {
   switch (view) {
     case 'dashboard':       return renderDashboard(el);
     case 'stats':           return renderStats(el);
+    case 'decl-tva':        return renderDeclTVA(el);
     case 'clients':         return renderClients(el);
     case 'devis':           return renderDocList('devis', el);
     case 'factures':        return renderDocList('factures', el);
@@ -625,6 +626,168 @@ async function loadGlobalData() {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let _dashSort = { col: 'date', dir: -1 }; // tri par défaut : date desc
+
+// ── Déclaration TVA (CA3) ─────────────────────────────────────────────────
+async function renderDeclTVA(el) {
+  document.getElementById('topbarActions').innerHTML = `
+    <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimer</button>`;
+
+  const now   = new Date();
+  let annee   = now.getFullYear();
+  let mois    = now.getMonth(); // mois précédent
+  let periode = 'mois';
+  if (mois === 0) { mois = 12; annee--; } // janvier → décembre précédent
+
+  async function load() {
+    let url = `/api/stats/ca3?annee=${annee}`;
+    if (periode === 'mois') url += `&mois=${mois}`;
+    else if (periode === 'trimestre') url += `&trimestre=${Math.ceil(mois / 3)}`;
+    const d = await api.get(url);
+    render(d);
+  }
+
+  const MOIS_FR = ['','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const TAUX_LBL = { 20: 'Taux normal 20 %', 10: 'Taux intermédiaire 10 %', 5.5: 'Taux réduit 5,5 %', 2.1: 'Taux particulier 2,1 %', 0: 'Exonéré / 0 %' };
+
+  function row(label, baseHT, tva, bold = false) {
+    const s = bold ? 'font-weight:700;background:var(--primary-light)' : '';
+    return `<tr style="${s}">
+      <td style="padding:8px 12px">${label}</td>
+      <td style="padding:8px 12px;text-align:right">${baseHT != null ? fmt.money(baseHT) : ''}</td>
+      <td style="padding:8px 12px;text-align:right">${tva != null ? fmt.money(tva) : ''}</td>
+    </tr>`;
+  }
+
+  function render(d) {
+    const selAnnee = [annee-1, annee, annee+1].map(a =>
+      `<option value="${a}" ${a===annee?'selected':''}>${a}</option>`).join('');
+    const selMois = MOIS_FR.slice(1).map((m, i) =>
+      `<option value="${i+1}" ${i+1===mois?'selected':''}>${m}</option>`).join('');
+    const selTrim = [1,2,3,4].map(t =>
+      `<option value="${t}" ${Math.ceil(mois/3)===t?'selected':''}>${'T'+t}</option>`).join('');
+
+    const rows = d.tva_collectee.map(t =>
+      row(TAUX_LBL[t.taux] || `TVA ${t.taux} %`, t.base_ht, t.tva)
+    ).join('');
+
+    const avoirRow = d.avoirs.nb > 0
+      ? row(`Avoirs émis (${d.avoirs.nb}) — à déduire`, -d.avoirs.base_ht, -d.avoirs.tva)
+      : '';
+
+    const franchiseRow = d.franchise.nb > 0
+      ? `<tr><td colspan="3" style="padding:8px 12px;color:var(--text-muted);font-size:12px">
+          Opérations en franchise 293 B (non soumises) : ${d.franchise.nb} facture(s) — ${fmt.money(d.franchise.ht)} HT
+        </td></tr>` : '';
+
+    el.innerHTML = `
+      <style>
+        @media print {
+          .sidebar, .tab-bar, #topbarActions, .nav-item, .e-toolbar { display:none!important; }
+          .tab-panels { position:static!important; overflow:visible!important; }
+          .tab-panel   { position:static!important; overflow:visible!important; display:block!important; padding:0!important; }
+          .ca3-controls { display:none!important; }
+          body { background:#fff!important; }
+        }
+      </style>
+
+      <div class="ca3-controls" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+        <span style="font-weight:600">Période :</span>
+        <select onchange="ca3SetPeriode(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px">
+          <option value="mois" ${periode==='mois'?'selected':''}>Mensuelle</option>
+          <option value="trimestre" ${periode==='trimestre'?'selected':''}>Trimestrielle</option>
+          <option value="annee" ${periode==='annee'?'selected':''}>Annuelle</option>
+        </select>
+        ${periode !== 'annee' ? `<select onchange="ca3SetMois(+this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px">
+          ${periode==='mois' ? selMois : selTrim}
+        </select>` : ''}
+        <select onchange="ca3SetAnnee(+this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px">${selAnnee}</select>
+        <button class="btn btn-primary btn-sm" onclick="ca3Load()">Actualiser</button>
+      </div>
+
+      <div style="max-width:800px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:10px;padding:32px;font-family:'Helvetica Neue',sans-serif">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #1a3a5c">
+          <div>
+            <div style="font-size:20px;font-weight:700;color:#1a3a5c">DÉCLARATION DE TVA</div>
+            <div style="font-size:14px;color:#555;margin-top:4px">Formulaire CA3 — ${d.periode}</div>
+          </div>
+          <div style="text-align:right;font-size:12px;color:#555">
+            <div style="font-weight:600">${d.entreprise.raison_sociale || ''}</div>
+            <div>SIRET : ${d.entreprise.siret || '—'}</div>
+            ${d.entreprise.tva_intracom ? `<div>TVA : ${d.entreprise.tva_intracom}</div>` : ''}
+          </div>
+        </div>
+
+        <h3 style="font-size:13px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px">
+          A — TVA collectée sur opérations imposables
+        </h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px">
+          <thead>
+            <tr style="background:#1a3a5c;color:#fff">
+              <th style="padding:8px 12px;text-align:left;font-weight:600">Opération</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:600">Base HT</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:600">TVA collectée</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="3" style="padding:8px 12px;color:var(--text-muted)">Aucune opération imposable sur cette période</td></tr>'}
+            ${avoirRow}
+            ${franchiseRow}
+            ${row('TOTAL TVA COLLECTÉE BRUTE', null, d.total_tva_brute, true)}
+            ${d.avoirs.nb > 0 ? row('TOTAL TVA COLLECTÉE NETTE (après avoirs)', null, d.total_tva_nette, true) : ''}
+          </tbody>
+        </table>
+
+        <h3 style="font-size:13px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px">
+          B — TVA déductible (à compléter)
+        </h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px">
+          <thead>
+            <tr style="background:#1a3a5c;color:#fff">
+              <th style="padding:8px 12px;text-align:left;font-weight:600">Opération</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:600">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:8px 12px">TVA déductible sur achats et charges</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">À saisir manuellement</td></tr>
+            <tr><td style="padding:8px 12px">Crédit de TVA reportable (période précédente)</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">À saisir manuellement</td></tr>
+            <tr style="font-weight:700;background:var(--primary-light)"><td style="padding:8px 12px">TOTAL TVA DÉDUCTIBLE</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">—</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="font-size:13px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px">
+          C — TVA à payer (ligne 16 CA3)
+        </h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px">
+          <tbody>
+            <tr><td style="padding:8px 12px">TVA collectée nette (section A)</td><td style="padding:8px 12px;text-align:right;font-weight:600">${fmt.money(d.total_tva_nette)}</td></tr>
+            <tr><td style="padding:8px 12px">TVA déductible (section B)</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">— À compléter —</td></tr>
+            <tr style="font-weight:700;font-size:14px;background:#1a3a5c;color:#fff">
+              <td style="padding:10px 12px">SOLDE TVA À PAYER / CRÉDIT</td>
+              <td style="padding:10px 12px;text-align:right">— À calculer —</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;font-size:12px;color:#78350f">
+          <strong>⚠ Note :</strong> Seule la TVA collectée est calculée automatiquement depuis vos factures.
+          La TVA déductible (sur vos achats/charges) et le crédit reportable doivent être saisis manuellement
+          depuis vos factures d'achat et votre déclaration précédente.
+          Vérifiez ces montants avec votre expert-comptable avant dépôt.
+        </div>
+
+        <div style="margin-top:20px;font-size:11px;color:#9ca3af;text-align:center">
+          Généré par FacturPro le ${new Date().toLocaleDateString('fr-FR')} — Document non officiel
+        </div>
+      </div>`;
+  }
+
+  window.ca3Load     = load;
+  window.ca3SetAnnee = a  => { annee = a; };
+  window.ca3SetMois  = m  => { mois  = m; };
+  window.ca3SetPeriode = p => { periode = p; load(); };
+
+  await load();
+}
 
 // ── Statistiques ──────────────────────────────────────────────────────────
 async function renderStats(el) {

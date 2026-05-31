@@ -137,11 +137,21 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: attestation ouverte via blob URL avec JWT (window.open sans auth)
 - Fix: Ctrl+S intercepte au niveau document (evite dialog Chrome)
 - Fix: CSS print complet — masque UI edition, inputs en texte brut
+- Fix: impression via PDF apercu (identique au PDF emis) au lieu de window.print()
+
+- imprimerDocEditor(el) : ouvre /api/{type}/{id}/apercu dans un nouvel onglet
+  via openPdf() avec authentification JWT — rendu pixel-perfect identique au PDF
+- Bouton Imprimer et Ctrl+I utilisent desormais cette fonction
+- Fallback window.print() si le document n'est pas encore sauvegarde
+- page.dataset.docId mis a jour a la creation et apres le premier save
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

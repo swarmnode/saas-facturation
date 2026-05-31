@@ -159,22 +159,39 @@ const DocEditor = (() => {
     let pageNum = 1;
 
     if (type === 'bl') {
-      // Mesure DOM : les lignes BL affichent la description en clair → hauteur variable
-      const PAGE_PX   = 1122; // A4 à 96dpi
-      const FOOTER_PX = 160;  // zone signature BL (e-doc-bottom) + marge
-      const pageRect  = page.getBoundingClientRect();
-      let breakAt = PAGE_PX - FOOTER_PX; // 962px
+      // Calcul PDF en points — miroir de genererBLStream
+      // PAGE_SAFE_BOT = 690pt (sigY=695 − 5pt marge)
+      // Après la boucle, vérification supplémentaire : si notes+signature
+      // débordent (y + ~50pt > 690pt), on insère le break après la dernière ligne.
+      const PAGE_SAFE_BOT = 690;
+      const CONT_TOP      = 60;
+      const ROW_H         = 20;
+      const NOTES_MARGIN  = 50; // estimation : séparateur + "Notes:" + texte
+      const hasLogo = !!page.querySelector('.e-logo');
+      const startY  = (hasLogo ? 185 : 150) + 100;
+
+      let y = startY + 22; // après l'en-tête du tableau
 
       for (const row of rows) {
-        const rowBottom = row.getBoundingClientRect().bottom - pageRect.top;
-        if (rowBottom > breakAt) {
+        if (y + ROW_H > PAGE_SAFE_BOT) {
           pageNum++;
           const brk = document.createElement('tr');
           brk.className = 'e-page-break';
           brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
           tbody.insertBefore(brk, row);
-          breakAt += PAGE_PX;
+          y = CONT_TOP + 22;
         }
+        y += ROW_H;
+      }
+
+      // Débordement notes/signature : toutes les lignes tiennent mais le contenu
+      // qui suit (notes + cadre sig à y≥695pt) passe sur la page suivante
+      if (rows.length && y + NOTES_MARGIN > PAGE_SAFE_BOT) {
+        pageNum++;
+        const brk = document.createElement('tr');
+        brk.className = 'e-page-break';
+        brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
+        tbody.appendChild(brk);
       }
     } else {
       // Calcul PDF en points (miroir de FacturXService) pour devis/facture/avoir

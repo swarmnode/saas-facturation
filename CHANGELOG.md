@@ -67,9 +67,26 @@ Remplace la mesure CSS par une simulation identique a FacturXService :
 - Le saut de page WYSIWYG correspond desormais exactement au saut PDF
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: badge Acquittee a gauche des totaux, meme niveau
+
+Avant : badge pleine largeur positionne a BOTTOM-60 ou dynamiquement,
+debordant sur le separateur (BOTTOM-44) et les totaux.
+
+Apres : zone gauche x=50→320 / y=BOTTOM-44→BOTTOM (44pt de haut),
+aligne exactement sur la bande des totaux (droite x=340→545).
+- Fond vert clair (#E8F5E9), bordure fine (#A5D6A7)
+- Ligne 1 : 'ACQUITTEE' en gras (10pt)
+- Ligne 2 : date + mode de paiement (8pt)
+- Mention TVA speciale deplacee de BOTTOM-44 a BOTTOM-60
+  pour liberer le slot occupe par le badge
+
+Applique dans genererFacture (PDF emis) et genererFactureStream (apercu).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

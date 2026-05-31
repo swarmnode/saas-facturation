@@ -634,12 +634,14 @@ async function renderStats(el) {
   let periode = 'mois';
 
   async function load() {
-    const [kpis, balance, evolution] = await Promise.all([
+    const [kpis, balance, evolution, pipeline, topClients] = await Promise.all([
       api.get(`/api/stats/kpis?periode=${periode}`),
       api.get('/api/stats/balance-agee'),
       api.get('/api/stats/evolution'),
+      api.get('/api/stats/pipeline'),
+      api.get('/api/stats/top-clients'),
     ]);
-    render(kpis, balance, evolution);
+    render(kpis, balance, evolution, pipeline, topClients);
   }
 
   function periodeLabel(p) {
@@ -694,39 +696,64 @@ async function renderStats(el) {
     return '#ef4444';
   }
 
-  function render(kpis, balance, evolution) {
+  function card(title, content) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">${title ? `<div style="font-size:13px;font-weight:600;margin-bottom:12px">${title}</div>` : ''}${content}</div>`;
+  }
+  function kpiCard(label, val, sub, color) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;flex:1;min-width:145px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">${label}</div>
+      <div style="font-size:20px;font-weight:700;color:${color}">${val}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${sub}</div>
+    </div>`;
+  }
+
+  function render(kpis, balance, evolution, pipeline, topClients) {
     const tauxConv = kpis.devis_envoyes > 0
       ? Math.round(kpis.devis_acceptes / kpis.devis_envoyes * 100) : 0;
-
-    const kpiCards = [
-      { label: 'CA facturé HT', val: fmt.money(kpis.facture_ht), sub: `${kpis.facture_nb} facture(s)`, color: 'var(--primary)' },
-      { label: 'CA encaissé', val: fmt.money(kpis.encaisse_ttc), sub: periodeLabel(periode), color: '#22c55e' },
-      { label: 'En attente', val: fmt.money(kpis.attente_ttc), sub: `${kpis.attente_nb} facture(s) émise(s)`, color: '#f59e0b' },
-      { label: 'En retard', val: fmt.money(kpis.retard_ttc), sub: `${kpis.retard_nb} facture(s) échue(s)`, color: kpis.retard_nb > 0 ? '#ef4444' : '#22c55e' },
-      { label: 'Taux conversion devis', val: `${tauxConv} %`, sub: '90 derniers jours', color: 'var(--primary)' },
-    ].map(k => `
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;flex:1;min-width:150px">
-        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">${k.label}</div>
-        <div style="font-size:22px;font-weight:700;color:${k.color}">${k.val}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${k.sub}</div>
-      </div>`).join('');
 
     const periodes = ['mois','trimestre','annee'].map(p =>
       `<button class="btn ${p === periode ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="statsPeriode('${p}')">${periodeLabel(p)}</button>`
     ).join('');
 
-    const balanceRows = balance.rows.map(r => {
-      const color = r.retard_jours <= 0 ? '#22c55e' : r.retard_jours <= 30 ? '#f59e0b' : r.retard_jours <= 60 ? '#f97316' : '#ef4444';
-      const retardLabel = r.retard_jours <= 0 ? (r.date_echeance ? 'À venir' : 'Sans échéance') : `${r.retard_jours}j de retard`;
-      return `<tr>
-        <td><strong>${r.numero}</strong></td>
-        <td>${r.client_nom || '—'}</td>
-        <td style="text-align:right">${fmt.money(r.montant_ttc)}</td>
-        <td>${r.date_echeance ? fmt.date(r.date_echeance) : '—'}</td>
-        <td><span style="color:${color};font-weight:600;font-size:12px">${retardLabel}</span></td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="5" class="empty">Aucune créance en attente</td></tr>';
+    // ── KPIs ────────────────────────────────────────────────────────────────
+    const kpiRow = [
+      kpiCard('CA facturé HT', fmt.money(kpis.facture_ht), `${kpis.facture_nb} facture(s) — ${periodeLabel(periode)}`, 'var(--primary)'),
+      kpiCard('Montant moyen', fmt.money(kpis.montant_moyen_ht), 'par facture HT', 'var(--primary)'),
+      kpiCard('CA encaissé', fmt.money(kpis.encaisse_ttc), periodeLabel(periode), '#22c55e'),
+      kpiCard('En attente', fmt.money(kpis.attente_ttc), `${kpis.attente_nb} facture(s) émise(s)`, '#f59e0b'),
+      kpiCard('En retard', fmt.money(kpis.retard_ttc), `${kpis.retard_nb} facture(s) échue(s)`, kpis.retard_nb > 0 ? '#ef4444' : '#22c55e'),
+      kpiCard('Conversion devis', `${tauxConv} %`, `Délai moyen : ${kpis.delai_moyen_acceptation}j`, 'var(--primary)'),
+    ].join('');
 
+    // ── Pipeline commercial ─────────────────────────────────────────────────
+    const pipelineHtml = pipeline.map((s, i) => {
+      const colors = ['#64748b','#3b82f6','#22c55e','#8b5cf6'];
+      const arrow = i < pipeline.length - 1 ? `<span style="color:#d1d5db;font-size:20px;align-self:center">›</span>` : '';
+      return `<div style="text-align:center;flex:1">
+        <div style="font-size:22px;font-weight:700;color:${colors[i]}">${s.nb}</div>
+        <div style="font-size:11px;font-weight:600;color:${colors[i]};margin:2px 0">${s.etape}</div>
+        ${s.ttc != null ? `<div style="font-size:10px;color:var(--text-muted)">${fmt.money(s.ttc)}</div>` : ''}
+      </div>${arrow}`;
+    }).join('');
+
+    // ── Top clients ─────────────────────────────────────────────────────────
+    const maxCA = Math.max(...topClients.map(c => c.ca_ht), 1);
+    const topHtml = topClients.length ? topClients.map((c, i) => {
+      const risk = c.part_pct >= 30;
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+          <span>${i + 1}. <strong>${c.client_nom}</strong> <span style="color:var(--text-muted)">(${c.nb_factures} fact.)</span></span>
+          <span><strong>${fmt.money(c.ca_ht)}</strong>
+            <span style="margin-left:6px;font-weight:700;color:${risk ? '#ef4444' : '#64748b'}">${c.part_pct} %</span>
+          </span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--border)">
+          <div style="height:100%;border-radius:3px;width:${Math.round(c.ca_ht/maxCA*100)}%;background:${risk ? '#ef4444' : 'var(--primary)'}"></div>
+        </div>
+      </div>`;
+    }).join('') : '<p style="color:var(--text-muted);font-size:13px">Aucune facture cette année</p>';
+
+    // ── Balance âgée ────────────────────────────────────────────────────────
     const balanceSummary = balance.summary.map((t, i) => {
       const colors = ['#22c55e','#f59e0b','#f97316','#ef4444','#dc2626'];
       return t.nb ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -735,40 +762,39 @@ async function renderStats(el) {
       </div>` : '';
     }).join('');
 
+    const balanceRows = balance.rows.map(r => {
+      const color = r.retard_jours <= 0 ? '#22c55e' : r.retard_jours <= 30 ? '#f59e0b' : r.retard_jours <= 60 ? '#f97316' : '#ef4444';
+      const retardLabel = r.retard_jours <= 0 ? (r.date_echeance ? 'À venir' : 'Sans échéance') : `${r.retard_jours}j de retard`;
+      return `<tr>
+        <td><strong>${r.numero}</strong></td><td>${r.client_nom || '—'}</td>
+        <td style="text-align:right">${fmt.money(r.montant_ttc)}</td>
+        <td>${r.date_echeance ? fmt.date(r.date_echeance) : '—'}</td>
+        <td><span style="color:${color};font-weight:600;font-size:12px">${retardLabel}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" class="empty">Aucune créance en attente</td></tr>';
+
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <h2 style="margin:0">Statistiques</h2>
         <div style="display:flex;gap:6px">${periodes}</div>
       </div>
 
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">${kpiCards}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">${kpiRow}</div>
 
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;align-items:start">
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-            Évolution CA (12 mois)
-            <span style="font-size:11px;color:var(--text-muted)">
-              <span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:4px"></span>Facturé HT
-              <span style="display:inline-block;width:10px;height:10px;background:#22c55e;border-radius:2px;margin:0 4px 0 10px"></span>Encaissé HT
-            </span>
-          </div>
-          ${svgBar(evolution)}
-        </div>
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:12px">Balance âgée</div>
-          ${balanceSummary || '<p style="color:var(--text-muted);font-size:13px">Aucune créance ouverte</p>'}
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        ${card('Pipeline commercial', `<div style="display:flex;gap:4px;align-items:stretch">${pipelineHtml}</div>`)}
+        ${card('Balance âgée', balanceSummary || '<p style="color:var(--text-muted);font-size:13px">Aucune créance ouverte</p>')}
       </div>
 
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
-        <div style="font-size:13px;font-weight:600;margin-bottom:12px">Détail des créances (${balance.rows.length})</div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>N°</th><th>Client</th><th style="text-align:right">Montant TTC</th><th>Échéance</th><th>Statut</th></tr></thead>
-            <tbody>${balanceRows}</tbody>
-          </table>
-        </div>
-      </div>`;
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
+        ${card(`Évolution CA (12 mois) <span style="font-size:11px;font-weight:400;color:var(--text-muted)"><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin:0 4px 0 10px"></span>Facturé HT <span style="display:inline-block;width:10px;height:10px;background:#22c55e;border-radius:2px;margin:0 4px 0 8px"></span>Encaissé HT</span>`, svgBar(evolution))}
+        ${card(`Top clients — ${new Date().getFullYear()} <span style="font-size:11px;font-weight:400;color:#ef4444">  ⚠ ≥ 30 %</span>`, topHtml)}
+      </div>
+
+      ${card(`Détail des créances (${balance.rows.length})`, `<div class="table-wrap"><table class="data-table">
+        <thead><tr><th>N°</th><th>Client</th><th style="text-align:right">Montant TTC</th><th>Échéance</th><th>Statut</th></tr></thead>
+        <tbody>${balanceRows}</tbody>
+      </table></div>`)}`;
   }
 
   window.statsPeriode = async (p) => { periode = p; await load(); };

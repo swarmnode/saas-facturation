@@ -16,9 +16,19 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
   (marge brute, taux de marque, taux de marge) mis a jour a chaque frappe
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: port d'ecoute configurable dans l'installeur
+
+- Nouvelle page 'Configuration du serveur' dans l'assistant Inno Setup
+- Valeur par defaut : 3000, validation 1024-65535
+- Port transmis a Configure.ps1 via -Port
+- Configure.ps1 : PORT dans .env, regle pare-feu, raccourcis et
+  message de fin utilisent le port saisi
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

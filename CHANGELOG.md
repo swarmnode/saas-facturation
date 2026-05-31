@@ -133,11 +133,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Corrigé
 - Fix: label import CSV en casse normale (text-transform:none)
+- Fix: POST /api/entreprise sauvegarde cgv_texte et mention_legale
 
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

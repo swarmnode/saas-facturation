@@ -89,8 +89,25 @@ if (Test-Path $NssmExe) {
 } else {
     $NssmZip = "$Tools\nssm.zip"
     $NssmUrl = "https://nssm.cc/release/nssm-$NssmVersion.zip"
-    Write-Host "  Telechargement $NssmUrl..."
-    Invoke-WebRequest -Uri $NssmUrl -OutFile $NssmZip -UseBasicParsing
+    $downloaded = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            Write-Host "  Telechargement $NssmUrl (essai $attempt/3)..."
+            Invoke-WebRequest -Uri $NssmUrl -OutFile $NssmZip -UseBasicParsing
+            $downloaded = $true; break
+        } catch {
+            Write-Host "  Echec : $($_.Exception.Message)"
+            if ($attempt -lt 3) { Start-Sleep -Seconds (10 * $attempt) }
+        }
+    }
+    if (-not $downloaded) {
+        Write-Host "  nssm.cc indisponible, fallback Chocolatey..."
+        choco install nssm -y --no-progress | Out-Null
+        $ChocoNssm = Get-Command nssm -ErrorAction SilentlyContinue
+        if (-not $ChocoNssm) { throw "NSSM introuvable via nssm.cc et Chocolatey" }
+        Copy-Item $ChocoNssm.Source $NssmExe
+        OK "NSSM (via Chocolatey) : $NssmExe"; return
+    }
     Write-Host "  Extraction..."
     $TmpDir = "$Tools\nssm-tmp"
     Expand-Archive -Path $NssmZip -DestinationPath $TmpDir -Force

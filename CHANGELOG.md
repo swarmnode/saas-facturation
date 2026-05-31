@@ -17,9 +17,26 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Signature + totaux toujours à bottomY=660 sur la dernière page
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: sauts de page realistes dans le PDF et le WYSIWYG
+
+PDF (FacturXService)
+- Saut de page auto avant chaque ligne qui deborderait (PAGE_SAFE_BOT=642pt)
+- En-tete tableau reimprime sur chaque nouvelle page (CONT_TOP=60pt)
+- Description de ligne rendue en 7pt gris sous la designation (+12pt/ligne)
+- Nouvelle page automatique si curseur depasse la zone footer apres la boucle
+- DEV-2026-0042 (22 lignes) : 2 pages verifiees
+
+WYSIWYG (editor.js + styles.css)
+- refreshPageBreaks(el) : mesure les positions reelles avec getBoundingClientRect,
+  insere des separateurs .e-page-break tous les 1122px (A4 a 96dpi)
+- Appelee apres chargement initial, ajout de ligne, suppression de ligne
+- CSS : ligne pointillee grise + label 'Page N' pour chaque coupure
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

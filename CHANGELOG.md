@@ -136,11 +136,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: POST /api/entreprise sauvegarde cgv_texte et mention_legale
 - Fix: attestation ouverte via blob URL avec JWT (window.open sans auth)
 - Fix: Ctrl+S intercepte au niveau document (evite dialog Chrome)
+- Fix: CSS print complet — masque UI edition, inputs en texte brut
 
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

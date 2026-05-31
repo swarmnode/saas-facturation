@@ -338,10 +338,24 @@ const DocEditor = (() => {
 
   // ── Builder HTML unifié ───────────────────────────────────────────────────
 
+  // Valeurs de mode de paiement : identiques à payerFacture() dans app.js
+  const MODES_PAIEMENT = [
+    ['Virement bancaire',  'virement'],
+    ['Virement SEPA',      'virement_sepa'],
+    ['Chèque',             'cheque'],
+    ['Espèces',            'especes'],
+    ['Carte bancaire',     'carte'],
+    ['Prélèvement',        'prelevement'],
+    ['Prélèvement SEPA',   'prelevement_sepa'],
+    ['PayPal',             'paypal'],
+    ['Autre',              'autre'],
+  ];
+
   function buildDocHTML(type, entreprise, doc) {
     const isBL      = type === 'bl';
     const isFacture = type === 'facture' || type === 'avoir';
     const isAvoir   = type === 'avoir';
+    const isPaid    = doc?.statut === 'payee';
     const bc        = _brandColor;
     const numero    = doc?.numero || '—';
     const today     = new Date().toISOString().slice(0,10);
@@ -352,7 +366,8 @@ const DocEditor = (() => {
       <div class="e-date-row"><span class="e-date-label">Date d'émission</span><input class="e-date-inp" type="date" name="date_emission" value="${doc?.date_emission?.slice(0,10)||today}"></div>`
     : isFacture ? `
       <div class="e-date-row"><span class="e-date-label">Date d'émission</span><input class="e-date-inp" type="date" name="date_emission" value="${doc?.date_emission?.slice(0,10)||today}"></div>
-      ${!isAvoir && (doc?.date_echeance || !doc?.locked) ? `<div class="e-date-row"><span class="e-date-label">Échéance</span><input class="e-date-inp" type="date" name="date_echeance" value="${doc?.date_echeance?.slice(0,10)||''}"></div>` : ''}
+      ${!isAvoir && !isPaid && (doc?.date_echeance || !doc?.locked) ? `<div class="e-date-row"><span class="e-date-label">Échéance</span><input class="e-date-inp" type="date" name="date_echeance" value="${doc?.date_echeance?.slice(0,10)||''}"></div>` : ''}
+      ${isPaid && doc?.date_paiement ? `<div class="e-date-row"><span class="e-date-label" style="color:#2e7d32">Payée le</span><span style="font-size:9pt;font-weight:600;color:#2e7d32">${new Date(doc.date_paiement).toLocaleDateString('fr-FR')}</span></div>` : ''}
       ${isAvoir && doc?.facture_origine_numero ? `<div class="e-date-row"><span class="e-date-label" style="color:#888">Avoir sur</span><span style="font-size:9pt;font-weight:600;color:#555">${doc.facture_origine_numero}</span></div>` : ''}`
     : `
       <div class="e-date-row"><span class="e-date-label">Date</span><input class="e-date-inp" type="date" name="date_creation" value="${doc?.date_creation?.slice(0,10)||today}"></div>
@@ -369,10 +384,13 @@ const DocEditor = (() => {
         <option value="franchise_293b" ${doc?.tva_mode==='franchise_293b'?'selected':''}>Franchise 293 B</option>
         <option value="autoliquidation" ${doc?.tva_mode==='autoliquidation'?'selected':''}>Autoliquidation</option>
       </select></div>
-      <div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><select class="e-meta-sel" name="mode_paiement">
+      ${isPaid
+        ? `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><span style="font-size:9pt;color:#2e7d32;font-weight:600">${(MODES_PAIEMENT.find(([,v])=>v===doc?.mode_paiement)||[doc?.mode_paiement||'—'])[0]}</span></div>`
+        : `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><select class="e-meta-sel" name="mode_paiement">
         <option value="">— Non précisé —</option>
-        ${['Virement bancaire','Virement SEPA','Chèque','Espèces','Carte bancaire','Prélèvement','Prélèvement SEPA','PayPal','Autre'].map(m=>{const v=m.toLowerCase().replace(/ /g,'_').replace(/[éè]/g,'e');return`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${m}</option>`;}).join('')}
+        ${MODES_PAIEMENT.map(([label,v])=>`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${label}</option>`).join('')}
       </select></div>`
+      }`
     : `
       <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.objet||'').replace(/"/g,'&quot;')}" placeholder="Objet du document…"></div>
       <div class="e-meta-row e-meta-row-check"><label><input type="checkbox" name="is_free" ${(doc?.is_free||!doc?.id)?'checked':''}> Devis gratuit</label></div>`;
@@ -399,11 +417,15 @@ const DocEditor = (() => {
         <div class="e-total-row e-total-ttc-row" style="color:${bc}"><span>Total TTC</span><span class="e-ttc-val">0,00 €</span></div>
       </div>` : '';
 
-    // Footer (conditions/notes)
+    // Footer (conditions/notes) — conditions masquées si facture payée
     const footer = isBL ? `
       <div class="e-footer">
         <div class="e-footer-label">Notes / Instructions de livraison</div>
         <div class="e-footer-editable" contenteditable="true" name="notes" data-placeholder="Remarques…">${doc?.notes||''}</div>
+      </div>` : (isPaid && isFacture) ? `
+      <div class="e-footer">
+        <div class="e-footer-label">Notes</div>
+        <div class="e-footer-editable" contenteditable="true" name="notes" data-placeholder="Notes complémentaires…">${doc?.notes||''}</div>
       </div>` : `
       <div class="e-footer">
         <div class="e-footer-label">Conditions de paiement</div>

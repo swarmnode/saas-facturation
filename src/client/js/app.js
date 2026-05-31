@@ -46,8 +46,12 @@ const fmt = {
   money:  n  => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n ?? 0),
   date:   d  => d ? new Date(d).toLocaleDateString('fr-FR') : '—',
   badge:  s  => { const labels = { en_attente:'En attente', encaisse:'Encaissé', emis:'Émis', livre:'Livré', brouillon:'Brouillon', envoye:'Envoyé', signe:'Signé', accepte:'Accepté', refuse:'Refusé', emise:'Émise', payee:'Payée' }; return `<span class="badge badge-${s}">${labels[s]||s}</span>`; },
-  modePaiement: m => ({ virement: 'Virement', cheque: 'Chèque', especes: 'Espèces',
-    carte: 'Carte', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre' })[m] || m,
+  modePaiement: m => ({
+    virement: 'Virement bancaire', virement_sepa: 'Virement SEPA',
+    cheque: 'Chèque', especes: 'Espèces', carte: 'Carte bancaire',
+    prelevement: 'Prélèvement', prelevement_sepa: 'Prélèvement SEPA',
+    paypal: 'PayPal', autre: 'Autre',
+  })[m] || m,
 };
 
 // ── Formatage SIRET ────────────────────────────────────────────────────────

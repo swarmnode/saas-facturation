@@ -98,8 +98,11 @@ export class FactureService {
     });
   }
 
-  static async lister(entreprise_id: number, type?: string) {
+  static async lister(entreprise_id: number, type?: string, commercial_id?: number) {
     const typeFilter = type ? `AND f.type_facture = '${type}'` : `AND f.type_facture != 'avoir'`;
+    const commercialFilter = commercial_id
+      ? `AND f.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = ${commercial_id} AND entreprise_id = ${entreprise_id})`
+      : '';
     const r = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
              c.mode_reglement_defaut,
@@ -107,13 +110,13 @@ export class FactureService {
       FROM factures f
       LEFT JOIN clients c ON f.client_id = c.id
       LEFT JOIN factures fo ON fo.id = f.facture_origine_id
-      WHERE f.entreprise_id = $1 ${typeFilter} ORDER BY f.created_at DESC
+      WHERE f.entreprise_id = $1 ${typeFilter} ${commercialFilter} ORDER BY f.created_at DESC
     `, [entreprise_id]);
     return r.rows;
   }
 
-  static async listerAvoirs(entreprise_id: number) {
-    return this.lister(entreprise_id, 'avoir');
+  static async listerAvoirs(entreprise_id: number, commercial_id?: number) {
+    return this.lister(entreprise_id, 'avoir', commercial_id);
   }
 
   static async mettreAJour(id: number, input: Partial<FactureInput>) {

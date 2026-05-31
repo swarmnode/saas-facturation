@@ -13,7 +13,10 @@ import fs from 'fs';
 const router = Router();
 
 router.get('/', requirePerm('devis:r'), async (req, res, next) => {
-  try { res.json(await DevisService.lister(req.user!.entreprise_id)); } catch(e) { next(e); }
+  try {
+    const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
+    res.json(await DevisService.lister(req.user!.entreprise_id, commercial_id));
+  } catch(e) { next(e); }
 });
 
 router.get('/:id', requirePerm('devis:r'), async (req, res, next) => {
@@ -26,7 +29,7 @@ router.get('/:id', requirePerm('devis:r'), async (req, res, next) => {
 
 router.post('/', requirePerm('devis:w'), async (req, res, next) => {
   try {
-    res.status(201).json(await DevisService.creer({ ...req.body, entreprise_id: req.user!.entreprise_id }));
+    res.status(201).json(await DevisService.creer({ ...req.body, entreprise_id: req.user!.entreprise_id, created_by: req.user!.id }));
   } catch(e) { next(e); }
 });
 

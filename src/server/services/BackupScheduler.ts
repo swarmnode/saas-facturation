@@ -1,6 +1,8 @@
 import * as cron from 'node-cron';
 import { ScheduledTask } from 'node-cron';
 import { spawn } from 'child_process';
+import { createGzip } from 'zlib';
+import { createWriteStream } from 'fs';
 import path from 'path';
 import fs from 'fs';
 import { query } from '../db/database';
@@ -49,19 +51,25 @@ export async function runBackup(destination: string): Promise<string> {
   if (!fs.existsSync(destination)) fs.mkdirSync(destination, { recursive: true });
 
   const date = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const filename = `sauvegarde_${date}.sql`;
+  const filename = `sauvegarde_${date}.sql.gz`;
   const filePath = path.join(destination, filename);
 
   const { user, pass, host, port, db } = pgConn();
   await new Promise<void>((resolve, reject) => {
     const proc = spawn(path.join(pgBin(), 'pg_dump.exe'), [
       '-U', user, '-h', host, '-p', port,
-      '--clean', '--if-exists', '--no-owner', '--no-acl',
-      '-f', filePath, db,
+      '--clean', '--if-exists', '--no-owner', '--no-acl', db,
     ], { env: { ...process.env, PGPASSWORD: pass } });
+
+    const gzip = createGzip({ level: 6 });
+    const out  = createWriteStream(filePath);
+    proc.stdout.pipe(gzip).pipe(out);
+
     proc.stderr.on('data', d => console.error('[backup auto]', d.toString()));
     proc.on('error', reject);
-    proc.on('close', code => code === 0 ? resolve() : reject(new Error(`pg_dump code ${code}`)));
+    out.on('error', reject);
+    out.on('finish', resolve);
+    proc.on('close', code => { if (code !== 0) reject(new Error(`pg_dump code ${code}`)); });
   });
 
   return filePath;
@@ -70,7 +78,7 @@ export async function runBackup(destination: string): Promise<string> {
 export function listBackups(destination: string): { name: string; size: number; date: string }[] {
   if (!destination || !fs.existsSync(destination)) return [];
   return fs.readdirSync(destination)
-    .filter(f => f.startsWith('sauvegarde_') && f.endsWith('.sql'))
+    .filter(f => f.startsWith('sauvegarde_') && (f.endsWith('.sql.gz') || f.endsWith('.sql')))
     .map(f => {
       const stat = fs.statSync(path.join(destination, f));
       return { name: f, size: stat.size, date: stat.mtime.toISOString() };

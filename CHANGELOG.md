@@ -3,6 +3,22 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [2.8.224] — 2026-05-31
+
+### Ajouté
+- Filtres par statut sur les listes Devis et Factures (select dropdown dans la topbar)
+- Bouton **⏰ Expirés** sur les devis (filtre les devis envoyés dont la date de validité est dépassée)
+- Colonne **Validité** sur les devis : date en gris, badge rouge `⏰ Xj` si expiré, tri par date de validité
+- Filtres combinables : statut + alerte cumulables sur devis et factures
+- Visibilité des documents par commercial : chaque commercial ne voit que ses propres devis et les factures/acomptes/avoirs de ses clients (migration 015 : `created_by` sur devis)
+- Flag `voir_tout` par utilisateur/société (migration 016) : case "Accès complet" dans la fiche utilisateur
+- Sauvegarde compressée : `pg_dump` → gzip niveau 6 → `.sql.gz` (~6x de compression)
+- Restauration accepte `.sql` et `.sql.gz` (décompression à la volée)
+- Téléchargement manuel compressé `.sql.gz`
+
+### Corrigé
+- `express.d.ts` : ajout de `voir_tout` dans le type `Request.user` (empêchait le démarrage)
+
 ## [Non publié]
 
 ### Ajouté

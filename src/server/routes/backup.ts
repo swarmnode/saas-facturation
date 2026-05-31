@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { spawn } from 'child_process';
+import { createGzip, createGunzip } from 'zlib';
 import multer from 'multer';
 import path from 'path';
 import os from 'os';
@@ -31,32 +32,43 @@ function pgBin() {
 router.get('/telecharger', (_req, res, next) => {
   const { user, pass, host, port, db } = pgConn();
   const date = new Date().toISOString().slice(0, 10);
-  res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader('Content-Disposition', `attachment; filename="sauvegarde_${date}.sql"`);
+  res.setHeader('Content-Type', 'application/gzip');
+  res.setHeader('Content-Disposition', `attachment; filename="sauvegarde_${date}.sql.gz"`);
 
   const proc = spawn(path.join(pgBin(), 'pg_dump.exe'), [
     '-U', user, '-h', host, '-p', port,
     '--clean', '--if-exists', '--no-owner', '--no-acl', db,
   ], { env: { ...process.env, PGPASSWORD: pass } });
 
-  proc.stdout.pipe(res);
+  const gzip = createGzip({ level: 6 });
+  proc.stdout.pipe(gzip).pipe(res);
   proc.stderr.on('data', d => console.error('[pg_dump]', d.toString()));
   proc.on('error', next);
   proc.on('close', code => { if (code !== 0) console.error(`[pg_dump] code ${code}`); });
 });
 
-// Restauration
-const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 100 * 1024 * 1024 } });
+// Restauration (.sql ou .sql.gz)
+const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 200 * 1024 * 1024 } });
 router.post('/restaurer', upload.single('backup'), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
   const tmpPath = req.file.path;
+  const isGz = req.file.originalname?.endsWith('.gz') || req.file.mimetype === 'application/gzip';
   try {
     const { user, pass, host, port, db } = pgConn();
     await new Promise<void>((resolve, reject) => {
       const proc = spawn(path.join(pgBin(), 'psql.exe'), [
         '-U', user, '-h', host, '-p', port, db,
-        '-v', 'ON_ERROR_STOP=0', '-f', tmpPath,
+        '-v', 'ON_ERROR_STOP=0',
       ], { env: { ...process.env, PGPASSWORD: pass } });
+
+      if (isGz) {
+        const src = fs.createReadStream(tmpPath);
+        src.pipe(createGunzip()).pipe(proc.stdin);
+        src.on('error', reject);
+      } else {
+        fs.createReadStream(tmpPath).pipe(proc.stdin);
+      }
+
       proc.stderr.on('data', d => console.error('[psql restore]', d.toString()));
       proc.on('error', reject);
       proc.on('close', code => code === 0 ? resolve() : reject(new Error(`psql code ${code}`)));
@@ -129,7 +141,7 @@ router.delete('/fichier/:nom', async (req, res, next) => {
     const destination = r.rows[0]?.destination;
     if (!destination) return res.status(400).json({ error: 'Destination non configurée' });
     const nom = path.basename(req.params.nom); // sécurité : interdit les traversées
-    if (!nom.startsWith('sauvegarde_') || !nom.endsWith('.sql'))
+    if (!nom.startsWith('sauvegarde_') || !(nom.endsWith('.sql.gz') || nom.endsWith('.sql')))
       return res.status(400).json({ error: 'Nom de fichier invalide' });
     const fp = path.join(destination, nom);
     if (!fs.existsSync(fp)) return res.status(404).json({ error: 'Fichier introuvable' });

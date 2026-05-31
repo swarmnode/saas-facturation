@@ -7,6 +7,7 @@ export interface AuthUser {
   entreprise_id: number;
   role: string;
   is_super_admin: boolean;
+  voir_tout: boolean;
 }
 
 // Permission par rôle : ressource:r = lecture, ressource:w = écriture/suppression

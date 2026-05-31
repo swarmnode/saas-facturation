@@ -11,7 +11,10 @@ import fs from 'fs';
 const router = Router();
 
 router.get('/', requirePerm('acomptes:r'), async (req, res, next) => {
-  try { res.json(await AcompteService.lister(req.user!.entreprise_id)); } catch(e) { next(e); }
+  try {
+    const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
+    res.json(await AcompteService.lister(req.user!.entreprise_id, commercial_id));
+  } catch(e) { next(e); }
 });
 
 router.get('/:id', requirePerm('acomptes:r'), async (req, res, next) => {

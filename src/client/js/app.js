@@ -83,19 +83,40 @@ const btn = {
 const DOC_CONFIGS = {
   devis: {
     api:      '/api/devis',
-    topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`,
-    headers:  ['N°','Client','Objet','HT','TTC','Statut','Créé le'],
-    sortKeys: ['numero','client_nom','objet','montant_ht','montant_ttc','statut','created_at'],
+    topbar:   () => {
+      const s = _listFilters['devis']?.statut ? '' : '';
+      const alerteActive = !!_listFilters['devis']?.alerte;
+      return `
+        <select class="btn btn-outline" style="padding:5px 8px" onchange="setDocStatutFilter('devis',this.value)">
+          <option value="">Tous les statuts</option>
+          <option value="brouillon">Brouillon</option>
+          <option value="envoye">Envoyé</option>
+          <option value="signe">Signé</option>
+          <option value="accepte">Accepté</option>
+          <option value="refuse">Refusé</option>
+        </select>
+        <button id="btnDevisExpires" class="btn ${alerteActive?'btn-danger':'btn-outline'}" onclick="toggleDevisExpiresFilter()">${alerteActive?'✕ Voir tout':'⏰ Expirés'}</button>
+        <button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`;
+    },
+    headers:  ['N°','Client','Objet','HT','TTC','Statut','Créé le','Validité'],
+    sortKeys: ['numero','client_nom','objet','montant_ht','montant_ttc','statut','created_at','date_validite'],
     rowOpen:  d => `DocEditor.openDevis(${d.id})`,
-    cells:    d => [
-      `<strong>${d.numero}</strong>`,
-      d.client_nom||d.client_nom_part||'—',
-      d.objet||'—',
-      `<span class="text-right">${fmt.money(d.montant_ht)}</span>`,
-      `<strong>${fmt.money(d.montant_ttc)}</strong>`,
-      fmt.badge(d.statut),
-      fmt.date(d.created_at),
-    ],
+    cells:    d => {
+      const expire = d.statut === 'envoye' && d.date_validite && new Date(d.date_validite) < new Date()
+        ? Math.floor((Date.now() - new Date(d.date_validite)) / 864e5) : null;
+      return [
+        `<strong>${d.numero}</strong>`,
+        d.client_nom||d.client_nom_part||'—',
+        d.objet||'—',
+        `<span class="text-right">${fmt.money(d.montant_ht)}</span>`,
+        `<strong>${fmt.money(d.montant_ttc)}</strong>`,
+        fmt.badge(d.statut),
+        fmt.date(d.created_at),
+        expire !== null
+          ? `<span style="color:#ef4444;font-weight:700;font-size:12px;white-space:nowrap">⏰ ${expire}j</span>`
+          : d.date_validite ? `<span style="font-size:12px;color:var(--text-muted)">${fmt.date(d.date_validite)}</span>` : '',
+      ];
+    },
     actions: d => [
       btn.outline(`DocEditor.openDevis(${d.id})`, d.locked?'Voir':'Voir/Modifier'),
       btn.outline(`previewDevis(${d.id})`, '👁 PDF'),
@@ -110,6 +131,12 @@ const DOC_CONFIGS = {
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
       <button class="btn btn-outline" onclick="ouvrirAttestation()">📋 Attestation</button>
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
+      <select class="btn btn-outline" style="padding:5px 8px" onchange="setDocStatutFilter('factures',this.value)">
+        <option value="">Tous les statuts</option>
+        <option value="brouillon">Brouillon</option>
+        <option value="emise">Émise</option>
+        <option value="payee">Payée</option>
+      </select>
       <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
       <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
       <button id="btnRetardFilter" class="btn btn-outline" onclick="toggleFacRetardFilter()">⚠️ En retard</button>
@@ -218,6 +245,28 @@ const DOC_CONFIGS = {
 const _listSort = {};
 const _listFilter = {};
 const _listRerender = {};
+const _listFilters = {}; // { type: { statut: fn|null, alerte: fn|null } }
+
+function _rebuildFilter(type) {
+  const fns = Object.values(_listFilters[type] || {}).filter(Boolean);
+  _listFilter[type] = fns.length ? doc => fns.every(fn => fn(doc)) : null;
+  _listRerender[type]?.();
+}
+
+function setDocStatutFilter(type, statut) {
+  if (!_listFilters[type]) _listFilters[type] = {};
+  _listFilters[type].statut = statut ? d => d.statut === statut : null;
+  _rebuildFilter(type);
+}
+
+function toggleDevisExpiresFilter() {
+  if (!_listFilters['devis']) _listFilters['devis'] = {};
+  const active = !!_listFilters['devis'].alerte;
+  _listFilters['devis'].alerte = active ? null : d => d.statut === 'envoye' && d.date_validite && new Date(d.date_validite) < new Date();
+  const btn = document.getElementById('btnDevisExpires');
+  if (btn) { btn.className = active ? 'btn btn-outline' : 'btn btn-danger'; btn.textContent = active ? '⏰ Expirés' : '✕ Voir tout'; }
+  _rebuildFilter('devis');
+}
 
 async function renderDocList(type, el) {
   const cfg  = DOC_CONFIGS[type];
@@ -653,18 +702,12 @@ async function loadNotifications() {
 }
 
 function toggleFacRetardFilter() {
-  const active = !!_listFilter['factures'];
-  if (active) {
-    delete _listFilter['factures'];
-  } else {
-    _listFilter['factures'] = f => f.statut === 'emise' && f.date_echeance && new Date(f.date_echeance) < new Date();
-  }
+  if (!_listFilters['factures']) _listFilters['factures'] = {};
+  const active = !!_listFilters['factures'].alerte;
+  _listFilters['factures'].alerte = active ? null : f => f.statut === 'emise' && f.date_echeance && new Date(f.date_echeance) < new Date();
   const btn = document.getElementById('btnRetardFilter');
-  if (btn) {
-    btn.className = active ? 'btn btn-outline' : 'btn btn-danger';
-    btn.textContent = active ? '⚠️ En retard' : '✕ Voir tout';
-  }
-  _listRerender['factures']?.();
+  if (btn) { btn.className = active ? 'btn btn-outline' : 'btn btn-danger'; btn.textContent = active ? '⚠️ En retard' : '✕ Voir tout'; }
+  _rebuildFilter('factures');
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -4508,19 +4551,19 @@ async function renderParametres(el) {
       <h2 class="section-title">Sauvegarde &amp; Restauration</h2>
       <div style="margin-bottom:20px">
         <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
-          Télécharge une sauvegarde complète de la base de données (toutes sociétés) au format SQL.
+          Télécharge une sauvegarde complète de la base de données (toutes sociétés) au format SQL compressé (.sql.gz).
         </p>
         <button id="backupBtn" class="btn btn-secondary">⬇ Télécharger la sauvegarde</button>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
       <div>
         <p style="color:var(--text-muted);font-size:13px;margin-bottom:4px">
-          Restaurer à partir d'un fichier de sauvegarde SQL.<br/>
+          Restaurer à partir d'un fichier de sauvegarde (.sql ou .sql.gz).<br/>
           <strong style="color:#c0392b">⚠ Attention : toutes les données actuelles seront remplacées.</strong>
         </p>
         <label class="btn btn-secondary" style="margin-top:8px;cursor:pointer">
           ⬆ Restaurer une sauvegarde
-          <input type="file" id="restoreInput" accept=".sql" style="display:none"/>
+          <input type="file" id="restoreInput" accept=".sql,.sql.gz,.gz" style="display:none"/>
         </label>
         <div id="restoreAlert"></div>
       </div>
@@ -4633,7 +4676,7 @@ async function renderParametres(el) {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url;
-    a.download = `sauvegarde_${new Date().toISOString().slice(0,10)}.sql`;
+    a.download = `sauvegarde_${new Date().toISOString().slice(0,10)}.sql.gz`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -5098,12 +5141,20 @@ async function showUserForm(userId) {
       <h3 style="margin:4px 0 0;font-size:14px">Accès aux sociétés</h3>
       ${entreprises.map(e => {
         const ue = userEnts.find(x => x.entreprise_id === e.id);
-        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <input type="checkbox" name="ent_${e.id}" id="ent_${e.id}" ${ue ? 'checked' : ''} onchange="document.getElementById('role_${e.id}').disabled=!this.checked"/>
+        const role = ue?.role ?? 'lecteur';
+        const voirTout = !!ue?.voir_tout;
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          <input type="checkbox" name="ent_${e.id}" id="ent_${e.id}" ${ue ? 'checked' : ''}
+            onchange="document.getElementById('role_${e.id}').disabled=!this.checked;document.getElementById('vt_${e.id}').disabled=!this.checked||document.getElementById('role_${e.id}').value!=='commercial'"/>
           <label for="ent_${e.id}" style="flex:1">${e.raison_sociale}</label>
-          <select name="role_${e.id}" id="role_${e.id}" ${ue ? '' : 'disabled'} style="width:120px">${
-            roleOptions.replace(`"${ue?.role ?? 'lecteur'}"`, `"${ue?.role ?? 'lecteur'}" selected`)
+          <select name="role_${e.id}" id="role_${e.id}" ${ue ? '' : 'disabled'} style="width:120px"
+            onchange="document.getElementById('vt_${e.id}').disabled=this.value!=='commercial';if(this.value!=='commercial')document.getElementById('vt_${e.id}').checked=false">${
+            roleOptions.replace(`"${role}"`, `"${role}" selected`)
           }</select>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--text-muted)">
+            <input type="checkbox" name="vt_${e.id}" id="vt_${e.id}" ${voirTout ? 'checked' : ''} ${(!ue || role !== 'commercial') ? 'disabled' : ''}/>
+            Accès complet
+          </label>
         </div>`;
       }).join('')}
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
@@ -5123,7 +5174,7 @@ async function showUserForm(userId) {
         actif:    fd.has('actif'),
         entreprises: entreprises
           .filter(e => fd.has(`ent_${e.id}`))
-          .map(e => ({ entreprise_id: e.id, role: fd.get(`role_${e.id}`) || 'lecteur' })),
+          .map(e => ({ entreprise_id: e.id, role: fd.get(`role_${e.id}`) || 'lecteur', voir_tout: fd.has(`vt_${e.id}`) })),
       };
       if (fd.get('password')) payload.password = fd.get('password');
       const r = isNew

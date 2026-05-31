@@ -62,6 +62,23 @@ PDF (FacturXService)
   affichee sous 'Avoir sur facture' si type_avoir === remboursement
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: plafonnement des avoirs par facture d'origine
+
+Backend
+- FactureService.getAvoirsCumul(origineId, excludeId?) :
+  somme TTC des avoirs emis/payees sur une facture
+- FactureService.emettre() : validation avant emission d'un avoir —
+  bloque si montant > solde disponible avec message explicite
+- Route GET /api/factures/:id/avoirs-cumul :
+  { facture_ttc, avoirs_ttc, avoirs_nb, avoirs_numeros, disponible_ttc }
+
+Frontend (WYSIWYG)
+- Avoir editor : bandeau sous les totaux — facture origine / avoirs emis /
+  disponible (vert si solde positif, rouge si epuise)
+- Facture editor : badge dans la toolbar si des avoirs existent —
+  total avoirs / solde disponible, numeros en tooltip
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -204,6 +221,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

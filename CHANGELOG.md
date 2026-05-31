@@ -5,6 +5,20 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: manuel v2.5 — prix achat/marge articles + installation port
+
+- Catalogue articles : champ prix achat HT, tableau indicateurs de marge
+  (marge brute, taux de marque, taux de marge), note confidentialite
+- Nouvelle section Installation Windows : 3 pages de l'assistant,
+  configuration du port TCP, service, desinstallation
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+## [2.5.146] — 2026-05-31
+
 ### Ajouté
 - Feat: prix d'achat HT et calcul de marge sur les articles
 
@@ -571,6 +585,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.5.146]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.146
 [2.4.140]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.4.140
 [2.3.133]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.3.133
 [2.2.129]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.2.129

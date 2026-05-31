@@ -118,6 +118,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Ux: bouton Imprimer avec libelle texte (🖨️ Imprimer)
 
 
 ## [2.5.148] — 2026-05-31

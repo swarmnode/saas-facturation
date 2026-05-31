@@ -101,9 +101,17 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
    prelevement_sepa, carte, etc.) dans les listes et le dashboard
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: masquer date echeance sur le PDF des factures payees
+
+genererFacture (PDF emis) et genererFactureStream (apercu) :
+condition ajoutee : facture.date_echeance && facture.statut !== 'payee'
+Une facture acquittee n'a plus d'echeance pertinente a afficher.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

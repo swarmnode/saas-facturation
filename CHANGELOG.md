@@ -83,9 +83,28 @@ aligne exactement sur la bande des totaux (droite x=340→545).
 Applique dans genererFacture (PDF emis) et genererFactureStream (apercu).
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: WYSIWYG facture payee — echeance, conditions, mode reglement
+
+1. Date echeance : masquee quand statut=payee (condition !isPaid ajoutee)
+   Remplacee par 'Payee le DD/MM/YYYY' en vert dans les metaFields gauche
+
+2. Conditions de paiement : masquees dans le footer quand facture payee
+   Seules les Notes restent visibles (informations toujours utiles)
+
+3. Mode de reglement : MODES_PAIEMENT[] centralise avec valeurs explicites
+   identiques a payerFacture() dans app.js (virement/carte/cheque…)
+   Quand payee : affiche un label texte vert a la place du select
+   Evite le mismatch 'carte' vs 'carte_bancaire' qui causait le
+   remplacement par le mode par defaut du client (prelevement_sepa)
+
+4. fmt.modePaiement : labels complets pour tous les codes (virement_sepa,
+   prelevement_sepa, carte, etc.) dans les listes et le dashboard
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

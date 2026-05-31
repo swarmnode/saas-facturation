@@ -602,6 +602,7 @@ async function renderView(view, el) {
   await loadGlobalData();
   switch (view) {
     case 'dashboard':       return renderDashboard(el);
+    case 'stats':           return renderStats(el);
     case 'clients':         return renderClients(el);
     case 'devis':           return renderDocList('devis', el);
     case 'factures':        return renderDocList('factures', el);
@@ -624,6 +625,155 @@ async function loadGlobalData() {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 let _dashSort = { col: 'date', dir: -1 }; // tri par défaut : date desc
+
+// ── Statistiques ──────────────────────────────────────────────────────────
+async function renderStats(el) {
+  document.getElementById('topbarActions').innerHTML = '';
+  el.innerHTML = '<div class="card"><p style="color:var(--text-muted)">Chargement…</p></div>';
+
+  let periode = 'mois';
+
+  async function load() {
+    const [kpis, balance, evolution] = await Promise.all([
+      api.get(`/api/stats/kpis?periode=${periode}`),
+      api.get('/api/stats/balance-agee'),
+      api.get('/api/stats/evolution'),
+    ]);
+    render(kpis, balance, evolution);
+  }
+
+  function periodeLabel(p) {
+    return { mois: 'Ce mois', trimestre: 'Ce trimestre', annee: 'Cette année' }[p] || p;
+  }
+
+  function svgBar(data) {
+    const maxVal = Math.max(...data.map(d => Math.max(d.facture_ht, d.encaisse_ht)), 1);
+    const W = 700, H = 200, padL = 60, padB = 36, padR = 10, padT = 10;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+    const barW = chartW / data.length;
+    const subW = barW * 0.35;
+
+    const yTicks = 5;
+    let grid = '', bars = '', labels = '', yLabels = '';
+
+    for (let i = 0; i <= yTicks; i++) {
+      const v = (maxVal / yTicks) * i;
+      const y = padT + chartH - (chartH * i / yTicks);
+      grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+      yLabels += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="#9ca3af">${Math.round(v / 1000)}k</text>`;
+    }
+
+    data.forEach((d, i) => {
+      const x = padL + i * barW + barW * 0.1;
+      const hF = Math.max(1, chartH * d.facture_ht / maxVal);
+      const hE = Math.max(1, chartH * d.encaisse_ht / maxVal);
+      const yF = padT + chartH - hF;
+      const yE = padT + chartH - hE;
+
+      bars += `<rect x="${x}" y="${yF}" width="${subW}" height="${hF}" fill="#3b82f6" rx="2" opacity="0.85">
+                 <title>${d.label} — Facturé : ${fmt.money(d.facture_ht)}</title></rect>`;
+      bars += `<rect x="${x + subW + 2}" y="${yE}" width="${subW}" height="${hE}" fill="#22c55e" rx="2" opacity="0.85">
+                 <title>${d.label} — Encaissé : ${fmt.money(d.encaisse_ht)}</title></rect>`;
+
+      const shortLabel = d.label.replace(/ \d{4}$/, '').slice(0, 3);
+      labels += `<text x="${x + subW}" y="${H - padB + 16}" text-anchor="middle" font-size="9" fill="#6b7280">${shortLabel}</text>`;
+    });
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:200px">
+      ${grid}${yLabels}${bars}${labels}
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + chartH}" stroke="#d1d5db" stroke-width="1"/>
+      <line x1="${padL}" y1="${padT + chartH}" x2="${W - padR}" y2="${padT + chartH}" stroke="#d1d5db" stroke-width="1"/>
+    </svg>`;
+  }
+
+  function trancheColor(min, max) {
+    if (max <= 0) return '#22c55e';
+    if (min <= 30) return '#f59e0b';
+    if (min <= 60) return '#f97316';
+    return '#ef4444';
+  }
+
+  function render(kpis, balance, evolution) {
+    const tauxConv = kpis.devis_envoyes > 0
+      ? Math.round(kpis.devis_acceptes / kpis.devis_envoyes * 100) : 0;
+
+    const kpiCards = [
+      { label: 'CA facturé HT', val: fmt.money(kpis.facture_ht), sub: `${kpis.facture_nb} facture(s)`, color: 'var(--primary)' },
+      { label: 'CA encaissé', val: fmt.money(kpis.encaisse_ttc), sub: periodeLabel(periode), color: '#22c55e' },
+      { label: 'En attente', val: fmt.money(kpis.attente_ttc), sub: `${kpis.attente_nb} facture(s) émise(s)`, color: '#f59e0b' },
+      { label: 'En retard', val: fmt.money(kpis.retard_ttc), sub: `${kpis.retard_nb} facture(s) échue(s)`, color: kpis.retard_nb > 0 ? '#ef4444' : '#22c55e' },
+      { label: 'Taux conversion devis', val: `${tauxConv} %`, sub: '90 derniers jours', color: 'var(--primary)' },
+    ].map(k => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;flex:1;min-width:150px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">${k.label}</div>
+        <div style="font-size:22px;font-weight:700;color:${k.color}">${k.val}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${k.sub}</div>
+      </div>`).join('');
+
+    const periodes = ['mois','trimestre','annee'].map(p =>
+      `<button class="btn ${p === periode ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="statsPeriode('${p}')">${periodeLabel(p)}</button>`
+    ).join('');
+
+    const balanceRows = balance.rows.map(r => {
+      const color = r.retard_jours <= 0 ? '#22c55e' : r.retard_jours <= 30 ? '#f59e0b' : r.retard_jours <= 60 ? '#f97316' : '#ef4444';
+      const retardLabel = r.retard_jours <= 0 ? (r.date_echeance ? 'À venir' : 'Sans échéance') : `${r.retard_jours}j de retard`;
+      return `<tr>
+        <td><strong>${r.numero}</strong></td>
+        <td>${r.client_nom || '—'}</td>
+        <td style="text-align:right">${fmt.money(r.montant_ttc)}</td>
+        <td>${r.date_echeance ? fmt.date(r.date_echeance) : '—'}</td>
+        <td><span style="color:${color};font-weight:600;font-size:12px">${retardLabel}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" class="empty">Aucune créance en attente</td></tr>';
+
+    const balanceSummary = balance.summary.map((t, i) => {
+      const colors = ['#22c55e','#f59e0b','#f97316','#ef4444','#dc2626'];
+      return t.nb ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="color:${colors[i]};font-weight:600">${t.label}</span>
+        <span><strong>${fmt.money(t.montant)}</strong> <span style="color:var(--text-muted);font-size:12px">(${t.nb})</span></span>
+      </div>` : '';
+    }).join('');
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2 style="margin:0">Statistiques</h2>
+        <div style="display:flex;gap:6px">${periodes}</div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">${kpiCards}</div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;align-items:start">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+            Évolution CA (12 mois)
+            <span style="font-size:11px;color:var(--text-muted)">
+              <span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:4px"></span>Facturé HT
+              <span style="display:inline-block;width:10px;height:10px;background:#22c55e;border-radius:2px;margin:0 4px 0 10px"></span>Encaissé HT
+            </span>
+          </div>
+          ${svgBar(evolution)}
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px">Balance âgée</div>
+          ${balanceSummary || '<p style="color:var(--text-muted);font-size:13px">Aucune créance ouverte</p>'}
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">Détail des créances (${balance.rows.length})</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>N°</th><th>Client</th><th style="text-align:right">Montant TTC</th><th>Échéance</th><th>Statut</th></tr></thead>
+            <tbody>${balanceRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  window.statsPeriode = async (p) => { periode = p; await load(); };
+  await load();
+}
 
 async function renderDashboard(el) {
   const [devisList, facturesList, avoirsList, acomptesList, blList] = await Promise.all([

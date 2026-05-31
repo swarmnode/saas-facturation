@@ -146,11 +146,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - page.dataset.docId mis a jour a la creation et apres le premier save
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: bouton Imprimer delegue au bouton Apercu PDF (meme rendu)
 
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

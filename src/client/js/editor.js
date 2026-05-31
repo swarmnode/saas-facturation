@@ -143,7 +143,7 @@ const DocEditor = (() => {
   }
 
   // Insère des indicateurs visuels de saut de page A4 dans le tableau des lignes.
-  // Appelé après chaque modification de lignes (ajout, suppression, chargement initial).
+  // Utilise la même logique de calcul que le PDF (en points) pour être fidèle au rendu final.
   function refreshPageBreaks(el) {
     const page  = el.querySelector('.a4-page');
     const tbody = el.querySelector('.e-lignes-body');
@@ -151,27 +151,38 @@ const DocEditor = (() => {
 
     tbody.querySelectorAll('.e-page-break').forEach(r => r.remove());
 
-    const PAGE_PX   = 1122; // A4 à 96dpi : 297mm
-    const FOOTER_PX = 190;  // zone réservée signature + totaux
+    // Constantes miroir de FacturXService (en points PDF)
+    const PAGE_SAFE_BOT = 642; // pt — limite basse du contenu par page
+    const CONT_TOP      = 60;  // pt — Y de reprise sur les pages suivantes
+    const ROW_H_PT      = 20;  // pt — hauteur d'une ligne sans description
+    const ROW_H_DESC_PT = 32;  // pt — hauteur d'une ligne avec description
+
+    // Y de départ du tableau (page 1), miroir de genererDevisStream / genererFactureStream
+    const hasLogo = !!page.querySelector('.e-logo');
+    const sepY    = hasLogo ? 185 : 150;
+    const startY  = sepY + 100; // = 285pt (avec logo) ou 250pt (sans)
+
     const cols = tbody.closest('table')?.querySelectorAll('thead th').length || 7;
-
-    const pageRect  = page.getBoundingClientRect();
     const rows = Array.from(tbody.querySelectorAll('tr:not(.e-page-break)'));
-    if (!rows.length) return;
 
+    let y = startY;
     let pageNum = 1;
-    let breakAt = PAGE_PX - FOOTER_PX; // 932px : première limite
 
     for (const row of rows) {
-      const rowBottom = row.getBoundingClientRect().bottom - pageRect.top;
-      if (rowBottom > breakAt) {
+      // Détecte si la ligne a une description (champ caché e-desc ou valeur connue)
+      const descInput = row.querySelector('input[name^="lig_desc"]') || row.querySelector('.e-desc');
+      const hasDesc   = !!(descInput?.value?.trim() || row.dataset.desc);
+      const rowH      = hasDesc ? ROW_H_DESC_PT : ROW_H_PT;
+
+      if (y + rowH > PAGE_SAFE_BOT) {
         pageNum++;
         const brk = document.createElement('tr');
         brk.className = 'e-page-break';
         brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
         tbody.insertBefore(brk, row);
-        breakAt += PAGE_PX;
+        y = CONT_TOP; // reprise en haut de la nouvelle page
       }
+      y += rowH;
     }
   }
 
@@ -276,6 +287,7 @@ const DocEditor = (() => {
     const tvaOpts=tvaOptions.map(t=>`<option value="${t.id}" ${t.id==(l.taux_tva_id||1)?'selected':''}>${tvaLabel(t)}</option>`).join('');
     const stockBadge=l._stock!=null?`<span class="e-stock-badge" title="Stock">${l._stock}</span>`:'';
     const tr=document.createElement('tr'); tr.className='e-ligne-row';
+    if (l.description) tr.dataset.desc = '1'; // utilisé par refreshPageBreaks
     tr.innerHTML=`
       <td class="e-td-desig">
         <div style="display:flex;align-items:center;gap:4px"><input class="e-cell e-desig" value="${(l.designation||'').replace(/"/g,'&quot;')}" placeholder="Désignation…" style="flex:1">${stockBadge}</div>

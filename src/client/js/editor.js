@@ -442,7 +442,7 @@ const DocEditor = (() => {
       </div>
       <div class="e-tb-right">
         ${doc?.id?`<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>`:''}
-        <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Imprimer</button>
         <button class="btn btn-primary btn-sm e-save-btn">Enregistrer</button>
       </div>
     </div>
@@ -554,7 +554,7 @@ const DocEditor = (() => {
     const route    = ROUTES[type];
     toolbar.innerHTML = `
       <button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>
-      <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Imprimer</button>
       ${type==='devis'?`
         <button class="btn btn-outline btn-sm e-send-btn">✉ Envoyer</button>
         ${doc?.statut==='signe'?`<button class="btn btn-warning btn-sm" onclick="showAvenantForm(${id})">📝 Avenant</button><button class="btn btn-outline btn-sm" onclick="showFactureFromDevisForm(${id})">🧾 Facturer</button><button class="btn btn-outline btn-sm" onclick="showBLFromDevisForm(${id})">🚚 BL</button>`:''}
@@ -787,7 +787,7 @@ const DocEditor = (() => {
           <div class="e-tb-left"><button class="btn btn-outline btn-sm e-close-btn">← Retour</button><span class="e-tb-title">ACOMPTE ${ac.numero}</span></div>
           <div class="e-tb-right">
             <button class="btn btn-outline btn-sm" onclick="openPdf('/api/acomptes/${id}/apercu')">👁 Aperçu PDF</button>
-            <button class="btn btn-outline btn-sm" onclick="window.print()" title="Imprimer">🖨️</button>
+            <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Imprimer</button>
             ${ac.statut==='en_attente'?`<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${id})">Encaisser</button>`:''}
           </div>
         </div>

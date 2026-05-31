@@ -120,9 +120,21 @@ WYSIWYG (editor.js)
 - L'echeance etait deja masquee via la condition !isAvoir existante
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: avoirs ouverts avec le bon type dans l'editeur
+
+Cause : DOC_CONFIG avoirs utilisait DocEditor.openFacture(id)
+-> l'avoir s'ouvrait avec type='facture', isAvoir=false
+-> label 'FACTURE' au lieu de 'FACTURE D\'AVOIR', echeance visible
+
+Correctif :
+- editor.js : openAvoirById(id) -> open('avoir', id) dans l'API publique
+- app.js : rowOpen et bouton Voir/Modifier utilisent openAvoirById()
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

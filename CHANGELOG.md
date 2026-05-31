@@ -78,6 +78,25 @@ Frontend (renderStats)
 - Repartition TVA : tableau base HT + TVA par taux avec total
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: page Declaration TVA (CA3)
+
+Backend
+- GET /api/stats/ca3?annee=&mois=|trimestre= :
+  TVA collectee par taux (hors avoirs), avoirs a deduire,
+  operations franchise 293B, total brut et net, infos entreprise
+
+Frontend
+- Rubrique '📑 Declaration TVA' dans la barre de navigation
+- renderDeclTVA(el) : formulaire CA3 imprimable
+  - Selecteurs : periode (mensuelle/trimestrielle/annuelle), mois, annee
+  - Section A : TVA collectee par taux + avoirs + franchise + totaux
+  - Section B : TVA deductible (a remplir manuellement)
+  - Section C : solde TVA a payer (a calculer apres saisie deductible)
+  - Note d'avertissement sur la partie manuelle
+  - Bouton Imprimer : CSS @media print masque l'interface
+  - En-tete avec raison sociale, SIRET, TVA intracom
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -87,6 +106,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

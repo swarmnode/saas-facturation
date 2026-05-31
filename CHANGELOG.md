@@ -3,265 +3,43 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [2.6.186] — 2026-05-31
 
 ### Ajouté
-- Feat: sauts de page multi-documents — PDF et WYSIWYG
 
-PDF (FacturXService)
-- genererFacture (statique) : PAGE_SAFE_BOT=642, CONT_TOP=60, ROW_H=20+12
-  descriptions rendues en 7pt, addPage si depassement
-- genererFactureStream (apercu) : meme logique
-- genererBLStream : PAGE_SAFE_BOT=690 (sigY=695), ROW_H=20, addPage si depassement
+- **Sauts de page automatiques** sur tous les types de documents (PDF et WYSIWYG)
+  - `genererFacture`, `genererFactureStream`, `genererBLStream` : `addPage()` avant chaque ligne qui déborderait
+  - WYSIWYG : indicateurs visuels `— Page N —` calibrés sur la même logique que le PDF (en points)
+  - BL : détection du débordement notes+signature après la dernière ligne
 
-WYSIWYG (editor.js)
-- refreshPageBreaks(el, type) : type-aware
-  - devis/facture/avoir : PAGE_SAFE_BOT=642pt
-  - bl : PAGE_SAFE_BOT=690pt
-- page.dataset.docType stocke le type pour les handlers delete/add
-- Tous les appels (chargement, ajout, suppression) passent le type
+- **Avoirs — type et plafonnement**
+  - Migration 011 : colonne `type_avoir` (`valoir` / `remboursement`) sur `factures`
+  - Type d'avoir sélectionnable dans l'éditeur ; mode de règlement affiché uniquement pour les remboursements
+  - Conversion automatique `prelevement_sepa` → `virement_sepa` pour les remboursements (sens inverse)
+  - Plafonnement cumulatif : émission bloquée si total avoirs > montant TTC facture d'origine
+  - Bandeau informatif dans l'éditeur : facture d'origine / avoirs émis / solde disponible
+  - Badge dans la toolbar de la facture si des avoirs existent
+  - Suppression des brouillons d'avoir depuis la liste (route DELETE existante, bouton 🗑️)
+  - Route `PUT /api/factures/:id` : édition des factures/avoirs brouillons
 
-Verifications
-- DEV-2026-0042 (22 lignes devis) : 2 pages PDF
-- FAC-2026-0015 (22 lignes facture) : 2 pages PDF
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: calcul auto TVA intracommunautaire depuis le SIRET
-
-Fonction tvaFromSiret(siret) :
-  cle = (12 + 3 * (SIREN mod 97)) mod 97
-  resultat = 'FR' + cle(2 chiffres) + SIREN
-
-Declencheur : blur sur le champ SIRET, uniquement si TVA Intracom vide
-Feedback visuel : fond vert 1,5s apres auto-remplissage
-
-Applique dans :
-- showClientForm() : formulaire complet Clients
-- openQuickClientCreate() : formulaire rapide depuis l'editeur WYSIWYG
-  (champ TVA Intracom ajoute au formulaire rapide)
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: type d'avoir (a valoir / remboursement) + PUT factures
-
-Migration 011 : colonne type_avoir TEXT DEFAULT 'valoir' sur factures
-
-Backend
-- FactureInput : champ type_avoir
-- FactureService.creer() : insere type_avoir
-- FactureService.mettreAJour() : nouvelle methode (edit brouillons)
-- Route PUT /api/factures/:id : appelle mettreAJour()
-
-WYSIWYG (editor.js)
-- buildDocHTML avoir : select 'Type d avoir' (a valoir / remboursement)
-  - Mode de reglement affiche uniquement si remboursement, masque sinon
-  - Toggle onchange via closest('.a4-page')
-- saveDoc avoir : type_avoir + mode_paiement conditionnel
-
-PDF (FacturXService)
-- genererFacture + genererFactureStream : mention 'Remboursement au client'
-  affichee sous 'Avoir sur facture' si type_avoir === remboursement
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: plafonnement des avoirs par facture d'origine
-
-Backend
-- FactureService.getAvoirsCumul(origineId, excludeId?) :
-  somme TTC des avoirs emis/payees sur une facture
-- FactureService.emettre() : validation avant emission d'un avoir —
-  bloque si montant > solde disponible avec message explicite
-- Route GET /api/factures/:id/avoirs-cumul :
-  { facture_ttc, avoirs_ttc, avoirs_nb, avoirs_numeros, disponible_ttc }
-
-Frontend (WYSIWYG)
-- Avoir editor : bandeau sous les totaux — facture origine / avoirs emis /
-  disponible (vert si solde positif, rouge si epuise)
-- Facture editor : badge dans la toolbar si des avoirs existent —
-  total avoirs / solde disponible, numeros en tooltip
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
+- **TVA intracommunautaire auto** depuis le SIRET
+  - `tvaFromSiret(siret)` : clé = (12 + 3 × (SIREN mod 97)) mod 97 → `FR` + clé (2 chiffres) + SIREN
+  - Remplissage automatique au blur du champ SIRET si le champ TVA Intracom est vide
+  - Disponible dans le formulaire client complet et le formulaire rapide de l'éditeur
 
 ### Corrigé
-- Fix: saut de page automatique dans le PDF devis
 
-- PAGE_SAFE_BOT = 642pt (laisse 150pt pour sig + totaux)
-- Avant chaque ligne : si y + hauteur_ligne > PAGE_SAFE_BOT → addPage()
-  et redessin de l'entête tableau sur la nouvelle page (CONT_TOP = 60)
-- Après la boucle : si y dépasse encore la zone footer → addPage()
-- Description de ligne rendue en 7pt sous la désignation (+12pt par ligne)
-- Hauteur de ligne variable : 20pt sans description, 32pt avec
-- Signature + totaux toujours à bottomY=660 sur la dernière page
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: sauts de page realistes dans le PDF et le WYSIWYG
-
-PDF (FacturXService)
-- Saut de page auto avant chaque ligne qui deborderait (PAGE_SAFE_BOT=642pt)
-- En-tete tableau reimprime sur chaque nouvelle page (CONT_TOP=60pt)
-- Description de ligne rendue en 7pt gris sous la designation (+12pt/ligne)
-- Nouvelle page automatique si curseur depasse la zone footer apres la boucle
-- DEV-2026-0042 (22 lignes) : 2 pages verifiees
-
-WYSIWYG (editor.js + styles.css)
-- refreshPageBreaks(el) : mesure les positions reelles avec getBoundingClientRect,
-  insere des separateurs .e-page-break tous les 1122px (A4 a 96dpi)
-- Appelee apres chargement initial, ajout de ligne, suppression de ligne
-- CSS : ligne pointillee grise + label 'Page N' pour chaque coupure
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: sauts de page WYSIWYG alignes sur la logique PDF (en points)
-
-Remplace la mesure CSS par une simulation identique a FacturXService :
-- PAGE_SAFE_BOT=642pt, CONT_TOP=60pt, ROW_H=20pt, ROW_H_DESC=32pt
-- startY = sepY+100 (250pt sans logo, 285pt avec)
-- Meme algorithme que la boucle forEach du PDF : si y+rowH > PAGE_SAFE_BOT
-  → insere le separateur, repart a y=CONT_TOP sur la page suivante
-- data-desc='1' sur les tr avec description pour capter le bon rowH
-- Le saut de page WYSIWYG correspond desormais exactement au saut PDF
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: badge Acquittee a gauche des totaux, meme niveau
-
-Avant : badge pleine largeur positionne a BOTTOM-60 ou dynamiquement,
-debordant sur le separateur (BOTTOM-44) et les totaux.
-
-Apres : zone gauche x=50→320 / y=BOTTOM-44→BOTTOM (44pt de haut),
-aligne exactement sur la bande des totaux (droite x=340→545).
-- Fond vert clair (#E8F5E9), bordure fine (#A5D6A7)
-- Ligne 1 : 'ACQUITTEE' en gras (10pt)
-- Ligne 2 : date + mode de paiement (8pt)
-- Mention TVA speciale deplacee de BOTTOM-44 a BOTTOM-60
-  pour liberer le slot occupe par le badge
-
-Applique dans genererFacture (PDF emis) et genererFactureStream (apercu).
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: WYSIWYG facture payee — echeance, conditions, mode reglement
-
-1. Date echeance : masquee quand statut=payee (condition !isPaid ajoutee)
-   Remplacee par 'Payee le DD/MM/YYYY' en vert dans les metaFields gauche
-
-2. Conditions de paiement : masquees dans le footer quand facture payee
-   Seules les Notes restent visibles (informations toujours utiles)
-
-3. Mode de reglement : MODES_PAIEMENT[] centralise avec valeurs explicites
-   identiques a payerFacture() dans app.js (virement/carte/cheque…)
-   Quand payee : affiche un label texte vert a la place du select
-   Evite le mismatch 'carte' vs 'carte_bancaire' qui causait le
-   remplacement par le mode par defaut du client (prelevement_sepa)
-
-4. fmt.modePaiement : labels complets pour tous les codes (virement_sepa,
-   prelevement_sepa, carte, etc.) dans les listes et le dashboard
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: masquer date echeance sur le PDF des factures payees
-
-genererFacture (PDF emis) et genererFactureStream (apercu) :
-condition ajoutee : facture.date_echeance && facture.statut !== 'payee'
-Une facture acquittee n'a plus d'echeance pertinente a afficher.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: factures d'avoir — libelle et echeance
-
-PDF (genererFacture + genererFactureStream)
-- Titre : 'AVOIR' → 'FACTURE D\'AVOIR'
-- Stream : ajout detection isAvoirFS + affichage 'Avoir sur facture N°'
-- Echeance : masquee sur les avoirs (condition && !isAvoir ajoutee)
-
-WYSIWYG (editor.js)
-- DOC_LABELS.avoir : 'AVOIR' → 'FACTURE D\'AVOIR'
-- L'echeance etait deja masquee via la condition !isAvoir existante
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: avoirs ouverts avec le bon type dans l'editeur
-
-Cause : DOC_CONFIG avoirs utilisait DocEditor.openFacture(id)
--> l'avoir s'ouvrait avec type='facture', isAvoir=false
--> label 'FACTURE' au lieu de 'FACTURE D\'AVOIR', echeance visible
-
-Correctif :
-- editor.js : openAvoirById(id) -> open('avoir', id) dans l'API publique
-- app.js : rowOpen et bouton Voir/Modifier utilisent openAvoirById()
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: cache-busting JS — force rechargement editor.js et app.js
-- Fix: sauts de page WYSIWYG BL — mesure DOM reelle
-
-Les lignes BL affichent la description dans un div visible (~50px/ligne)
-alors que le calcul PDF utilisait 20pt fixe -> pas de saut pour 20 lignes.
-
-refreshPageBreaks(el, type) :
-- BL : mesure getBoundingClientRect() des lignes DOM
-  PAGE_PX=1122 / FOOTER_PX=160 -> break a 962px depuis le haut de page
-- devis/facture/avoir : inchange (calcul PDF en points, deja calibre)
-
-makeBLRow : data-desc='1' si la ligne a une description (coherence)
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: saut de page BL WYSIWYG — break apres les lignes si notes debordent
-
-Retour au calcul PDF en points pour les BL (PAGE_SAFE_BOT=690pt, ROW_H=20pt).
-Apres la boucle lignes : si y + NOTES_MARGIN(50pt) > PAGE_SAFE_BOT,
-la section notes+signature deborde -> break insere apres la derniere ligne.
-
-Pour BL-2026-0015 (20 lignes) :
-  y = 272 + 20x20 = 672pt, 672+50=722 > 690 -> break apres ligne 20
-Correspond au PDF : lignes sur page 1, notes+signature sur page 2.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: avoir remboursement — prelevement_sepa converti en virement_sepa
-
-Un remboursement ne peut pas transiter par prelevement SEPA (sens inverse).
-Correction automatique prelevement_sepa -> virement_sepa :
-- WYSIWYG : onchange type_avoir, si mode = prelevement_sepa, bascule sur virement_sepa
-- FactureService.creer() : correction a la creation
-- FactureService.mettreAJour() : correction a la sauvegarde
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: fermer l'onglet du document supprime
-
-tabMgr.closeTabByDocId(id) : cherche le tab doc avec docId===id et le ferme.
-Appele avant openViewTab() dans toutes les fonctions de suppression :
-deleteDevis, deleteAvoir, deleteAcompte, supprimerBL, deleteClient, deleteArticle
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-### Documentation
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: manuel v2.6 — avoirs, factures payees, sauts de page, TVA auto
-
-- Avoirs : type d'avoir (a valoir/remboursement), plafonnement cumulatif,
-  suppression brouillons, conversion prelevement->virement SEPA
-- Factures payees : badge acquittee a gauche des totaux, masquage
-  echeance/conditions dans le WYSIWYG
-- Editeur : bouton Imprimer avec libelle, indicateurs de saut de page,
-  fermeture automatique d'onglet a la suppression
-- Clients : calcul auto TVA intracommunautaire depuis le SIRET
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
+- Badge **Acquittée** repositionné à gauche des totaux (zone x=50→320), même niveau horizontal — supprime le chevauchement avec les totaux
+- WYSIWYG facture payée : échéance masquée (remplacée par "Payée le…"), conditions de paiement masquées, mode de règlement affiché en texte fixe avec la bonne valeur
+- PDF facture payée : date d'échéance masquée
+- PDF avoirs : titre `FACTURE D'AVOIR`, mention "Avoir sur facture N°", date d'échéance supprimée
+- Avoirs ouverts avec le bon type dans l'éditeur (`openAvoirById` au lieu de `openFacture`)
+- Sauts de page BL WYSIWYG : calcul PDF en points + vérification post-boucle pour les notes/signature
+- Fermeture automatique de l'onglet lors de la suppression d'un document (`tabMgr.closeTabByDocId`)
 
 ### Modifications
-- Ux: bouton Imprimer avec libelle texte (🖨️ Imprimer)
+
+- Bouton **🖨️ Imprimer** avec libellé texte dans tous les éditeurs WYSIWYG
 
 
 ## [2.5.148] — 2026-05-31
@@ -846,6 +624,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.6.186]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.6.186
 [2.5.148]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.148
 [2.5.146]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.146
 [2.4.140]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.4.140

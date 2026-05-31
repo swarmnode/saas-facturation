@@ -690,8 +690,10 @@ const DocEditor = (() => {
 
       buildEditToolbar(type, id, doc, el, page);
 
-      // Raccourcis clavier
-      el.addEventListener('keydown', e => {
+      // Raccourcis clavier — écoutés au niveau document pour intercepter
+      // Ctrl+S avant que Chrome ne l'utilise pour "Enregistrer la page"
+      const _kbHandler = e => {
+        if (!el.closest('.tab-panel.active')) return; // seulement si l'onglet est actif
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
           e.preventDefault();
           el.querySelector('.e-save-btn')?.click();
@@ -700,7 +702,11 @@ const DocEditor = (() => {
           e.preventDefault();
           window.print();
         }
-      });
+      };
+      document.addEventListener('keydown', _kbHandler);
+      // Nettoyage quand l'onglet est fermé
+      el.querySelector('.e-close-btn')?.addEventListener('click',
+        () => document.removeEventListener('keydown', _kbHandler), { once: true });
 
       // Drag & drop pour réordonner les lignes
       initDragRows(tbody, page, type, el);

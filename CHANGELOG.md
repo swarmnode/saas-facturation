@@ -108,9 +108,22 @@ condition ajoutee : facture.date_echeance && facture.statut !== 'payee'
 Une facture acquittee n'a plus d'echeance pertinente a afficher.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: factures d'avoir — libelle et echeance
+
+PDF (genererFacture + genererFactureStream)
+- Titre : 'AVOIR' → 'FACTURE D\'AVOIR'
+- Stream : ajout detection isAvoirFS + affichage 'Avoir sur facture N°'
+- Echeance : masquee sur les avoirs (condition && !isAvoir ajoutee)
+
+WYSIWYG (editor.js)
+- DOC_LABELS.avoir : 'AVOIR' → 'FACTURE D\'AVOIR'
+- L'echeance etait deja masquee via la condition !isAvoir existante
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

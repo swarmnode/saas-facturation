@@ -334,23 +334,28 @@ export class FacturXService {
       // ── Mention TVA spéciale ─────────────────────────────────────────
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - 44, { width: 260, lineBreak: false });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - 60, { width: 260, lineBreak: false });
       }
 
-      // ── Mention acquittée ────────────────────────────────────────────
+      // ── Mention acquittée — à gauche des totaux, même niveau ───────────
       if (facture.statut === 'payee' && facture.date_paiement) {
         const modesLabel: Record<string, string> = {
           virement: 'Virement bancaire', cheque: 'Chèque', especes: 'Espèces',
           carte: 'Carte bancaire', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre',
         };
         const modeLabel = facture.mode_paiement ? (modesLabel[facture.mode_paiement] ?? facture.mode_paiement) : null;
-        doc.rect(50, BOTTOM - 60, 260, 22).fillColor('#E8F5E9').stroke();
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#2E7D32')
-           .text('ACQUITTÉE', 58, BOTTOM - 55, { lineBreak: false });
-        doc.fontSize(8).font('Helvetica').fillColor('#2E7D32')
-           .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
-                 120, BOTTOM - 55, { width: 180, lineBreak: false });
-        doc.fillColor('#000000');
+        // Zone gauche : x=50→320, même Y que la zone totaux (BOTTOM-44 → BOTTOM)
+        const aqY = BOTTOM - 44;
+        doc.rect(50, aqY, 270, 44).fillColor('#E8F5E9').fill();
+        doc.rect(50, aqY, 270, 44).strokeColor('#A5D6A7').lineWidth(0.5).stroke();
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#2E7D32')
+           .text('✓  ACQUITTÉE', 58, aqY + 6, { lineBreak: false });
+        if (modeLabel || facture.date_paiement) {
+          doc.fontSize(8).font('Helvetica').fillColor('#2E7D32')
+             .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
+                   58, aqY + 22, { width: 254, lineBreak: false });
+        }
+        doc.fillColor('#000000').lineWidth(1);
       }
 
       doc.end();
@@ -743,7 +748,7 @@ export class FacturXService {
 
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM_FS - 44, { width: 260, lineBreak: false });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM_FS - 60, { width: 260, lineBreak: false });
       }
 
       if (facture.statut === 'payee' && facture.date_paiement) {
@@ -752,14 +757,18 @@ export class FacturXService {
           carte: 'Carte bancaire', prelevement: 'Prélèvement', paypal: 'PayPal', autre: 'Autre',
         };
         const modeLabel = facture.mode_paiement ? (modesLabel[facture.mode_paiement] ?? facture.mode_paiement) : null;
-        const acquitteY = Math.max(y + 30, 680);
-        doc.rect(50, acquitteY, W, 26).fillColor('#E8F5E9').stroke();
+        // Zone gauche : x=50→320, même Y que la zone totaux (BOTTOM_FS-44 → BOTTOM_FS)
+        const aqY = BOTTOM_FS - 44;
+        doc.rect(50, aqY, 270, 44).fillColor('#E8F5E9').fill();
+        doc.rect(50, aqY, 270, 44).strokeColor('#A5D6A7').lineWidth(0.5).stroke();
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#2E7D32')
-           .text('ACQUITTÉE', 62, acquitteY + 8);
-        doc.fontSize(9).font('Helvetica').fillColor('#2E7D32')
-           .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
-             160, acquitteY + 9, { width: 330 });
-        doc.fillColor('#000000');
+           .text('✓  ACQUITTÉE', 58, aqY + 6, { lineBreak: false });
+        if (modeLabel || facture.date_paiement) {
+          doc.fontSize(8).font('Helvetica').fillColor('#2E7D32')
+             .text(`Payée le ${formatDate(facture.date_paiement)}${modeLabel ? ` — ${modeLabel}` : ''}`,
+                   58, aqY + 22, { width: 254, lineBreak: false });
+        }
+        doc.fillColor('#000000').lineWidth(1);
       }
 
       doc.end();

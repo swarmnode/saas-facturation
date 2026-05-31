@@ -371,14 +371,11 @@ const DocEditor = (() => {
     return tr;
   }
 
-  // Ouvre le PDF aperçu (identique au PDF émis) dans un nouvel onglet pour impression.
-  // Fallback window.print() si le document n'est pas encore sauvegardé.
+  // Déclenche l'aperçu PDF (même bouton, même rendu que le PDF émis).
   function imprimerDocEditor(el) {
-    const page = el?.querySelector('.a4-page');
-    const type = page?.dataset.docType;
-    const id   = page?.dataset.docId;
-    if (id && type && ROUTES[type]) {
-      openPdf(`/api/${ROUTES[type]}/${id}/apercu`);
+    const btn = el?.querySelector('.e-preview-btn');
+    if (btn) {
+      btn.click();
     } else {
       alert('Enregistrez le document avant d\'imprimer (Ctrl+S).');
     }

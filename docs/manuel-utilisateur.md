@@ -130,6 +130,15 @@ Accédez à **Clients > Nouveau client**. Deux types sont disponibles :
 
 Les champs adresse, code postal et ville sont obligatoires (ils figurent sur les documents). Un champ **Adresse (complément)** est disponible pour les boîtes postales, bâtiments, étages, etc.
 
+Lorsque vous saisissez un **SIRET** et quittez le champ, FacturPro calcule automatiquement le **numéro de TVA intracommunautaire** français et le remplit dans le champ correspondant — à condition que ce champ soit encore vide. La formule utilisée est :
+
+```
+Clé TVA = (12 + 3 × (SIREN mod 97)) mod 97
+N° TVA  = "FR" + clé (2 chiffres) + SIREN
+```
+
+Ce calcul est purement local, sans appel réseau. Il est valide pour toutes les sociétés françaises soumises à TVA.
+
 ## Mode TVA client
 
 Le champ **Mode TVA** permet de forcer un régime particulier pour ce client indépendamment du régime de l'entreprise :
@@ -243,7 +252,15 @@ Le champ **Client** est un filtre de recherche : commencez à saisir le nom ou l
 
 ## Impression
 
-Le bouton **Imprimer** (icône imprimante) génère un aperçu d'impression navigateur de la page A4 actuelle. Utilisez-le pour une impression rapide sans passer par le PDF.
+Le bouton **🖨️ Imprimer** génère un aperçu d'impression navigateur de la page A4 actuelle. Utilisez-le pour une impression rapide sans passer par le PDF.
+
+## Sauts de page
+
+L'éditeur affiche des **indicateurs de saut de page** (ligne pointillée grise avec le label **— Page 2 —**, **— Page 3 —**…) positionnés aux mêmes endroits que dans le PDF généré. Ces indicateurs se mettent à jour automatiquement à chaque ajout ou suppression de ligne. Ils sont purement visuels et n'affectent pas le contenu du document.
+
+## Suppression et onglets
+
+Lorsqu'un document est supprimé depuis une liste, son onglet se ferme automatiquement si il était ouvert.
 
 ## Barre d'actions
 
@@ -382,6 +399,13 @@ Lors du paiement, deux opérations comptables sont déclenchées automatiquement
 1. Les **écritures de règlement** sont inscrites au FEC (journal BQ — Banque) : débit du compte d'encaissement (512 Banque, 530 Caisse ou 5112 Chèques selon le mode) et crédit du compte 411 Clients.
 2. Les lignes 411 de l'émission et du règlement sont **lettrées** automatiquement (voir section Lettrage).
 
+Sur la facture payée, dans l'éditeur WYSIWYG :
+- La **date d'échéance** disparaît (remplacée par la date de paiement en vert)
+- Les **conditions de paiement** sont masquées
+- Le **mode de règlement** affiche la valeur enregistrée au paiement (non modifiable)
+
+Sur le PDF, un bandeau **✓ ACQUITTÉE** apparaît à gauche des totaux, au même niveau horizontal, avec la date et le mode de paiement.
+
 ## Télécharger le PDF Factur-X
 
 Le bouton **Télécharger PDF** livre le fichier PDF avec le fichier XML EN 16931 embarqué, compatible avec les logiciels comptables (Sage, EBP, Cegid…).
@@ -396,27 +420,50 @@ Depuis la fiche d'un bon de livraison, le bouton **Créer la facture** génère 
 
 ---
 
-# Avoirs
+# Avoirs (Factures d'avoir)
 
-Un avoir est une note de crédit qui annule partiellement ou totalement une facture émise.
+Un avoir (ou note de crédit) annule partiellement ou totalement une facture émise. Il est intitulé **FACTURE D'AVOIR** sur le document.
 
 ## Créer un avoir
 
 Deux façons :
 
-1. **Depuis une facture émise** : bouton **Créer un avoir** — le système pré-remplit l'avoir avec les lignes de la facture d'origine (montants négatifs) et lie les deux documents.
+1. **Depuis une facture émise** : bouton **Créer un avoir** — le système pré-remplit l'avoir avec les lignes de la facture d'origine et lie les deux documents.
 2. **Directement** : **Avoirs > Nouvel avoir** — saisissez manuellement les lignes.
 
 | Champ | Remarque |
 |---|---|
-| Facture d'origine | Lien vers la facture annulée (optionnel mais recommandé) |
-| Lignes | Montants positifs seulement — les montants sont affichés négativement sur le PDF |
+| Facture d'origine | Lien vers la facture annulée (recommandé) |
+| Type d'avoir | **À valoir** (défaut) ou **Remboursement au client** |
+| Mode de règlement | Affiché uniquement si type = Remboursement |
+| Lignes | Montants positifs — le PDF les présente comme note de crédit |
+
+## Type d'avoir
+
+| Type | Usage | Mode de règlement |
+|---|---|---|
+| **À valoir** | Crédit sur prochaine commande | Masqué |
+| **Remboursement** | Virement ou chèque vers le client | Obligatoire |
+
+Si le client était configuré en prélèvement SEPA, le mode est automatiquement converti en **Virement SEPA** pour un remboursement (sens inverse d'un prélèvement).
+
+## Plafonnement du montant
+
+Plusieurs avoirs partiels sur la même facture sont autorisés, mais leur **total cumulé ne peut pas dépasser le montant TTC de la facture d'origine**. Un bandeau informatif dans l'éditeur affiche en permanence :
+
+- Montant de la facture d'origine
+- Total des avoirs déjà émis
+- **Solde disponible** (en vert si positif, en rouge si épuisé)
+
+L'émission est bloquée avec un message d'erreur si le montant dépasserait le solde disponible.
 
 ## Émettre un avoir
 
-Même processus qu'une facture : bouton **Émettre**. L'avoir est verrouillé, un PDF Factur-X est généré et les écritures comptables sont inscrites en FEC.
+Bouton **Émettre** : l'avoir est verrouillé, un PDF Factur-X est généré et les écritures comptables sont inscrites en FEC. Les lignes 411 de la facture d'origine et de l'avoir sont **lettrées automatiquement**.
 
-Lorsque l'avoir est lié à une facture d'origine (`facture_origine_id`), les lignes 411 des deux documents sont **lettrées automatiquement** dès l'émission.
+## Supprimer un avoir brouillon
+
+Un avoir en statut **brouillon** peut être supprimé depuis la liste **Avoirs** (bouton 🗑️). Un avoir émis est définitivement verrouillé et ne peut pas être supprimé.
 
 ---
 

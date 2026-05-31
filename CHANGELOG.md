@@ -131,9 +131,11 @@ Correctif :
 - app.js : rowOpen et bouton Voir/Modifier utilisent openAvoirById()
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: cache-busting JS — force rechargement editor.js et app.js
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

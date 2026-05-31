@@ -3,6 +3,18 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [2.7.218] — 2026-05-31
+
+### Ajouté
+- Conditions de paiement par client (migration 014) : champ avec liste de choix dans la fiche client, pré-remplissage automatique des champs `conditions_paiement` et `date_echeance` dans l'éditeur lors de la sélection du client
+- Liste factures : colonne **Retard** (jours de dépassement en rouge), bouton filtre **⚠️ En retard**, tri par échéance
+- Relance client : try/catch + affichage du lien Ethereal si SMTP non configuré
+
+### Corrigé
+- Sidebar : `overflow-y: auto` sur `.sidebar-nav` — Paramètres et autres entrées du bas n'étaient plus visibles avec la liste allongée
+- Bouton **Imprimer** (toolbar éditeur) : `imprimerDocEditor` exposée globalement (`window.imprimerDocEditor`) — le bouton ne faisait rien
+- Ctrl+I / bouton Imprimer : fallback via `page.dataset.docId` quand `.e-preview-btn` est absent (nouveau document sauvegardé sans re-rendu toolbar)
+
 ## [Non publié]
 
 ### Ajouté

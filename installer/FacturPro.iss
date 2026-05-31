@@ -74,7 +74,7 @@ Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescri
 [Run]
 ; Lance le script de configuration après l'extraction (caché, attend la fin)
 Filename: "powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -NonInteractive -File ""{app}\Configure.ps1"" -InstallDir ""{app}"" -PgPass ""{code:GetPgPass}"" -AdminEmail ""{code:GetAdminEmail}"" -AdminPass ""{code:GetAdminPass}"""; \
+  Parameters: "-ExecutionPolicy Bypass -NonInteractive -File ""{app}\Configure.ps1"" -InstallDir ""{app}"" -PgPass ""{code:GetPgPass}"" -AdminEmail ""{code:GetAdminEmail}"" -AdminPass ""{code:GetAdminPass}"" -Port ""{code:GetPort}"""; \
   StatusMsg: "Configuration de la base de données et du service..."; \
   Flags: runhidden waituntilterminated
 
@@ -89,6 +89,7 @@ Filename: "powershell.exe"; \
 var
   PagePostgres : TInputQueryWizardPage;
   PageAdmin    : TInputQueryWizardPage;
+  PageServeur  : TInputQueryWizardPage;
 
 // ── Initialisation des pages ─────────────────────────────────────────────────
 procedure InitializeWizard;
@@ -111,10 +112,21 @@ begin
   PageAdmin.Add('Mot de passe (min. 8 caractères) :', True);
   PageAdmin.Values[0] := '';
   PageAdmin.Values[1] := '';
+
+  // Page 3 : Port d'écoute
+  PageServeur := CreateInputQueryPage(PageAdmin.ID,
+    'Configuration du serveur',
+    'Port d''écoute de FacturPro',
+    'FacturPro écoute sur ce port. Laissez 3000 sauf si un autre logiciel l''utilise déjà.' + #13#10 +
+    'Valeur autorisée : 1024 à 65535.');
+  PageServeur.Add('Port TCP :', False);
+  PageServeur.Values[0] := '3000';
 end;
 
 // ── Validation des saisies ────────────────────────────────────────────────────
 function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  Port : Integer;
 begin
   Result := True;
 
@@ -136,6 +148,14 @@ begin
       Result := False;
     end;
   end;
+
+  if CurPageID = PageServeur.ID then begin
+    Port := StrToIntDef(Trim(PageServeur.Values[0]), 0);
+    if (Port < 1024) or (Port > 65535) then begin
+      MsgBox('Le port doit être un nombre entre 1024 et 65535.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
 end;
 
 // ── Getters utilisés dans [Run] ───────────────────────────────────────────────
@@ -154,17 +174,26 @@ begin
   Result := PageAdmin.Values[1];
 end;
 
+function GetPort(Param: String): String;
+begin
+  Result := Trim(PageServeur.Values[0]);
+  if Result = '' then Result := '3000';
+end;
+
 // ── Création du fichier .url (raccourci navigateur) ───────────────────────────
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   UrlFile : String;
   Lines   : TArrayOfString;
+  Port    : String;
 begin
   if CurStep = ssPostInstall then begin
+    Port    := Trim(PageServeur.Values[0]);
+    if Port = '' then Port := '3000';
     UrlFile := ExpandConstant('{app}\FacturPro.url');
     SetArrayLength(Lines, 3);
     Lines[0] := '[InternetShortcut]';
-    Lines[1] := 'URL=http://localhost:3000';
+    Lines[1] := 'URL=http://localhost:' + Port;
     Lines[2] := 'IconFile=explorer.exe';
     SaveStringsToFile(UrlFile, Lines, False);
   end;

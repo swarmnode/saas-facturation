@@ -8,7 +8,8 @@ param(
     [string]$InstallDir,
     [string]$PgPass,
     [string]$AdminEmail,
-    [string]$AdminPass
+    [string]$AdminPass,
+    [string]$Port = "3000"
 )
 
 $ErrorActionPreference = "Stop"
@@ -102,7 +103,7 @@ $jwtSecret = [Convert]::ToBase64String($bytes) -replace '[/+=]',''
 
 $envContent = @"
 DATABASE_URL=postgresql://facturation:facturation@localhost:5432/facturation
-PORT=3000
+PORT=$Port
 JWT_SECRET=$jwtSecret
 ADMIN_EMAIL=$AdminEmail
 ADMIN_DEFAULT_PASS=$AdminPass
@@ -154,17 +155,17 @@ if ($svc -and $svc.Status -eq "Running") {
 }
 
 # ── 5. Règle pare-feu ────────────────────────────────────────────────────────
-Log "Configuration du pare-feu (port 3000)..."
+Log "Configuration du pare-feu (port $Port)..."
 netsh advfirewall firewall delete rule name="FacturPro" 2>$null | Out-Null
-netsh advfirewall firewall add rule name="FacturPro" dir=in action=allow protocol=TCP localport=3000 profile=private | Out-Null
-Log "Règle pare-feu créée"
+netsh advfirewall firewall add rule name="FacturPro" dir=in action=allow protocol=TCP localport=$Port profile=private | Out-Null
+Log "Regle pare-feu creee"
 
 # ── 6. Raccourcis ────────────────────────────────────────────────────────────
 Log "Création des raccourcis..."
 
 $urlContent = @"
 [InternetShortcut]
-URL=http://localhost:3000
+URL=http://localhost:$Port
 IconFile=explorer.exe
 IconIndex=1
 "@
@@ -181,9 +182,9 @@ Log "Raccourcis créés"
 
 # ── 7. Résumé ────────────────────────────────────────────────────────────────
 Log "=== Installation terminée avec succès ==="
-Log "URL : http://localhost:3000"
+Log "URL : http://localhost:$Port"
 Log "Compte admin : $AdminEmail"
 
 [System.Windows.Forms.MessageBox]::Show(
-    "FacturPro est installé et démarré !`n`nAccès local : http://localhost:3000`nCompte admin : $AdminEmail`n`nLe service démarrera automatiquement avec Windows.",
-    "FacturPro — Installation réussie", 0, 64) | Out-Null
+    "FacturPro est installe et demarre !`n`nAcces local : http://localhost:$Port`nCompte admin : $AdminEmail`n`nLe service demarrera automatiquement avec Windows.",
+    "FacturPro -- Installation reussie", 0, 64) | Out-Null

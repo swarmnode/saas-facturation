@@ -185,11 +185,26 @@ Le catalogue (**Articles**) vous permet de pré-renseigner vos produits et prest
 | Description | Texte long, imprimé sous la désignation |
 | Unité | heure, jour, forfait, pièce… |
 | Prix unitaire HT | Valeur par défaut à l'insertion |
+| Prix d'achat HT | Optionnel — sert uniquement au calcul de marge, n'apparaît pas sur les documents |
 | Taux TVA | Taux pré-sélectionné dans les lignes |
 | Stock | Quantité disponible (optionnel) |
 | N° de série | Numéro de série ou lot (optionnel, saisi par ligne dans les documents) |
 
 Un article peut être désactivé (**Actif = Non**) pour le masquer des listes de sélection sans le supprimer.
+
+## Calcul de marge
+
+Lorsqu'un **prix d'achat HT** est renseigné, FacturPro affiche en temps réel dans le formulaire :
+
+| Indicateur | Formule |
+|---|---|
+| Marge brute | Prix vente HT − Prix achat HT |
+| Taux de marque | Marge brute ÷ Prix vente HT × 100 |
+| Taux de marge | Marge brute ÷ Prix achat HT × 100 |
+
+Le **taux de marque** est l'indicateur le plus courant en commerce et distribution. Le **taux de marge** (ou taux de marge sur coût) est davantage utilisé en industrie.
+
+La liste des articles affiche une colonne **Marge** (montant + taux de marque) en vert si positive, rouge si négative. Le prix d'achat n'est jamais transmis aux clients ni imprimé sur les documents.
 
 ---
 
@@ -560,6 +575,50 @@ Le `super_admin` peut gérer plusieurs entreprises depuis une seule interface :
 - **Paramètres > Entreprise > Nouvelle société** crée une deuxième entité.
 - Un utilisateur peut être affecté à plusieurs sociétés avec des rôles différents par société.
 - Le commutateur de société apparaît dans le menu de navigation si l'utilisateur a accès à plusieurs entités.
+
+---
+
+# Installation Windows
+
+## Assistant d'installation
+
+L'installeur Windows (`FacturPro-Setup.exe`) guide la configuration en trois étapes après le choix du répertoire d'installation :
+
+**Page 1 — PostgreSQL**
+
+| Champ | Valeur par défaut |
+|---|---|
+| Mot de passe superutilisateur (`postgres`) | `postgres` |
+
+Si PostgreSQL n'est pas encore installé sur le poste, l'installeur le télécharge et l'installe automatiquement via `winget`.
+
+**Page 2 — Compte administrateur**
+
+| Champ | Remarque |
+|---|---|
+| Adresse e-mail | Identifiant de connexion du super-administrateur |
+| Mot de passe | Minimum 8 caractères |
+
+**Page 3 — Configuration du serveur**
+
+| Champ | Valeur par défaut | Plage autorisée |
+|---|---|---|
+| Port TCP | `3000` | 1024 à 65535 |
+
+Changez le port si `3000` est déjà utilisé par un autre logiciel sur le poste. Le port choisi est appliqué automatiquement dans :
+- Le fichier de configuration (`.env`)
+- La règle pare-feu Windows (entrante, réseau privé)
+- Les raccourcis bureau et menu Démarrer
+
+## Après l'installation
+
+- Le service Windows **FacturPro** démarre automatiquement et se relance à chaque redémarrage.
+- L'interface est accessible à `http://localhost:<port>` depuis n'importe quel navigateur du poste.
+- Les journaux se trouvent dans `<répertoire_installation>\logs\`.
+
+## Désinstallation
+
+Passez par **Ajout/Suppression de programmes** (Paramètres Windows). Le script de désinstallation arrête le service, le supprime et nettoie les règles pare-feu. La base de données PostgreSQL et les données ne sont **pas** supprimées automatiquement.
 
 ---
 

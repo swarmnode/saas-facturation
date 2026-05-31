@@ -178,6 +178,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -186,6 +187,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: release 2.7.218
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Ci: add contents:write permission for release asset upload
 
 
 ## [2.6.186] — 2026-05-31

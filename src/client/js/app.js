@@ -525,7 +525,12 @@ const tabMgr = (() => {
     renderStrip(); // persiste dans saveTabState
   }
 
-  return { openViewTab, openDocTab, closeTab, init, activateByKey, promoteTab };
+  function closeTabByDocId(docId) {
+    const t = tabs.find(t => t.type === 'doc' && String(t.docId) === String(docId));
+    if (t) closeTab(t.id);
+  }
+
+  return { openViewTab, openDocTab, closeTab, closeTabByDocId, init, activateByKey, promoteTab };
 })();
 
 function updateSidebarLogo(logoPath) {
@@ -2774,6 +2779,7 @@ async function supprimerBL(id) {
   if (!confirm('Supprimer ce bon de livraison ?')) return;
   const r = await api.delete(`/api/bons-livraison/${id}`);
   if (r?.error) return alert(r.error);
+  tabMgr.closeTabByDocId(id);
   tabMgr.openViewTab('bons-livraison');
 }
 
@@ -2781,6 +2787,7 @@ async function deleteDevis(id) {
   if (!confirm('Supprimer ce devis ? Cette action est irréversible.')) return;
   const r = await api.delete(`/api/devis/${id}`);
   if (r?.error) return alert(r.error);
+  tabMgr.closeTabByDocId(id);
   tabMgr.openViewTab('devis');
 }
 
@@ -2788,6 +2795,7 @@ async function deleteAcompte(id) {
   if (!confirm('Supprimer cet acompte ? Cette action est irréversible.')) return;
   const r = await api.delete(`/api/acomptes/${id}`);
   if (r?.error) return alert(r.error);
+  tabMgr.closeTabByDocId(id);
   tabMgr.openViewTab('acomptes');
 }
 
@@ -2795,6 +2803,7 @@ async function deleteAvoir(id) {
   if (!confirm('Supprimer cet avoir ? Cette action est irréversible.')) return;
   const r = await api.delete(`/api/factures/${id}`);
   if (r?.error) return alert(r.error);
+  tabMgr.closeTabByDocId(id);
   tabMgr.openViewTab('avoirs');
 }
 
@@ -2802,6 +2811,7 @@ async function deleteClient(id) {
   if (!confirm('Supprimer ce client ? Cette action est irréversible.')) return;
   const r = await api.delete(`/api/clients/${id}`);
   if (r?.error) return alert(r.error);
+  tabMgr.closeTabByDocId(id);
   tabMgr.openViewTab('clients');
 }
 
@@ -2972,6 +2982,7 @@ async function showArticleForm(id) {
 async function deleteArticle(id) {
   if (!confirm('Supprimer cet article du catalogue ?')) return;
   await api.delete(`/api/articles/${id}`);
+  tabMgr.closeTabByDocId(id);
   tabMgr.openViewTab('articles');
 }
 

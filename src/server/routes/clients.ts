@@ -1,8 +1,88 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { query } from '../db/database';
 import { requirePerm } from '../middleware/auth';
+import { toCSV, parseCSV, rowToObj } from '../utils/csv';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const router = Router();
+
+// ── Export CSV ───────────────────────────────────────────────────────────────
+router.get('/export', requirePerm('clients:r'), async (req, res, next) => {
+  try {
+    const r = await query(
+      `SELECT * FROM clients WHERE entreprise_id=$1 AND statut_rgpd!='anonymise' ORDER BY created_at DESC`,
+      [req.user!.entreprise_id]
+    );
+    const headers = ['Type', 'Raison_sociale', 'Civilite', 'Prenom', 'Nom',
+                     'Adresse', 'Adresse2', 'Code_postal', 'Ville', 'Pays',
+                     'Email', 'Telephone', 'SIRET', 'TVA_Intracom',
+                     'Mode_TVA', 'Mode_reglement', 'Statut_RGPD'];
+    const rows = r.rows.map((c: any) => [
+      c.type_client, c.raison_sociale, c.civilite, c.prenom, c.nom,
+      c.adresse, c.adresse2, c.code_postal, c.ville, c.pays,
+      c.email, c.telephone, c.siret, c.tva_intracom,
+      c.tva_mode, c.mode_reglement_defaut, c.statut_rgpd,
+    ]);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="clients_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send(toCSV(headers, rows));
+  } catch(e) { next(e); }
+});
+
+// ── Import CSV ───────────────────────────────────────────────────────────────
+router.post('/import', requirePerm('clients:w'), upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Fichier CSV requis' });
+    const text = req.file.buffer.toString('utf-8');
+    const { headers, rows } = parseCSV(text);
+
+    let inserted = 0, skipped = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const obj = rowToObj(headers, rows[i]);
+      const adresse = obj['adresse'] || '';
+      const cp      = obj['code_postal'] || obj['cp'] || '';
+      const ville   = obj['ville'] || '';
+      if (!adresse || !cp || !ville) {
+        errors.push(`Ligne ${i + 2} : adresse, code postal et ville obligatoires`);
+        skipped++; continue;
+      }
+      const type = obj['type'] || obj['type_client'] || 'professionnel';
+      try {
+        await query(`
+          INSERT INTO clients (type_client, raison_sociale, civilite, prenom, nom,
+            adresse, adresse2, code_postal, ville, pays, email, telephone,
+            siret, tva_intracom, tva_mode, mode_reglement_defaut, statut_rgpd, entreprise_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        `, [
+          type,
+          obj['raison_sociale'] || null,
+          obj['civilite'] || null,
+          obj['prenom'] || null,
+          obj['nom'] || null,
+          adresse, obj['adresse2'] || null, cp, ville,
+          obj['pays'] || 'France',
+          obj['email'] || null,
+          obj['telephone'] || null,
+          obj['siret'] || null,
+          obj['tva_intracom'] || null,
+          obj['mode_tva'] || obj['tva_mode'] || 'normal',
+          obj['mode_reglement'] || obj['mode_reglement_defaut'] || null,
+          obj['statut_rgpd'] || 'prospect',
+          req.user!.entreprise_id,
+        ]);
+        inserted++;
+      } catch(err: any) {
+        errors.push(`Ligne ${i + 2} : ${err.message}`);
+        skipped++;
+      }
+    }
+    res.json({ inserted, skipped, errors });
+  } catch(e) { next(e); }
+});
 
 router.get('/', requirePerm('clients:r'), async (req, res, next) => {
   try {

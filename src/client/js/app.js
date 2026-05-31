@@ -762,8 +762,12 @@ function navigate(view) {
 // ── Clients ───────────────────────────────────────────────────────────────
 async function renderClients(el) {
   const clients = await api.get('/api/clients');
-  document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="showClientForm()">+ Nouveau client</button>`;
+  document.getElementById('topbarActions').innerHTML = `
+    <button class="btn btn-primary" onclick="showClientForm()">+ Nouveau client</button>
+    <button class="btn btn-outline" onclick="exportCSV('/api/clients/export','clients')">⬇ Exporter CSV</button>
+    <label class="btn btn-outline" style="cursor:pointer;margin:0">⬆ Importer CSV
+      <input type="file" accept=".csv" style="display:none" onchange="importCSV('/api/clients/import',this,()=>renderClients(el))">
+    </label>`;
 
   el.innerHTML = `<div class="card">
     <div class="table-wrap">
@@ -972,6 +976,36 @@ async function openPdf(url) {
   const blob = await res.blob();
   const objUrl = URL.createObjectURL(blob);
   window.open(objUrl, '_blank');
+}
+
+// ── Import / Export CSV générique ─────────────────────────────────────────
+async function exportCSV(url, name) {
+  const token = localStorage.getItem('jwt');
+  const res   = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) { alert('Erreur export'); return; }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function importCSV(url, input, onSuccess) {
+  const file = input.files?.[0]; if (!file) return;
+  const fd   = new FormData(); fd.append('file', file);
+  const token= localStorage.getItem('jwt');
+  input.value = ''; // reset pour permettre re-import du même fichier
+
+  const res  = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+  const data = await res.json();
+  if (data.error) { alert('Erreur : ' + data.error); return; }
+
+  let msg = `Import terminé :\n✓ ${data.inserted} enregistrement(s) importé(s)`;
+  if (data.skipped) msg += `\n✗ ${data.skipped} ignoré(s)`;
+  if (data.errors?.length) msg += '\n\nDétails :\n' + data.errors.slice(0, 10).join('\n');
+  alert(msg);
+  if (data.inserted > 0 && onSuccess) onSuccess();
 }
 
 async function downloadFile(url, filename) {
@@ -2818,8 +2852,12 @@ async function deleteClient(id) {
 // ── Articles ──────────────────────────────────────────────────────────────
 async function renderArticles(el) {
   const articles = await api.get('/api/articles');
-  document.getElementById('topbarActions').innerHTML =
-    `<button class="btn btn-primary" onclick="showArticleForm()">+ Nouvel article</button>`;
+  document.getElementById('topbarActions').innerHTML = `
+    <button class="btn btn-primary" onclick="showArticleForm()">+ Nouvel article</button>
+    <button class="btn btn-outline" onclick="exportCSV('/api/articles/export','articles')">⬇ Exporter CSV</button>
+    <label class="btn btn-outline" style="cursor:pointer;margin:0">⬆ Importer CSV
+      <input type="file" accept=".csv" style="display:none" onchange="importCSV('/api/articles/import',this,()=>renderArticles(el))">
+    </label>`;
 
   el.innerHTML = `<div class="card"><div class="table-wrap">
     <table>

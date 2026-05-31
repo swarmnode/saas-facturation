@@ -61,6 +61,15 @@ const formatSiret = s => {
   return d.length === 14 ? `${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6,9)} ${d.slice(9)}` : s;
 };
 
+// Calcule le numéro de TVA intracommunautaire français depuis un SIRET/SIREN.
+// Formule : clé = (12 + 3 × (SIREN mod 97)) mod 97 → "FR" + clé(2 chiffres) + SIREN
+function tvaFromSiret(siret) {
+  const siren = String(siret).replace(/\s/g, '').slice(0, 9);
+  if (siren.length !== 9 || !/^\d{9}$/.test(siren)) return '';
+  const cle = (12 + 3 * (Number(siren) % 97)) % 97;
+  return 'FR' + String(cle).padStart(2, '0') + siren;
+}
+
 // ── Helpers boutons ───────────────────────────────────────────────────────
 const btn = {
   outline: (onclick, label, title='') => `<button class="btn btn-outline btn-sm" onclick="${onclick}"${title?` title="${title}"`:''}>${label}</button>`,
@@ -796,6 +805,9 @@ function openQuickClientCreate(btn) {
         <div class="form-group"><label>Email</label><input name="email" type="email"/></div>
         <div class="form-group"><label>SIRET</label><input name="siret"/></div>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label>TVA Intracom <small style="font-weight:normal;color:var(--text-muted)">— calculé depuis le SIRET</small></label><input name="tva_intracom" placeholder="FR00 000000000"/></div>
+      </div>
       <input name="type_client" type="hidden" value="professionnel"/>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline" onclick="modal2.hide()">Annuler</button>
@@ -806,6 +818,16 @@ function openQuickClientCreate(btn) {
   modal2.show('Nouveau client', html, body => {
     attachSireneAutocomplete(body.querySelector('[name="raison_sociale"]'), body);
     attachNominatimAutocomplete(body.querySelector('[name="adresse"]'), body);
+    const qSiret = body.querySelector('[name="siret"]');
+    const qTva   = body.querySelector('[name="tva_intracom"]');
+    if (qSiret && qTva) {
+      qSiret.addEventListener('blur', () => {
+        if (qSiret.value.trim() && !qTva.value.trim()) {
+          const tva = tvaFromSiret(qSiret.value);
+          if (tva) { qTva.value = tva; qTva.style.background = '#f0fdf4'; setTimeout(() => qTva.style.background = '', 1500); }
+        }
+      });
+    }
     body.querySelector('#quickClientForm').onsubmit = async e => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));
@@ -914,6 +936,18 @@ async function showClientForm(id) {
   modal.show(id ? 'Modifier le client' : 'Nouveau client', html, body => {
     attachSireneAutocomplete(body.querySelector('[name="raison_sociale"]'), body);
     attachNominatimAutocomplete(body.querySelector('[name="adresse"]'), body);
+
+    // Auto-calcul TVA intracommunautaire depuis le SIRET
+    const siretInp = body.querySelector('[name="siret"]');
+    const tvaInp   = body.querySelector('[name="tva_intracom"]');
+    if (siretInp && tvaInp) {
+      siretInp.addEventListener('blur', () => {
+        if (siretInp.value.trim() && !tvaInp.value.trim()) {
+          const tva = tvaFromSiret(siretInp.value);
+          if (tva) { tvaInp.value = tva; tvaInp.style.background = '#f0fdf4'; setTimeout(() => tvaInp.style.background = '', 1500); }
+        }
+      });
+    }
     body.querySelector('#clientForm').onsubmit = async e => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));

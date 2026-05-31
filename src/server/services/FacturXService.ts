@@ -285,24 +285,39 @@ export class FacturXService {
       let y = sepY + 100;
       const colX = [50, 240, 300, 355, 410, 470];
       const headers = ['Désignation', 'Qté', 'P.U. HT', 'Remise', 'TVA', 'Total HT'];
+      const PAGE_SAFE_BOT_F = 642;
+      const CONT_TOP_F      = 60;
+      const ROW_H_F         = 20;
+      const DESC_H_F        = 12;
 
-      doc.rect(50, y, W, 18).fill(brandColor);
-      doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
-      headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
-      y += 22;
+      const drawFacHeader = () => {
+        doc.rect(50, y, W, 18).fill(brandColor);
+        doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
+        headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
+        y += 22;
+        doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      };
+      drawFacHeader();
 
-      doc.fillColor('#000000').font('Helvetica').fontSize(8);
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
-        if (idx % 2 === 0) doc.rect(50, y - 2, W, 18).fill(brandColorLight);
+        const rowH = l.description ? ROW_H_F + DESC_H_F : ROW_H_F;
+        if (y + rowH > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
+        if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
         doc.fillColor('#000000');
-        doc.text(l.designation, colX[0], y, { width: 186 });
-        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54 });
-        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50 });
-        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50 });
-        doc.text(mentionTVA(facture.tva_mode, l.taux_tva_valeur), colX[4], y, { width: 56 });
-        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70, align: 'right' });
-        y += 20;
+        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: false });
+        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54,  lineBreak: false });
+        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50,  lineBreak: false });
+        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50,  lineBreak: false });
+        doc.text(mentionTVA(facture.tva_mode, l.taux_tva_valeur), colX[4], y, { width: 56,  lineBreak: false });
+        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70,  lineBreak: false, align: 'right' });
+        if (l.description) {
+          doc.fontSize(7).fillColor('#666666')
+             .text(l.description, colX[0] + 2, y + ROW_H_F - 2, { width: 184, lineBreak: false });
+          doc.fontSize(8).fillColor('#000000');
+        }
+        y += rowH;
       });
+      if (y > PAGE_SAFE_BOT_F) doc.addPage();
 
       // ── Totaux ancrés en bas à droite — même position que le devis ──────
       const BOTTOM = 744; // = sigBotY du devis (660 + 14 + 70)
@@ -563,22 +578,31 @@ export class FacturXService {
       let y = sepY + 100;
       const colX = [50, 310, 390, 460];
       const headers = ['Désignation', 'Quantité', 'Unité', 'Réf. article'];
-      doc.rect(50, y, W, 18).fill(brandColor);
-      doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
-      headers.forEach((h, i) => {
-        const w = i < headers.length - 1 ? colX[i + 1] - colX[i] - 4 : 85;
-        doc.text(h, colX[i], y + 5, { width: w });
-      });
-      y += 22;
-      doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      const PAGE_SAFE_BOT_BL = 690; // sigY=695 — on laisse 5pt de marge
+      const CONT_TOP_BL      = 60;
+      const ROW_H_BL         = 20;
+
+      const drawBLHeader = () => {
+        doc.rect(50, y, W, 18).fill(brandColor);
+        doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
+        headers.forEach((h, i) => {
+          const w = i < headers.length - 1 ? colX[i + 1] - colX[i] - 4 : 85;
+          doc.text(h, colX[i], y + 5, { width: w });
+        });
+        y += 22;
+        doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      };
+      drawBLHeader();
+
       (bl.lignes ?? []).forEach((l: any, idx: number) => {
-        if (idx % 2 === 0) doc.rect(50, y - 2, W, 18).fill(brandColorLight);
+        if (y + ROW_H_BL > PAGE_SAFE_BOT_BL) { doc.addPage(); y = CONT_TOP_BL; drawBLHeader(); }
+        if (idx % 2 === 0) doc.rect(50, y - 2, W, ROW_H_BL).fill(brandColorLight);
         doc.fillColor('#000000');
-        doc.text(l.designation + (l.description ? `\n${l.description}` : ''), colX[0], y, { width: 255 });
-        doc.text(String(l.quantite), colX[1], y, { width: 75 });
-        doc.text(l.unite ?? '—', colX[2], y, { width: 65 });
-        doc.text(l.article_id ? String(l.article_id) : '—', colX[3], y, { width: 85 });
-        y += 20;
+        doc.text(l.designation + (l.description ? `\n${l.description}` : ''), colX[0], y, { width: 255, lineBreak: false });
+        doc.text(String(l.quantite), colX[1], y, { width: 75, lineBreak: false });
+        doc.text(l.unite ?? '—', colX[2], y, { width: 65, lineBreak: false });
+        doc.text(l.article_id ? String(l.article_id) : '—', colX[3], y, { width: 85, lineBreak: false });
+        y += ROW_H_BL;
       });
 
       // Notes
@@ -671,23 +695,39 @@ export class FacturXService {
       let y = sepY + 100;
       const colX = [50, 240, 300, 355, 410, 470];
       const headers = ['Désignation', 'Qté', 'P.U. HT', 'Remise', 'TVA', 'Total HT'];
-      doc.rect(50, y, W, 18).fill(brandColor);
-      doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
-      headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
-      y += 22;
+      const PAGE_SAFE_BOT_FS = 642;
+      const CONT_TOP_FS      = 60;
+      const ROW_H_FS         = 20;
+      const DESC_H_FS        = 12;
 
-      doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      const drawFSHeader = () => {
+        doc.rect(50, y, W, 18).fill(brandColor);
+        doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
+        headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
+        y += 22;
+        doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      };
+      drawFSHeader();
+
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
-        if (idx % 2 === 0) doc.rect(50, y - 2, W, 18).fill(brandColorLight);
+        const rowH = l.description ? ROW_H_FS + DESC_H_FS : ROW_H_FS;
+        if (y + rowH > PAGE_SAFE_BOT_FS) { doc.addPage(); y = CONT_TOP_FS; drawFSHeader(); }
+        if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
         doc.fillColor('#000000');
-        doc.text(l.designation, colX[0], y, { width: 186 });
-        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54 });
-        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50 });
-        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50 });
-        doc.text(mentionTVA(facture.tva_mode, l.taux_tva_valeur), colX[4], y, { width: 56 });
-        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70, align: 'right' });
-        y += 20;
+        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: false });
+        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54,  lineBreak: false });
+        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50,  lineBreak: false });
+        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50,  lineBreak: false });
+        doc.text(mentionTVA(facture.tva_mode, l.taux_tva_valeur), colX[4], y, { width: 56,  lineBreak: false });
+        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70,  lineBreak: false, align: 'right' });
+        if (l.description) {
+          doc.fontSize(7).fillColor('#666666')
+             .text(l.description, colX[0] + 2, y + ROW_H_FS - 2, { width: 184, lineBreak: false });
+          doc.fontSize(8).fillColor('#000000');
+        }
+        y += rowH;
       });
+      if (y > PAGE_SAFE_BOT_FS) doc.addPage();
 
       // Totaux ancrés — même position que devis/facture
       const BOTTOM_FS = 744;

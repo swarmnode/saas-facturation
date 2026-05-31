@@ -143,24 +143,24 @@ const DocEditor = (() => {
   }
 
   // Insère des indicateurs visuels de saut de page A4 dans le tableau des lignes.
-  // Utilise la même logique de calcul que le PDF (en points) pour être fidèle au rendu final.
-  function refreshPageBreaks(el) {
+  // Utilise la même logique que FacturXService (en points PDF) selon le type de document.
+  function refreshPageBreaks(el, type) {
     const page  = el.querySelector('.a4-page');
     const tbody = el.querySelector('.e-lignes-body');
     if (!page || !tbody) return;
 
     tbody.querySelectorAll('.e-page-break').forEach(r => r.remove());
 
-    // Constantes miroir de FacturXService (en points PDF)
-    const PAGE_SAFE_BOT = 642; // pt — limite basse du contenu par page
-    const CONT_TOP      = 60;  // pt — Y de reprise sur les pages suivantes
-    const ROW_H_PT      = 20;  // pt — hauteur d'une ligne sans description
-    const ROW_H_DESC_PT = 32;  // pt — hauteur d'une ligne avec description
+    // Constantes par type — miroir de FacturXService
+    const isBL = type === 'bl';
+    const PAGE_SAFE_BOT = isBL ? 690 : 642; // BL sigY=695, autres 642
+    const CONT_TOP      = 60;
+    const ROW_H_PT      = 20;
+    const ROW_H_DESC_PT = 32; // avec description (non applicable aux BL)
 
-    // Y de départ du tableau (page 1), miroir de genererDevisStream / genererFactureStream
     const hasLogo = !!page.querySelector('.e-logo');
     const sepY    = hasLogo ? 185 : 150;
-    const startY  = sepY + 100; // = 285pt (avec logo) ou 250pt (sans)
+    const startY  = sepY + 100;
 
     const cols = tbody.closest('table')?.querySelectorAll('thead th').length || 7;
     const rows = Array.from(tbody.querySelectorAll('tr:not(.e-page-break)'));
@@ -169,10 +169,8 @@ const DocEditor = (() => {
     let pageNum = 1;
 
     for (const row of rows) {
-      // Détecte si la ligne a une description (champ caché e-desc ou valeur connue)
-      const descInput = row.querySelector('input[name^="lig_desc"]') || row.querySelector('.e-desc');
-      const hasDesc   = !!(descInput?.value?.trim() || row.dataset.desc);
-      const rowH      = hasDesc ? ROW_H_DESC_PT : ROW_H_PT;
+      const hasDesc = !isBL && !!(row.dataset.desc);
+      const rowH    = hasDesc ? ROW_H_DESC_PT : ROW_H_PT;
 
       if (y + rowH > PAGE_SAFE_BOT) {
         pageNum++;
@@ -180,7 +178,7 @@ const DocEditor = (() => {
         brk.className = 'e-page-break';
         brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
         tbody.insertBefore(brk, row);
-        y = CONT_TOP; // reprise en haut de la nouvelle page
+        y = CONT_TOP;
       }
       y += rowH;
     }
@@ -302,7 +300,7 @@ const DocEditor = (() => {
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
     tr.querySelector('.e-del-btn').onclick=()=>{
       tr.remove(); calcTotaux(page);
-      const edEl=page.closest('.e-editor-panel'); if(edEl) requestAnimationFrame(()=>refreshPageBreaks(edEl));
+      const edEl=page.closest('.e-editor-panel'); if(edEl) requestAnimationFrame(()=>refreshPageBreaks(edEl, page.dataset.docType));
     };
     tr.querySelectorAll('.e-qty,.e-pu,.e-remise,.e-tva-sel').forEach(i=>i.addEventListener('input',()=>{calcLigne(tr);calcTotaux(page);}));
     const desig=tr.querySelector('.e-desig');
@@ -330,7 +328,7 @@ const DocEditor = (() => {
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
     tr.querySelector('.e-del-btn').onclick=()=>{
       tr.remove();
-      const edEl=page.closest('.e-editor-panel'); if(edEl) requestAnimationFrame(()=>refreshPageBreaks(edEl));
+      const edEl=page.closest('.e-editor-panel'); if(edEl) requestAnimationFrame(()=>refreshPageBreaks(edEl, page.dataset.docType));
     };
     const desig=tr.querySelector('.e-desig');
     attachArticleAutocomplete(desig,null,null,tr.querySelector('.e-unite'));
@@ -465,6 +463,7 @@ const DocEditor = (() => {
     const page   = el.querySelector('.a4-page');
     const tbody  = el.querySelector('.e-lignes-body');
     const docKey = el.dataset.docKey;
+    page.dataset.docType = type; // pour refreshPageBreaks dans les handlers
 
 
 
@@ -496,7 +495,7 @@ const DocEditor = (() => {
       if (!isBL) calcLigne(row);
     });
     if (!isBL) calcTotaux(page);
-    requestAnimationFrame(() => refreshPageBreaks(el));
+    requestAnimationFrame(() => refreshPageBreaks(el, type));
 
     if (readonly) {
       // Mode lecture
@@ -514,7 +513,7 @@ const DocEditor = (() => {
         tbody.appendChild(row);
         calcLigne(row); calcTotaux(page);
         row.querySelector('.e-desig').focus();
-        requestAnimationFrame(() => refreshPageBreaks(el));
+        requestAnimationFrame(() => refreshPageBreaks(el, type));
       };
 
       const previewBtn = el.querySelector('.e-preview-btn');

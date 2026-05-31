@@ -108,7 +108,7 @@ const DOC_CONFIGS = {
     topbar:   () => `
       <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
       <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
-      <button class="btn btn-outline" onclick="window.open('/api/stats/attestation','_blank')">📋 Attestation</button>
+      <button class="btn btn-outline" onclick="ouvrirAttestation()">📋 Attestation</button>
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
       <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
       <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
@@ -2712,6 +2712,17 @@ async function payerFacture(id) {
     modal.close();
     tabMgr.openViewTab('factures');
   };
+}
+
+async function ouvrirAttestation() {
+  const token = localStorage.getItem('jwt');
+  const res   = await fetch('/api/stats/attestation', { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) { alert('Erreur lors de la génération'); return; }
+  const html  = await res.text();
+  const blob  = new Blob([html], { type: 'text/html; charset=utf-8' });
+  const url   = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 async function exportFEC() {

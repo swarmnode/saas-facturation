@@ -131,7 +131,7 @@ const DOC_CONFIGS = {
     topbar:   () => '',
     headers:  ['N°','Facture d\'origine','Client','HT','TTC','Statut','Date'],
     sortKeys: ['numero','facture_origine_numero','client_nom','montant_ht','montant_ttc','statut','date_emission'],
-    rowOpen:  a => `DocEditor.openFacture(${a.id})`,
+    rowOpen:  a => `DocEditor.openAvoirById(${a.id})`,
     cells:    a => [
       `<strong>${a.numero}</strong>`,
       a.facture_origine_numero||'—',
@@ -143,7 +143,7 @@ const DOC_CONFIGS = {
     ],
     actions: a => [
       a.statut==='brouillon' ? btn.success(`emettreFacture(${a.id})`, 'Émettre') : '',
-      btn.outline(`DocEditor.openFacture(${a.id})`, 'Voir/Modifier'),
+      btn.outline(`DocEditor.openAvoirById(${a.id})`, 'Voir/Modifier'),
       btn.outline(`previewFacture(${a.id})`, '👁 PDF'),
       btn.outline(`envoyerFacture(${a.id})`, '✉ Envoyer'),
       !a.locked ? btn.trash(`deleteAvoir(${a.id})`) : '',

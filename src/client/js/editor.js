@@ -828,7 +828,8 @@ const DocEditor = (() => {
   return {
     openDevis:   (id=null)         => open('devis',   id||null),
     openFacture: (id=null, prefill={}) => open('facture', id||null, prefill),
-    openAvoir:   async factureId   => { const fo=await api.get(`/api/factures/${factureId}`); return open('avoir',null,{factureOrigine:fo}); },
+    openAvoir:     async factureId => { const fo=await api.get(`/api/factures/${factureId}`); return open('avoir',null,{factureOrigine:fo}); },
+    openAvoirById: (id=null)       => open('avoir', id||null),
     openBL:      (id=null,p={})    => open('bl', id||null, p),
     openAcompte: id                => openAcompte(id),
     restoreDraft:(type,docKey)     => { const d=loadDraft(docKey); if(!d)return; open(type,null,{docKey,draft:d}); },

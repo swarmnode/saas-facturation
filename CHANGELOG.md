@@ -97,6 +97,38 @@ Frontend
   - En-tete avec raison sociale, SIRET, TVA intracom
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: raccourcis clavier, drag&drop, CGV, notifications, relances, audit, attestation
+
+Vague 1 — UX editeur
+- Ctrl+S → sauvegarde, Ctrl+P → impression dans tous les editeurs WYSIWYG
+- Drag & drop lignes : poignee ⠿, dragover outline, reordonnancement DOM
+  avec recalcul totaux et sauts de page apres drop
+
+Vague 2 — CGV / mentions legales
+- migration_012 : cgv_texte + mention_legale sur entreprise
+- drawCGV() dans FacturXService : rendu en 6.5pt en bas de chaque PDF
+  (devis, facture, BL, acompte) si textes configures
+- Section CGV dans Parametres Entreprise
+
+Vague 3 — Notifications in-app
+- GET /api/stats/notifications : compte factures en retard + devis expires
+- Badges rouges/oranges sur les entrees Factures et Devis dans la sidebar
+- Refresh automatique toutes les 5 minutes
+
+Vague 4 — Relances clients
+- Bouton '📨 Relancer' sur les factures emises en retard (echéance depassee)
+- Modal avec email pre-rempli, objet et corps personnalisables, PDF joint
+- POST /api/factures/:id/relancer → EmailService.envoyerEmail()
+
+Vague 5 — Journal d'audit + Attestation
+- migration_013 : table audit_log (entreprise, user, action, ressource, ip)
+- logAudit() helper appele sur login, emettre, payer facture
+- GET /api/audit : 200 dernieres entrees (admin)
+- Page '🔍 Journal d audit' dans la sidebar
+- GET /api/stats/attestation : document HTML imprimable conformite anti-fraude TVA
+- Bouton 'Attestation' dans la topbar Factures
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -106,6 +138,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: changelog v2.6.186 [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

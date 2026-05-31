@@ -638,40 +638,65 @@ select.e-cell { cursor:pointer; }
 
 /* ── Print ──────────────────────────────────────────────────────────────── */
 @media print {
-  /* Masquer toute l'interface sauf la page A4 active */
-  .sidebar, .topbar, .tab-strip, .e-toolbar, .e-add-btn,
-  .e-del-btn, .e-td-del, .btn, .btn-trash,
+  /* ── Masquer toute l'interface ─────────────────────────────────────────── */
+  .sidebar, .topbar, .tab-bar, .tab-strip, .tab-scroll-btn,
+  .e-toolbar, .e-add-btn, .e-del-btn, .e-td-del, .btn, .btn-trash,
+  .drag-handle, .e-page-break, .e-stock-badge, .e-avoir-cumul-info,
+  .e-meta-row-check, .e-avoir-reglement, .ss-dropdown,
   #topbarActions, #sidebarOverlay, #hamburger { display: none !important; }
 
+  /* ── Mise en page ──────────────────────────────────────────────────────── */
   body, #app, .main, .tab-panels, .tab-panel,
-  .e-editor-panel, .e-canvas { 
+  .e-editor-panel, .e-canvas {
     display: block !important; overflow: visible !important;
     height: auto !important; width: 100% !important;
     background: #fff !important; padding: 0 !important; margin: 0 !important;
+    position: static !important;
   }
-
-  .tab-panel { position: static !important; }
   .tab-panel:not(.active) { display: none !important; }
 
   .a4-page {
     width: 100% !important; min-height: auto !important;
     box-shadow: none !important; padding: 12mm 14mm !important;
-    font-size: 10pt !important;
+    font-size: 10pt !important; background-image: none !important;
   }
 
-  /* Zone bas : signature gauche + totaux droite — position absolue préservée */
+  /* ── Inputs : valeur en texte brut ─────────────────────────────────────── */
+  input, textarea {
+    border: none !important; background: transparent !important;
+    outline: none !important; box-shadow: none !important;
+  }
+  input::placeholder, textarea::placeholder,
+  [data-placeholder]::before { color: transparent !important; }
+
+  /* Selects : masquer la flèche, afficher la valeur comme texte */
+  select {
+    border: none !important; background: transparent !important;
+    -webkit-appearance: none !important; appearance: none !important;
+    outline: none !important;
+  }
+
+  /* Contenteditable (notes, conditions, descriptions) */
+  [contenteditable] {
+    border: none !important; background: transparent !important;
+    outline: none !important;
+  }
+  [contenteditable]:empty { display: none !important; }
+  .e-description-inp:empty { display: none !important; }
+
+  /* SearchSelect : masquer le champ de recherche, montrer la preview */
+  .ss-wrap { display: none !important; }
+  .e-client-preview { display: block !important; }
+
+  /* ── Zone bas : signature + totaux ─────────────────────────────────────── */
   .e-doc-bottom, .e-signature-single { display: flex !important; }
-  .e-doc-bottom        { left: 14mm !important; right: 14mm !important; bottom: 14mm !important; }
-  .e-signature-single  { left: 14mm !important; right: 14mm !important; bottom: 14mm !important; }
-  .e-sig-dated-box     { background: #fff !important; border: 1px solid #999 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .e-totaux-inner      { border-top: 1px solid #999 !important; }
-  .e-legal-footer      { display: none !important; }
+  .e-doc-bottom       { left: 14mm !important; right: 14mm !important; bottom: 14mm !important; }
+  .e-signature-single { left: 14mm !important; right: 14mm !important; bottom: 14mm !important; }
+  .e-sig-dated-box    { background: #fff !important; border: 1px solid #999 !important;
+                        print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .e-totaux-inner     { border-top: 1px solid #999 !important; }
 
-  /* Inputs : afficher la valeur comme du texte */
-  input, select { border: none !important; background: transparent !important; }
-  [contenteditable] { border: none !important; }
-
-  /* Éviter les coupures de page dans les tableaux */
+  /* ── Tableaux : éviter les coupures de page intempestives ─────────────── */
   table { break-inside: auto; }
   tr    { break-inside: avoid; }
 }

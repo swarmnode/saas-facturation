@@ -5,6 +5,29 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: sauts de page multi-documents — PDF et WYSIWYG
+
+PDF (FacturXService)
+- genererFacture (statique) : PAGE_SAFE_BOT=642, CONT_TOP=60, ROW_H=20+12
+  descriptions rendues en 7pt, addPage si depassement
+- genererFactureStream (apercu) : meme logique
+- genererBLStream : PAGE_SAFE_BOT=690 (sigY=695), ROW_H=20, addPage si depassement
+
+WYSIWYG (editor.js)
+- refreshPageBreaks(el, type) : type-aware
+  - devis/facture/avoir : PAGE_SAFE_BOT=642pt
+  - bl : PAGE_SAFE_BOT=690pt
+- page.dataset.docType stocke le type pour les handlers delete/add
+- Tous les appels (chargement, ajout, suppression) passent le type
+
+Verifications
+- DEV-2026-0042 (22 lignes devis) : 2 pages PDF
+- FAC-2026-0015 (22 lignes facture) : 2 pages PDF
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Corrigé
 - Fix: saut de page automatique dans le PDF devis
 
@@ -47,6 +70,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

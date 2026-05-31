@@ -276,7 +276,7 @@ export class FacturXService {
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
       if (isAvoir && facture.facture_origine_numero)
         doc.text(`Avoir sur facture : ${facture.facture_origine_numero}`, 50, titleY + 46);
-      if (facture.date_echeance)
+      if (facture.date_echeance && facture.statut !== 'payee')
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, isAvoir ? titleY + 58 : titleY + 46);
       if (facture.objet)
         doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoir ? 70 : 58));
@@ -692,7 +692,7 @@ export class FacturXService {
       doc.fontSize(10).font('Helvetica').fillColor('#000000')
          .text(`N° ${facture.numero}`, 50, titleY + 22)
          .text(`Date d'émission : ${formatDate(facture.date_emission)}`, 50, titleY + 34);
-      if (facture.date_echeance)
+      if (facture.date_echeance && facture.statut !== 'payee')
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)
         doc.text(`Objet : ${facture.objet}`, 50, titleY + 58);

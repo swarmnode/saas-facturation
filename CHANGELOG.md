@@ -246,6 +246,18 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: manuel v2.6 — avoirs, factures payees, sauts de page, TVA auto
+
+- Avoirs : type d'avoir (a valoir/remboursement), plafonnement cumulatif,
+  suppression brouillons, conversion prelevement->virement SEPA
+- Factures payees : badge acquittee a gauche des totaux, masquage
+  echeance/conditions dans le WYSIWYG
+- Editeur : bouton Imprimer avec libelle, indicateurs de saut de page,
+  fermeture automatique d'onglet a la suppression
+- Clients : calcul auto TVA intracommunautaire depuis le SIRET
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications

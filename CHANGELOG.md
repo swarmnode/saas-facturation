@@ -192,9 +192,19 @@ Pour BL-2026-0015 (20 lignes) :
 Correspond au PDF : lignes sur page 1, notes+signature sur page 2.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: avoir remboursement — prelevement_sepa converti en virement_sepa
+
+Un remboursement ne peut pas transiter par prelevement SEPA (sens inverse).
+Correction automatique prelevement_sepa -> virement_sepa :
+- WYSIWYG : onchange type_avoir, si mode = prelevement_sepa, bascule sur virement_sepa
+- FactureService.creer() : correction a la creation
+- FactureService.mettreAJour() : correction a la sauvegarde
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

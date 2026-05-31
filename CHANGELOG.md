@@ -3,18 +3,6 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [2.7.218] — 2026-05-31
-
-### Ajouté
-- Conditions de paiement par client (migration 014) : champ avec liste de choix dans la fiche client, pré-remplissage automatique des champs `conditions_paiement` et `date_echeance` dans l'éditeur lors de la sélection du client
-- Liste factures : colonne **Retard** (jours de dépassement en rouge), bouton filtre **⚠️ En retard**, tri par échéance
-- Relance client : try/catch + affichage du lien Ethereal si SMTP non configuré
-
-### Corrigé
-- Sidebar : `overflow-y: auto` sur `.sidebar-nav` — Paramètres et autres entrées du bas n'étaient plus visibles avec la liste allongée
-- Bouton **Imprimer** (toolbar éditeur) : `imprimerDocEditor` exposée globalement (`window.imprimerDocEditor`) — le bouton ne faisait rien
-- Ctrl+I / bouton Imprimer : fallback via `page.dataset.docId` quand `.e-preview-btn` est absent (nouveau document sauvegardé sans re-rendu toolbar)
-
 ## [Non publié]
 
 ### Ajouté
@@ -141,6 +129,17 @@ Vague 5 — Journal d'audit + Attestation
 - Bouton 'Attestation' dans la topbar Factures
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: sidebar scroll, retard factures, conditions paiement client, fixes UX
+
+- CSS sidebar-nav : overflow-y auto (Parametres n'etait plus visible)
+- Liste factures : colonne Retard (jours de depassement), bouton filtre En retard, tri par echeance
+- Conditions de paiement par client : migration 014, champ datalist dans la fiche client, pre-remplissage automatique dans l'editeur (conditions_paiement + date_echeance calculee)
+- Relance : try/catch + feedback Ethereal si pas de SMTP configure
+- imprimerDocEditor expose en global (bouton Imprimer toolbar ne fonctionnait pas)
+- imprimerDocEditor : fallback via page.dataset.docId si .e-preview-btn absent
+- CLAUDE.md : routes et services manquants documentes (sepa, lettrage, stats, audit, LettreService, migrations 003-013, avoirs)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -178,11 +177,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
 - Ux: raccourcis clavier francais — Ctrl+E (Enregistrer), Ctrl+I (Imprimer)
 - Revert: Ctrl+S pour enregistrer (Ctrl+E intercepté par Chrome)
+- Chore: release 2.7.218
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.6.186] — 2026-05-31

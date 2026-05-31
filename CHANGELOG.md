@@ -147,9 +147,23 @@ Correctif :
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: cache-busting JS — force rechargement editor.js et app.js
+- Fix: sauts de page WYSIWYG BL — mesure DOM reelle
+
+Les lignes BL affichent la description dans un div visible (~50px/ligne)
+alors que le calcul PDF utilisait 20pt fixe -> pas de saut pour 20 lignes.
+
+refreshPageBreaks(el, type) :
+- BL : mesure getBoundingClientRect() des lignes DOM
+  PAGE_PX=1122 / FOOTER_PX=160 -> break a 962px depuis le haut de page
+- devis/facture/avoir : inchange (calcul PDF en points, deja calibre)
+
+makeBLRow : data-desc='1' si la ligne a une description (coherence)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

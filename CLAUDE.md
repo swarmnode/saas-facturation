@@ -29,7 +29,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`.
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–013 (009 is intentionally absent — do not reuse that number).
 
 **Auth middleware**: `src/server/middleware/auth.ts`
 - `authenticate` — validates Bearer JWT, attaches `req.user` (`AuthUser` with `id`, `email`, `entreprise_id`, `role`, `is_super_admin`).
@@ -43,8 +43,15 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `ScelleService` — chained SHA-256 in `journal_scellement`; must be called after emitting a fiscal document. The table is immutable (UPDATE/DELETE blocked by DB triggers).
 - `FacturXService` — PDFKit PDF generation + EN 16931 XML. Generates devis, factures, acomptes, bons-livraison as streams (`generer*Stream`) or to disk (`genererFacture`). Logo color is extracted at runtime with `sharp`.
 - `FecExportService` — writes accounting entries to `fec_ecritures` when a facture is emitted; exports them as tab-separated text (DGFiP FEC format). **Do not alter column names or order.**
+- `LettreService` — lettrage (account matching) of `fec_ecritures` compte 411 lines. `getNextLettre()` uses `sequence_numerotation` with type `LETTRAGE`; `lettrerPaiement()` is called automatically when marking a facture `payee`.
 - `BackupScheduler` — `node-cron` job calling `pg_dump.exe` (path from `PG_BIN` env var). Config stored in `backup_config` table; reloaded via `loadAndSchedule()`.
 - `EmailService` — Nodemailer; uses SMTP config from `entreprise` table if present, otherwise falls back to Ethereal test account auto-created at runtime.
+
+**Additional routes** not listed above:
+- `sepa` — generates SEPA direct debit XML (pain.008) for a batch of factures. POST `/api/sepa/generer` with `{ facture_ids, date_execution, sequence }`.
+- `lettrage` — GET `/api/lettrage` lists compte-411 FEC entries; POST `/api/lettrage/lettrer` for manual matching.
+- `stats` — GET `/api/stats/kpis?periode=mois|trimestre|annee` returns financial KPIs (CA, factures emises/payees, impayés, etc.).
+- `audit` — GET `/api/audit` reads `audit_log`. The exported `logAudit()` helper is used by other routes to record sensitive actions.
 
 **Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing.
 
@@ -66,6 +73,8 @@ Documents are auto-locked by DB triggers the moment they reach a terminal status
 | `avenants` | `signe` | nothing |
 | `factures` | `emise` | `statut: emise → payee` only |
 | `acomptes` | `encaisse` | nothing |
+
+**Avoirs (credit notes)**: a facture of type `avoir` carries `facture_origine_id` pointing to the original facture (added by migration 003). When creating an avoir, always set this foreign key.
 
 The `entreprise_id` column on `clients` and `articles` is **not** in `schema.sql` — it is added by `migration_001_auth.sql`. Always assume it exists at runtime, but be aware raw `schema.sql` alone does not define it.
 

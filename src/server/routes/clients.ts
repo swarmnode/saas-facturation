@@ -120,8 +120,8 @@ router.put('/:id', requirePerm('clients:w'), async (req, res, next) => {
         adresse=$6, adresse2=$7, code_postal=$8, ville=$9, pays=$10, email=$11, telephone=$12,
         siret=$13, tva_intracom=$14, tva_mode=$15, statut_rgpd=$16,
         iban=$17, bic=$18, titulaire_compte=$19, mandat_rum=$20, mandat_date=$21, mandat_type=$22,
-        mode_reglement_defaut=$23, updated_at=NOW()
-      WHERE id=$24 AND entreprise_id=$25
+        mode_reglement_defaut=$23, conditions_paiement=$24, updated_at=NOW()
+      WHERE id=$25 AND entreprise_id=$26
       RETURNING *
     `, [b.type_client, b.raison_sociale ?? null, b.civilite ?? null, b.prenom ?? null,
         b.nom ?? null, b.adresse, b.adresse2 ?? null, b.code_postal, b.ville, b.pays ?? 'France',
@@ -129,7 +129,7 @@ router.put('/:id', requirePerm('clients:w'), async (req, res, next) => {
         b.tva_mode ?? 'normal', b.statut_rgpd ?? 'client',
         b.iban ?? null, b.bic ?? null, b.titulaire_compte ?? null,
         b.mandat_rum ?? null, b.mandat_date ?? null, b.mandat_type ?? null,
-        b.mode_reglement_defaut ?? null,
+        b.mode_reglement_defaut ?? null, b.conditions_paiement ?? null,
         req.params.id, req.user!.entreprise_id]);
     res.json(r.rows[0]);
   } catch(e) { next(e); }

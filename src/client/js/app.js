@@ -112,20 +112,26 @@ const DOC_CONFIGS = {
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
       <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
       <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
+      <button id="btnRetardFilter" class="btn btn-outline" onclick="toggleFacRetardFilter()">⚠️ En retard</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
-    headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement'],
-    sortKeys: [null,'numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null],
+    headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement','Retard'],
+    sortKeys: [null,'numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null,'date_echeance'],
     rowOpen:  f => `DocEditor.openFacture(${f.id})`,
-    cells:    f => [
-      ['emise','payee'].includes(f.statut) ? `<input type="checkbox" class="fac-sel" data-id="${f.id}" data-num="${f.numero}" data-mode="${f.mode_reglement_defaut||''}" onclick="event.stopPropagation();updateSelCount()">` : '',
-      `<strong>${f.numero}</strong>${f.type_facture==='avoir'?' <span class="badge badge-avoir">Avoir</span>':''}`,
-      f.client_nom||f.client_nom_part||'—',
-      `<span class="text-right">${fmt.money(f.montant_ht)}</span>`,
-      `<strong>${fmt.money(f.montant_ttc)}</strong>`,
-      fmt.badge(f.statut),
-      fmt.date(f.date_emission),
-      f.mode_paiement?`${fmt.modePaiement(f.mode_paiement)}<br><small>${fmt.date(f.date_paiement)}</small>`:'—',
-    ],
+    cells:    f => {
+      const retardJours = f.statut === 'emise' && f.date_echeance && new Date(f.date_echeance) < new Date()
+        ? Math.floor((Date.now() - new Date(f.date_echeance)) / 864e5) : null;
+      return [
+        ['emise','payee'].includes(f.statut) ? `<input type="checkbox" class="fac-sel" data-id="${f.id}" data-num="${f.numero}" data-mode="${f.mode_reglement_defaut||''}" onclick="event.stopPropagation();updateSelCount()">` : '',
+        `<strong>${f.numero}</strong>${f.type_facture==='avoir'?' <span class="badge badge-avoir">Avoir</span>':''}`,
+        f.client_nom||f.client_nom_part||'—',
+        `<span class="text-right">${fmt.money(f.montant_ht)}</span>`,
+        `<strong>${fmt.money(f.montant_ttc)}</strong>`,
+        fmt.badge(f.statut),
+        fmt.date(f.date_emission),
+        f.mode_paiement?`${fmt.modePaiement(f.mode_paiement)}<br><small>${fmt.date(f.date_paiement)}</small>`:'—',
+        retardJours !== null ? `<span style="color:#ef4444;font-weight:700;font-size:12px;white-space:nowrap">⚠ ${retardJours}j</span>` : '',
+      ];
+    },
     actions: f => [
       ['emise','payee'].includes(f.statut) ? `<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Émis</button>` : '',
       (f.statut==='emise' && f.date_echeance && new Date(f.date_echeance) < new Date()) ? btn.warning(`relancerFacture(${f.id})`, '📨 Relancer') : '',
@@ -210,6 +216,8 @@ const DOC_CONFIGS = {
 // Rendu unifié des listes de documents
 // État de tri par type de liste
 const _listSort = {};
+const _listFilter = {};
+const _listRerender = {};
 
 async function renderDocList(type, el) {
   const cfg  = DOC_CONFIGS[type];
@@ -238,10 +246,13 @@ async function renderDocList(type, el) {
     });
   }
 
+  _listRerender[type] = () => renderTbody(docs);
+
   function renderTbody(list) {
     const tbody = el.querySelector('tbody');
     if (!tbody) return;
-    tbody.innerHTML = sortedDocs(list).map(doc => {
+    const filtered = _listFilter[type] ? list.filter(_listFilter[type]) : list;
+    tbody.innerHTML = sortedDocs(filtered).map(doc => {
       const cells   = cfg.cells(doc).map(c=>`<td>${c}</td>`).join('');
       const actions = cfg.actions(doc).filter(Boolean).join('');
       return `
@@ -639,6 +650,21 @@ async function loadNotifications() {
   } catch {}
   // Refresh toutes les 5 minutes
   setTimeout(loadNotifications, 5 * 60 * 1000);
+}
+
+function toggleFacRetardFilter() {
+  const active = !!_listFilter['factures'];
+  if (active) {
+    delete _listFilter['factures'];
+  } else {
+    _listFilter['factures'] = f => f.statut === 'emise' && f.date_echeance && new Date(f.date_echeance) < new Date();
+  }
+  const btn = document.getElementById('btnRetardFilter');
+  if (btn) {
+    btn.className = active ? 'btn btn-outline' : 'btn btn-danger';
+    btn.textContent = active ? '⚠️ En retard' : '✕ Voir tout';
+  }
+  _listRerender['factures']?.();
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -1431,6 +1457,20 @@ async function showClientForm(id) {
           </select>
         </div>
       </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Conditions de paiement <small style="font-weight:normal;color:var(--text-muted)">(pré-remplies sur les devis et factures)</small></label>
+        <input name="conditions_paiement" list="cond-paiement-list" value="${client.conditions_paiement || ''}" placeholder="Ex : Paiement à 30 jours fin de mois"/>
+        <datalist id="cond-paiement-list">
+          <option value="Paiement comptant à réception de facture"/>
+          <option value="Paiement à 15 jours"/>
+          <option value="Paiement à 30 jours"/>
+          <option value="Paiement à 30 jours fin de mois"/>
+          <option value="Paiement à 45 jours fin de mois"/>
+          <option value="Paiement à 60 jours"/>
+          <option value="Acompte de 30 % à la commande, solde à la livraison"/>
+          <option value="Acompte de 50 % à la commande, solde à la livraison"/>
+        </datalist>
+      </div>
       <details style="margin-top:16px;border:1px solid var(--border);border-radius:6px;padding:12px">
         <summary style="font-weight:600;cursor:pointer;font-size:13px">🏦 Mandat SEPA (prélèvement automatique)</summary>
         <div style="margin-top:12px">
@@ -1608,15 +1648,27 @@ ${entreprise?.raison_sociale || ''}`;
 
   document.getElementById('relanceForm').onsubmit = async e => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const r  = await api.post(`/api/factures/${id}/relancer`, {
-      email:  fd.get('email'),
-      sujet:  fd.get('sujet'),
-      corps:  fd.get('corps'),
-    });
-    if (r?.error) { alert('Erreur : ' + r.error); return; }
-    modal.close();
-    alert(`Relance envoyée à ${fd.get('email')}`);
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Envoi…';
+    try {
+      const fd = new FormData(e.target);
+      const r  = await api.post(`/api/factures/${id}/relancer`, {
+        email:  fd.get('email'),
+        sujet:  fd.get('sujet'),
+        corps:  fd.get('corps'),
+      });
+      if (r?.error) { alert('Erreur : ' + r.error); btn.disabled = false; btn.textContent = 'Envoyer'; return; }
+      modal.close();
+      if (r?.preview_url) {
+        if (confirm('Email envoyé (mode test Ethereal — aucun SMTP configuré).\nOuvrir la prévisualisation ?'))
+          window.open(r.preview_url, '_blank');
+      } else {
+        alert(`Relance envoyée à ${fd.get('email')}`);
+      }
+    } catch(err) {
+      alert('Erreur inattendue : ' + err.message);
+      btn.disabled = false; btn.textContent = 'Envoyer';
+    }
   };
 }
 

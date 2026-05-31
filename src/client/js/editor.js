@@ -252,6 +252,22 @@ const DocEditor = (() => {
       ${client.tva_intracom ? `<div>TVA : ${client.tva_intracom}</div>` : ''}`;
   }
 
+  // Extrait le nombre de jours depuis un texte de conditions ("Paiement à 30 jours…" → 30)
+  function echeanceDuTexte(texte) {
+    if (!texte) return null;
+    if (/comptant|r.ception/i.test(texte)) return 0;
+    const m = texte.match(/(\d+)\s*jours?/i);
+    return m ? parseInt(m[1]) : null;
+  }
+
+  // Calcule la date d'échéance au format YYYY-MM-DD
+  function calcEcheance(jours, texte) {
+    const d = new Date();
+    d.setDate(d.getDate() + jours);
+    if (/fin de mois/i.test(texte)) d.setDate(new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate());
+    return d.toISOString().slice(0, 10);
+  }
+
   function initClientSearch(wrap, preview) {
     if (!wrap) return;
     const initVal = parseInt(wrap.dataset.initClient) || undefined;
@@ -266,10 +282,21 @@ const DocEditor = (() => {
       onCreate:     () => showClientForm(),
       onSelect:     client => {
         renderClientPreview(client, preview);
+        const page = wrap.closest('.a4-page');
         // Pré-remplir le mode de règlement depuis le défaut client
         if (client.mode_reglement_defaut) {
-          const modeEl = wrap.closest('.a4-page')?.querySelector('[name=mode_paiement]');
+          const modeEl = page?.querySelector('[name=mode_paiement]');
           if (modeEl && !modeEl.value) modeEl.value = client.mode_reglement_defaut;
+        }
+        // Pré-remplir les conditions de paiement et la date d'échéance depuis le client
+        if (client.conditions_paiement) {
+          const condEl = page?.querySelector('[name=conditions_paiement]');
+          if (condEl && !condEl.textContent.trim()) condEl.textContent = client.conditions_paiement;
+          const echeanceEl = page?.querySelector('[name=date_echeance]');
+          if (echeanceEl && !echeanceEl.value) {
+            const jours = echeanceDuTexte(client.conditions_paiement);
+            if (jours !== null) echeanceEl.value = calcEcheance(jours, client.conditions_paiement);
+          }
         }
       },
     });
@@ -374,12 +401,15 @@ const DocEditor = (() => {
   // Déclenche l'aperçu PDF (même bouton, même rendu que le PDF émis).
   function imprimerDocEditor(el) {
     const btn = el?.querySelector('.e-preview-btn');
-    if (btn) {
-      btn.click();
-    } else {
-      alert('Enregistrez le document avant d\'imprimer (Ctrl+S).');
-    }
+    if (btn) { btn.click(); return; }
+    // Bouton absent (nouveau doc sauvegardé sans re-rendu toolbar) — fallback via docId
+    const page  = el?.querySelector('.a4-page');
+    const docId = page?.dataset?.docId;
+    const dtype = page?.dataset?.docType;
+    if (docId && dtype && ROUTES[dtype]) { openPdf(`/api/${ROUTES[dtype]}/${docId}/apercu`); return; }
+    alert('Enregistrez le document avant d\'imprimer (Ctrl+S).');
   }
+  window.imprimerDocEditor = imprimerDocEditor;
 
   // ── Builder HTML unifié ───────────────────────────────────────────────────
 

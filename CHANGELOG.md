@@ -3,23 +3,31 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [2.8.224] — 2026-05-31
+## [Non publié]
 
 ### Ajouté
-- Filtres par statut sur les listes Devis et Factures (select dropdown dans la topbar)
-- Bouton **⏰ Expirés** sur les devis (filtre les devis envoyés dont la date de validité est dépassée)
-- Colonne **Validité** sur les devis : date en gris, badge rouge `⏰ Xj` si expiré, tri par date de validité
-- Filtres combinables : statut + alerte cumulables sur devis et factures
-- Visibilité des documents par commercial : chaque commercial ne voit que ses propres devis et les factures/acomptes/avoirs de ses clients (migration 015 : `created_by` sur devis)
-- Flag `voir_tout` par utilisateur/société (migration 016) : case "Accès complet" dans la fiche utilisateur
-- Sauvegarde compressée : `pg_dump` → gzip niveau 6 → `.sql.gz` (~6x de compression)
-- Restauration accepte `.sql` et `.sql.gz` (décompression à la volée)
-- Téléchargement manuel compressé `.sql.gz`
+- Feat: filtres devis/factures, visibilite commerciaux, sauvegarde gzip
 
-### Corrigé
-- `express.d.ts` : ajout de `voir_tout` dans le type `Request.user` (empêchait le démarrage)
+- Filtres statut + alertes combinables sur devis et factures
+- Colonne Validite avec badge expire sur devis
+- Visibilite commerciaux : created_by sur devis (migration 015), voir_tout par user/societe (migration 016)
+- Sauvegarde .sql.gz (gzip niveau 6, ~6x compression), restauration .sql/.sql.gz
+- Fix express.d.ts : voir_tout dans Request.user
 
-## [Non publié]
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Chore: release 2.8.224
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+## [2.7.218] — 2026-05-31
 
 ### Ajouté
 - Feat: import/export CSV articles et clients
@@ -1051,6 +1059,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.7.218]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.7.218
 [2.6.186]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.6.186
 [2.5.148]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.148
 [2.5.146]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.146

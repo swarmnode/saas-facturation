@@ -78,18 +78,16 @@ function Exec-PsqlTuples($sql) {
     return ($out | Out-String).Trim()
 }
 
-# -- 2. Creer le role et la base de donnees -------------------------------------
+# -- 2. Creer le role et la base de donnees (toujours vierge) -------------------
 Log "Creation du role et de la base de donnees..."
 
 Exec-Psql "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='facturation') THEN CREATE ROLE facturation WITH LOGIN PASSWORD 'facturation'; END IF; END `$`$;" | Out-Null
 
-$dbCount = Exec-PsqlTuples "SELECT COUNT(*) FROM pg_database WHERE datname='facturation'"
-if ($dbCount -ne "1") {
-    Exec-Psql "CREATE DATABASE facturation OWNER facturation;" | Out-Null
-    Log "Base 'facturation' creee"
-} else {
-    Log "Base 'facturation' deja existante"
-}
+# Coupe les connexions actives avant de dropper
+Exec-Psql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='facturation' AND pid <> pg_backend_pid();" | Out-Null
+Exec-Psql "DROP DATABASE IF EXISTS facturation;" | Out-Null
+Exec-Psql "CREATE DATABASE facturation OWNER facturation;" | Out-Null
+Log "Base 'facturation' creee (vierge)"
 
 # -- 3. Generer .env ------------------------------------------------------------
 Log "Generation de la configuration (.env)..."

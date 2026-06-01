@@ -69,9 +69,18 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Logs detailles de chaque commande psql pour faciliter le diagnostic
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix(ui): sidebar overflow-x uniquement pour permettre le scroll vers Parametres
+
+overflow:hidden masquait les items de navigation en bas de sidebar
+(Articles, Archives, Lettrage, Parametres) sur les petits ecrans.
+Remplace par overflow-x:hidden pour conserver le masquage lateral
+lors du collapse tout en permettant le scroll vertical interne.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

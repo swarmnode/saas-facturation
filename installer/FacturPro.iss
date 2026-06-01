@@ -61,6 +61,7 @@ Source: "facturpro.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 Name: "{app}\storage\logo"
+Name: "{app}\storage\pdf"
 Name: "{app}\logs"
 
 [Icons]
@@ -120,7 +121,7 @@ begin
     'FacturPro écoute sur ce port. Laissez 3000 sauf si un autre logiciel l''utilise déjà.' + #13#10 +
     'Valeur autorisée : 1024 à 65535.');
   PageServeur.Add('Port TCP :', False);
-  PageServeur.Values[0] := '3000';
+  PageServeur.Values[0] := '3001';
 end;
 
 // ── Validation des saisies ────────────────────────────────────────────────────

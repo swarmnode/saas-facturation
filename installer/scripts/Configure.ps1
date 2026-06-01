@@ -1,23 +1,23 @@
 <#
 .SYNOPSIS
     Script de configuration post-installation de FacturPro.
-    Appelé automatiquement par l'installateur Inno Setup.
-    Doit être exécuté en tant qu'administrateur.
+    Execute automatiquement par l'installateur Inno Setup (admin requis).
 #>
 param(
     [string]$InstallDir,
     [string]$PgPass,
     [string]$AdminEmail,
     [string]$AdminPass,
-    [string]$Port = "3000"
+    [string]$Port = "3001"
 )
 
 $ErrorActionPreference = "Stop"
 $LogDir  = "$InstallDir\logs"
 $LogFile = "$LogDir\install.log"
 
-New-Item -ItemType Directory -Force $LogDir               | Out-Null
+New-Item -ItemType Directory -Force $LogDir                    | Out-Null
 New-Item -ItemType Directory -Force "$InstallDir\storage\logo" | Out-Null
+New-Item -ItemType Directory -Force "$InstallDir\storage\pdf"  | Out-Null
 
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
 
@@ -32,19 +32,19 @@ function LogError($msg) {
     Log "ERREUR : $msg"
     [System.Windows.Forms.MessageBox]::Show(
         "Erreur lors de l'installation :`n$msg`n`nConsultez le journal : $LogFile",
-        "FacturPro — Erreur", 0, 16) | Out-Null
+        "FacturPro - Erreur", 0, 16) | Out-Null
     exit 1
 }
 
-Log "=== Démarrage configuration FacturPro ==="
-Log "Répertoire d'installation : $InstallDir"
+Log "=== Demarrage configuration FacturPro ==="
+Log "Repertoire d'installation : $InstallDir"
 
-# ── 1. Localiser / installer PostgreSQL ─────────────────────────────────────
+# -- 1. Localiser / installer PostgreSQL -----------------------------------------
 Log "Recherche de PostgreSQL..."
 
 function Find-PgBin {
     $candidates = Get-ChildItem "C:\Program Files\PostgreSQL\*\bin\psql.exe" -ErrorAction SilentlyContinue |
-        Sort-Object { [version]($_.FullName -replace '.*PostgreSQL\\(\d+)\\.*','$1') } -Descending
+        Sort-Object { [int]($_.FullName -replace '.*PostgreSQL\\(\d+)\\.*','$1') } -Descending
     if ($candidates) { return $candidates[0].DirectoryName }
     return $null
 }
@@ -52,18 +52,18 @@ function Find-PgBin {
 $pgBin = Find-PgBin
 
 if (-not $pgBin) {
-    Log "PostgreSQL absent — installation via winget..."
+    Log "PostgreSQL absent - installation via winget..."
     $result = Start-Process "winget" -ArgumentList "install -e --id PostgreSQL.PostgreSQL.17 --silent --accept-package-agreements --accept-source-agreements" -Wait -PassThru
-    # 0 = succès, -1978335189 (0x8A150021) = déjà installé
+    # 0 = succes, -1978335189 (0x8A150021) = deja installe
     if ($result.ExitCode -notin @(0, -1978335189)) {
-        LogError "L'installation de PostgreSQL a échoué (code $($result.ExitCode)).`nInstallez-le manuellement depuis https://www.postgresql.org/download/windows/ puis relancez l'installateur."
+        LogError "L'installation de PostgreSQL a echoue (code $($result.ExitCode)). Installez-le manuellement depuis https://www.postgresql.org/download/windows/ puis relancez l'installateur."
     }
     Start-Sleep -Seconds 10
     $pgBin = Find-PgBin
-    if (-not $pgBin) { LogError "psql.exe introuvable après installation PostgreSQL. Vérifiez l'installation et relancez." }
+    if (-not $pgBin) { LogError "psql.exe introuvable apres installation PostgreSQL. Verifiez l'installation et relancez." }
 }
 
-Log "PostgreSQL trouvé : $pgBin"
+Log "PostgreSQL trouve : $pgBin"
 
 $env:PGPASSWORD = $PgPass
 $psql = Join-Path $pgBin "psql.exe"
@@ -74,28 +74,25 @@ function Exec-Psql($sql) {
 }
 
 function Exec-PsqlTuples($sql) {
-    # -t = tuples only, -A = no alignment → retourne juste la valeur, sans entête ni compteur
     $out = & $psql -U postgres -h localhost -p 5432 -tA -c $sql 2>&1
     return ($out | Out-String).Trim()
 }
 
-# ── 2. Créer le rôle et la base de données ───────────────────────────────────
-Log "Création du rôle et de la base de données..."
+# -- 2. Creer le role et la base de donnees -------------------------------------
+Log "Creation du role et de la base de donnees..."
 
-# Crée le rôle facturation (ignore s'il existe déjà)
 Exec-Psql "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='facturation') THEN CREATE ROLE facturation WITH LOGIN PASSWORD 'facturation'; END IF; END `$`$;" | Out-Null
 
-# Vérifie l'existence de la base (résultat = "1" ou "0")
 $dbCount = Exec-PsqlTuples "SELECT COUNT(*) FROM pg_database WHERE datname='facturation'"
 if ($dbCount -ne "1") {
     Exec-Psql "CREATE DATABASE facturation OWNER facturation;" | Out-Null
-    Log "Base 'facturation' créée"
+    Log "Base 'facturation' creee"
 } else {
-    Log "Base 'facturation' déjà existante"
+    Log "Base 'facturation' deja existante"
 }
 
-# ── 3. Générer .env ──────────────────────────────────────────────────────────
-Log "Génération de la configuration (.env)..."
+# -- 3. Generer .env ------------------------------------------------------------
+Log "Generation de la configuration (.env)..."
 
 $bytes = [byte[]]::new(32)
 [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
@@ -111,9 +108,9 @@ PG_BIN=$pgBin
 "@
 
 [System.IO.File]::WriteAllText("$InstallDir\.env", $envContent, [System.Text.Encoding]::UTF8)
-Log ".env créé"
+Log ".env cree"
 
-# ── 4. Service Windows (NSSM) ────────────────────────────────────────────────
+# -- 4. Service Windows (NSSM) --------------------------------------------------
 Log "Installation du service Windows..."
 
 $nssm    = "$InstallDir\tools\nssm.exe"
@@ -121,47 +118,81 @@ $nodeExe = "$InstallDir\node\node.exe"
 $appJs   = "$InstallDir\dist\server\index.js"
 $svcName = "FacturPro"
 
-# Supprime le service s'il existe déjà
 $existing = Get-Service -Name $svcName -ErrorAction SilentlyContinue
 if ($existing) {
-    Log "Service existant détecté — suppression..."
-    & $nssm stop   $svcName 2>$null
+    Log "Service existant detecte - suppression..."
+    Stop-Service -Name $svcName -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
-    & $nssm remove $svcName confirm 2>$null
+    $scOut = sc.exe delete $svcName 2>&1
+    Log "sc delete : $scOut"
     Start-Sleep -Seconds 1
 }
 
-& $nssm install $svcName $nodeExe $appJs
-& $nssm set $svcName AppDirectory    $InstallDir
-& $nssm set $svcName DisplayName     "FacturPro"
-& $nssm set $svcName Description     "Serveur de facturation FacturPro"
-& $nssm set $svcName Start           SERVICE_AUTO_START
-& $nssm set $svcName AppStdout       "$LogDir\app.log"
-& $nssm set $svcName AppStderr       "$LogDir\app-error.log"
-& $nssm set $svcName AppRotateFiles  1
-& $nssm set $svcName AppRotateBytes  10485760
-& $nssm set $svcName AppExit         Default Restart
-& $nssm set $svcName AppRestartDelay 3000
+function NssmSet($key, $val) {
+    $out = & $nssm set $svcName $key $val 2>&1
+    Log "nssm set $key : $out"
+    if ($LASTEXITCODE -ne 0) { LogError "nssm set $key a echoue (code $LASTEXITCODE) : $out" }
+}
 
-Log "Service configuré — démarrage..."
-& $nssm start $svcName
+$out = & $nssm install $svcName $nodeExe $appJs 2>&1
+Log "nssm install : $out"
+if ($LASTEXITCODE -ne 0) { LogError "nssm install a echoue (code $LASTEXITCODE) : $out" }
+
+NssmSet AppDirectory    $InstallDir
+NssmSet DisplayName     "FacturPro"
+NssmSet Description     "Serveur de facturation FacturPro"
+NssmSet Start           SERVICE_AUTO_START
+NssmSet AppStdout       "$LogDir\app.log"
+NssmSet AppStderr       "$LogDir\app-error.log"
+NssmSet AppRotateFiles  1
+NssmSet AppRotateBytes  10485760
+$out = & $nssm set $svcName AppExit Default Restart 2>&1
+Log "nssm set AppExit : $out"
+if ($LASTEXITCODE -ne 0) { LogError "nssm set AppExit a echoue (code $LASTEXITCODE) : $out" }
+NssmSet AppRestartDelay 3000
+
+# Variables d'environnement injectees directement dans le service
+$envVars = @(
+    "DATABASE_URL=postgresql://facturation:facturation@localhost:5432/facturation",
+    "PORT=$Port",
+    "JWT_SECRET=$jwtSecret",
+    "ADMIN_EMAIL=$AdminEmail",
+    "ADMIN_DEFAULT_PASS=$AdminPass",
+    "PG_BIN=$pgBin"
+)
+$out = & $nssm set $svcName AppEnvironmentExtra @envVars 2>&1
+Log "nssm set AppEnvironmentExtra : $out"
+if ($LASTEXITCODE -ne 0) { LogError "nssm set AppEnvironmentExtra a echoue (code $LASTEXITCODE) : $out" }
+
+# Dependance sur PostgreSQL pour eviter un demarrage avant que la BDD soit prete
+$pgSvc = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue |
+    Sort-Object Name -Descending | Select-Object -First 1
+if ($pgSvc) {
+    $out = & $nssm set $svcName DependOnService $pgSvc.Name 2>&1
+    Log "nssm DependOnService $($pgSvc.Name) : $out"
+}
+
+Log "Service configure - demarrage..."
+$out = & $nssm start $svcName 2>&1
+Log "nssm start : $out"
 Start-Sleep -Seconds 5
 
 $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
 if ($svc -and $svc.Status -eq "Running") {
-    Log "Service FacturPro démarré avec succès"
+    Log "Service FacturPro demarre avec succes"
 } else {
-    Log "AVERTISSEMENT : le service n'a pas démarré immédiatement. Consultez $LogDir\app-error.log"
+    $status = if ($svc) { $svc.Status } else { "introuvable" }
+    Log "AVERTISSEMENT : service en etat '$status'. Consultez $LogDir\app-error.log"
 }
 
-# ── 5. Règle pare-feu ────────────────────────────────────────────────────────
+# -- 5. Regle pare-feu ----------------------------------------------------------
 Log "Configuration du pare-feu (port $Port)..."
-netsh advfirewall firewall delete rule name="FacturPro" 2>$null | Out-Null
-netsh advfirewall firewall add rule name="FacturPro" dir=in action=allow protocol=TCP localport=$Port profile=private | Out-Null
-Log "Regle pare-feu creee"
+netsh advfirewall firewall delete rule name="FacturPro" 2>&1 | Out-Null
+$fwOut = netsh advfirewall firewall add rule name="FacturPro" dir=in action=allow protocol=TCP localport=$Port profile=any 2>&1
+Log "Pare-feu : $fwOut"
 
-# ── 6. Raccourcis ────────────────────────────────────────────────────────────
-Log "Création des raccourcis..."
+# -- 6. Raccourcis --------------------------------------------------------------
+Log "Creation des raccourcis..."
 
 $urlContent = @"
 [InternetShortcut]
@@ -175,16 +206,16 @@ $commonStartMenu = [System.Environment]::GetFolderPath("CommonPrograms")
 
 New-Item -ItemType Directory -Force "$commonStartMenu\FacturPro" | Out-Null
 
-$urlContent | Out-File "$commonDesktop\FacturPro.url"                   -Encoding ascii
-$urlContent | Out-File "$commonStartMenu\FacturPro\FacturPro.url"       -Encoding ascii
+$urlContent | Out-File "$commonDesktop\FacturPro.url"                 -Encoding ascii
+$urlContent | Out-File "$commonStartMenu\FacturPro\FacturPro.url"     -Encoding ascii
 
-Log "Raccourcis créés"
+Log "Raccourcis crees"
 
-# ── 7. Résumé ────────────────────────────────────────────────────────────────
-Log "=== Installation terminée avec succès ==="
+# -- 7. Resume -----------------------------------------------------------------
+Log "=== Installation terminee avec succes ==="
 Log "URL : http://localhost:$Port"
 Log "Compte admin : $AdminEmail"
 
 [System.Windows.Forms.MessageBox]::Show(
     "FacturPro est installe et demarre !`n`nAcces local : http://localhost:$Port`nCompte admin : $AdminEmail`n`nLe service demarrera automatiquement avec Windows.",
-    "FacturPro -- Installation reussie", 0, 64) | Out-Null
+    "FacturPro - Installation reussie", 0, 64) | Out-Null

@@ -129,10 +129,11 @@ router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) =
     });
 
     const result = await EmailService.envoyerEmail({
-      to:          email,
-      subject:     sujet || `Relance — ${(facture as any).numero}`,
-      text:        corps || '',
-      attachments: [{ filename: `${(facture as any).numero}.pdf`, content: pdfBuffer }],
+      to:           email,
+      subject:      sujet || `Relance — ${(facture as any).numero}`,
+      text:         corps || '',
+      attachments:  [{ filename: `${(facture as any).numero}.pdf`, content: pdfBuffer }],
+      entreprise_id: (facture as any).entreprise_id,
     });
     res.json({ ok: true, preview_url: result?.previewUrl ?? null });
   } catch(e: any) { next(e); }

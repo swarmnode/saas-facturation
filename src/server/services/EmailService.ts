@@ -183,8 +183,10 @@ export class EmailService {
   }
 
   // Email générique (relances, etc.)
-  static async envoyerEmail(opts: { to: string; subject: string; text: string; attachments?: any[] }): Promise<{ previewUrl?: string }> {
-    const er = await query('SELECT * FROM entreprise LIMIT 1');
+  static async envoyerEmail(opts: { to: string; subject: string; text: string; attachments?: any[]; entreprise_id?: number }): Promise<{ previewUrl?: string }> {
+    const er = opts.entreprise_id
+      ? await query('SELECT * FROM entreprise WHERE id=$1', [opts.entreprise_id])
+      : await query('SELECT * FROM entreprise WHERE smtp_host IS NOT NULL AND smtp_host != \'\' LIMIT 1');
     const { transporter, test } = await getTransporter(er.rows[0]);
     const info: SentMessageInfo = await transporter.sendMail({
       from:        er.rows[0]?.smtp_from || er.rows[0]?.email || 'noreply@facturpro.local',

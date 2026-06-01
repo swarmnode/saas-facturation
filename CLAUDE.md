@@ -14,6 +14,8 @@ DB default: `postgresql://facturation:facturation@localhost:5432/facturation` (o
 
 Admin default on first start: `admin@localhost` / `Admin1234!` (override with `ADMIN_EMAIL` / `ADMIN_DEFAULT_PASS`).
 
+`npm run build` also copies `src/client/` → `dist/client/` and all `*.sql` from `src/server/db/` → `dist/server/db/`. When adding a new migration or client asset, the build step is required before `npm start` picks it up.
+
 ### Installer (Inno Setup)
 ```powershell
 .\installer\build.ps1   # compiles TS, builds prod payload, downloads portable Node + NSSM
@@ -29,12 +31,15 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–013 (009 is intentionally absent — do not reuse that number).
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–016 (009 is intentionally absent — do not reuse that number). Notable late migrations: 014 adds `clients.conditions_paiement`, 015 adds `devis.created_by` (FK to `utilisateurs`), 016 adds `user_entreprises.voir_tout` (commercial visibility flag).
+
+**Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
 **Auth middleware**: `src/server/middleware/auth.ts`
-- `authenticate` — validates Bearer JWT, attaches `req.user` (`AuthUser` with `id`, `email`, `entreprise_id`, `role`, `is_super_admin`).
+- `authenticate` — validates Bearer JWT, attaches `req.user` (`AuthUser`: `id`, `email`, `entreprise_id`, `role`, `is_super_admin`, `voir_tout`).
 - `requirePerm('resource:r|w')` — guards routes; `is_super_admin` bypasses all permission checks.
 - Roles: `admin`, `comptable`, `commercial`, `lecteur`. Permission matrix is in `ROLE_PERMS` in that file.
+- `voir_tout` is only meaningful for the `commercial` role (always `true` for other roles). When `false`, list endpoints filter documents to only those where `created_by = req.user.id`. The flag lives in `user_entreprises.voir_tout` and is embedded in the JWT at login. **Changing `voir_tout` in the DB takes effect only after the user re-authenticates** (the old JWT still carries the old value).
 
 **Multi-tenant**: every business entity (`clients`, `articles`, `devis`, `factures`, `acomptes`, `bons_livraison`) carries an `entreprise_id`. Routes scope queries to `req.user.entreprise_id`. A user can belong to multiple companies via `user_entreprises`.
 
@@ -52,6 +57,13 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `lettrage` — GET `/api/lettrage` lists compte-411 FEC entries; POST `/api/lettrage/lettrer` for manual matching.
 - `stats` — GET `/api/stats/kpis?periode=mois|trimestre|annee` returns financial KPIs (CA, factures emises/payees, impayés, etc.).
 - `audit` — GET `/api/audit` reads `audit_log`. The exported `logAudit()` helper is used by other routes to record sensitive actions.
+
+**Email endpoints on factures** (`src/server/routes/factures.ts`):
+- `POST /:id/envoyer` — auto-sends to the client's email from DB.
+- `POST /:id/envoyer-email` — sends to an explicitly provided `email_client` body field.
+- `POST /:id/relancer` — dunning email with a custom subject/body and PDF attachment.
+- `GET /:id/eml` — returns a pre-composed RFC 822 `.eml` file for download.
+- `POST /:id/mapi` — Windows-only: spawns `powershell.exe` to invoke `MAPISendMail`, opening the user's local mail client. Uses temp files in `os.tmpdir()` and cleans them up automatically.
 
 **Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing.
 

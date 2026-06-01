@@ -89,6 +89,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -99,6 +100,9 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: release 2.9.0
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore(installer): version 2.9.0 dans FacturPro.iss
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 

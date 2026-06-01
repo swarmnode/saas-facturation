@@ -3,25 +3,6 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [2.9.0] - 2026-06-02
-
-### Ajouté
-- Installer : page wizard "Votre société" — nom saisi à l'installation, première société créée automatiquement et liée au super admin (résout le blocage "Aucune société accessible" sur base vierge)
-
-### Corrigé
-- Installer : scripts Configure.ps1 et Uninstall.ps1 réécrits en ASCII pur (caractères accentués causaient un crash silencieux sous PowerShell 5.1)
-- Installer : Find-PgBin — `[version]'17'` remplacé par `[int]` (System.Version rejette les versions sans composant mineur)
-- Installer : `nssm stop/remove` remplacé par `Stop-Service + sc.exe delete` (nssm stop bloquait en boucle de redémarrage)
-- Installer : AppExit corrigé — deux arguments séparés au lieu d'une chaîne unique
-- Installer : règle pare-feu `profile=private` → `profile=any`
-- Installer : port par défaut 3000 → 3001
-- Installer : base prod `facturpro` isolée de la base de dev `facturation`
-- Installer : base toujours recréée vierge à l'installation
-- Installer : doublons de raccourcis supprimés
-- Installer : variables d'environnement injectées via `AppEnvironmentExtra` NSSM
-- UI : sidebar `overflow:hidden` → `overflow-x:hidden` (Paramètres et autres items inaccessibles sur petits écrans)
-- Email : `envoyerEmail` utilise `entreprise_id` pour le bon SMTP en multi-tenant
-
 ## [Non publié]
 
 ### Ajouté
@@ -107,6 +88,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -114,6 +96,9 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: mise a jour package-lock.json
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: release 2.9.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 

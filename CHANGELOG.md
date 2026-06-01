@@ -15,6 +15,14 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Fix express.d.ts : voir_tout dans Request.user
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat(installer): demander le nom de societe pendant l installation
+
+Nouvelle page wizard Votre societe avec validation obligatoire.
+CompanyName passe a Configure.ps1, injecte dans .env et NSSM.
+createDefaultAdmin lit COMPANY_NAME pour creer la premiere societe
+liee au super admin. Corrige le blocage Aucune societe accessible.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -64,6 +72,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

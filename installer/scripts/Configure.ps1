@@ -189,27 +189,7 @@ netsh advfirewall firewall delete rule name="FacturPro" 2>&1 | Out-Null
 $fwOut = netsh advfirewall firewall add rule name="FacturPro" dir=in action=allow protocol=TCP localport=$Port profile=any 2>&1
 Log "Pare-feu : $fwOut"
 
-# -- 6. Raccourcis --------------------------------------------------------------
-Log "Creation des raccourcis..."
-
-$urlContent = @"
-[InternetShortcut]
-URL=http://localhost:$Port
-IconFile=explorer.exe
-IconIndex=1
-"@
-
-$commonDesktop   = [System.Environment]::GetFolderPath("CommonDesktopDirectory")
-$commonStartMenu = [System.Environment]::GetFolderPath("CommonPrograms")
-
-New-Item -ItemType Directory -Force "$commonStartMenu\FacturPro" | Out-Null
-
-$urlContent | Out-File "$commonDesktop\FacturPro.url"                 -Encoding ascii
-$urlContent | Out-File "$commonStartMenu\FacturPro\FacturPro.url"     -Encoding ascii
-
-Log "Raccourcis crees"
-
-# -- 7. Resume -----------------------------------------------------------------
+# -- 6. Resume -----------------------------------------------------------------
 Log "=== Installation terminee avec succes ==="
 Log "URL : http://localhost:$Port"
 Log "Compte admin : $AdminEmail"

@@ -75,7 +75,7 @@ Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescri
 [Run]
 ; Lance le script de configuration après l'extraction (caché, attend la fin)
 Filename: "powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -NonInteractive -File ""{app}\Configure.ps1"" -InstallDir ""{app}"" -PgPass ""{code:GetPgPass}"" -AdminEmail ""{code:GetAdminEmail}"" -AdminPass ""{code:GetAdminPass}"" -Port ""{code:GetPort}"""; \
+  Parameters: "-ExecutionPolicy Bypass -NonInteractive -File ""{app}\Configure.ps1"" -InstallDir ""{app}"" -PgPass ""{code:GetPgPass}"" -AdminEmail ""{code:GetAdminEmail}"" -AdminPass ""{code:GetAdminPass}"" -CompanyName ""{code:GetSociete}"" -Port ""{code:GetPort}"""; \
   StatusMsg: "Configuration de la base de données et du service..."; \
   Flags: runhidden waituntilterminated
 
@@ -90,6 +90,7 @@ Filename: "powershell.exe"; \
 var
   PagePostgres : TInputQueryWizardPage;
   PageAdmin    : TInputQueryWizardPage;
+  PageSociete  : TInputQueryWizardPage;
   PageServeur  : TInputQueryWizardPage;
 
 // ── Initialisation des pages ─────────────────────────────────────────────────
@@ -114,8 +115,17 @@ begin
   PageAdmin.Values[0] := '';
   PageAdmin.Values[1] := '';
 
-  // Page 3 : Port d'écoute
-  PageServeur := CreateInputQueryPage(PageAdmin.ID,
+  // Page 3 : Nom de la societe
+  PageSociete := CreateInputQueryPage(PageAdmin.ID,
+    'Votre société',
+    'Nom de la société à créer',
+    'Ce nom sera utilisé pour créer votre premier dossier dans FacturPro.' + #13#10 +
+    'Vous pourrez compléter les informations (SIRET, adresse…) dans les paramètres.');
+  PageSociete.Add('Nom de la société :', False);
+  PageSociete.Values[0] := '';
+
+  // Page 4 : Port d'écoute
+  PageServeur := CreateInputQueryPage(PageSociete.ID,
     'Configuration du serveur',
     'Port d''écoute de FacturPro',
     'FacturPro écoute sur ce port. Laissez 3000 sauf si un autre logiciel l''utilise déjà.' + #13#10 +
@@ -150,6 +160,13 @@ begin
     end;
   end;
 
+  if CurPageID = PageSociete.ID then begin
+    if Trim(PageSociete.Values[0]) = '' then begin
+      MsgBox('Veuillez entrer le nom de la société.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+
   if CurPageID = PageServeur.ID then begin
     Port := StrToIntDef(Trim(PageServeur.Values[0]), 0);
     if (Port < 1024) or (Port > 65535) then begin
@@ -173,6 +190,11 @@ end;
 function GetAdminPass(Param: String): String;
 begin
   Result := PageAdmin.Values[1];
+end;
+
+function GetSociete(Param: String): String;
+begin
+  Result := Trim(PageSociete.Values[0]);
 end;
 
 function GetPort(Param: String): String;

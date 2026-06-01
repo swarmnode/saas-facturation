@@ -122,8 +122,19 @@ async function createDefaultAdmin(): Promise<void> {
     RETURNING id
   `, [process.env.ADMIN_EMAIL ?? 'admin@localhost', hash]);
 
-  // Affecter à la première société si elle existe
-  const er = await query('SELECT id FROM entreprise ORDER BY id LIMIT 1');
+  // Créer une société par défaut si aucune n'existe (installation vierge)
+  let er = await query('SELECT id FROM entreprise ORDER BY id LIMIT 1');
+  if (!er.rows[0]) {
+    const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@localhost';
+    const companyName = process.env.COMPANY_NAME ?? 'Mon Entreprise';
+    er = await query(`
+      INSERT INTO entreprise (raison_sociale, forme_juridique, is_ei, siret, adresse, code_postal, ville, pays, email, regime_tva)
+      VALUES ($1, 'SAS', 0, '00000000000000', 'A completer', '00000', 'A completer', 'FR', $2, 'normal')
+      RETURNING id
+    `, [companyName, adminEmail]);
+    console.log(`✓ Société "${companyName}" créée — à compléter dans Paramètres`);
+  }
+
   if (er.rows[0] && ur.rows[0]) {
     await query(`
       INSERT INTO user_entreprises (user_id, entreprise_id, role)

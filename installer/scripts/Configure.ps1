@@ -8,6 +8,7 @@ param(
     [string]$PgPass,
     [string]$AdminEmail,
     [string]$AdminPass,
+    [string]$CompanyName = "Mon Entreprise",
     [string]$Port = "3001"
 )
 
@@ -113,6 +114,7 @@ PORT=$Port
 JWT_SECRET=$jwtSecret
 ADMIN_EMAIL=$AdminEmail
 ADMIN_DEFAULT_PASS=$AdminPass
+COMPANY_NAME=$CompanyName
 PG_BIN=$pgBin
 "@
 
@@ -167,6 +169,7 @@ $envVars = @(
     "JWT_SECRET=$jwtSecret",
     "ADMIN_EMAIL=$AdminEmail",
     "ADMIN_DEFAULT_PASS=$AdminPass",
+    "COMPANY_NAME=$CompanyName",
     "PG_BIN=$pgBin"
 )
 $out = & $nssm set $svcName AppEnvironmentExtra @envVars 2>&1

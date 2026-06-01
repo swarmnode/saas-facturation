@@ -44,9 +44,17 @@ DROP DATABASE IF EXISTS + terminate connexions actives avant de recreer,
 pour garantir une base propre meme en cas de reinstallation.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix(installer): supprimer la creation en double des raccourcis
+
+Les raccourcis etaient crees deux fois : par la section [Icons] d Inno Setup
+et par Configure.ps1, resultant en deux icones. Suppression de la creation
+manuelle dans Configure.ps1, [Icons] suffit.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

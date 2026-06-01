@@ -51,9 +51,20 @@ et par Configure.ps1, resultant en deux icones. Suppression de la creation
 manuelle dans Configure.ps1, [Icons] suffit.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix(installer): base prod facturpro isolee de la base de dev facturation
+
+- Role et base renommes de facturation -> facturpro (evite la collision avec
+  la base de dev sur les machines de developpement)
+- Exec-Psql/Exec-PsqlTuples : ErrorActionPreference=Continue pendant l appel
+  psql pour empecher un crash silencieux si le mdp postgres est incorrect
+- Erreur explicite (MessageBox + log) si CREATE DATABASE echoue
+- Logs detailles de chaque commande psql pour faciliter le diagnostic
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

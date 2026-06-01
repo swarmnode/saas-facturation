@@ -69,25 +69,36 @@ $env:PGPASSWORD = $PgPass
 $psql = Join-Path $pgBin "psql.exe"
 
 function Exec-Psql($sql) {
+    $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
     $out = & $psql -U postgres -h localhost -p 5432 -c $sql 2>&1
+    $ErrorActionPreference = $prev
     return $out
 }
 
 function Exec-PsqlTuples($sql) {
+    $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
     $out = & $psql -U postgres -h localhost -p 5432 -tA -c $sql 2>&1
+    $ErrorActionPreference = $prev
     return ($out | Out-String).Trim()
 }
 
 # -- 2. Creer le role et la base de donnees (toujours vierge) -------------------
 Log "Creation du role et de la base de donnees..."
 
-Exec-Psql "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='facturation') THEN CREATE ROLE facturation WITH LOGIN PASSWORD 'facturation'; END IF; END `$`$;" | Out-Null
+$r = Exec-Psql "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='facturpro') THEN CREATE ROLE facturpro WITH LOGIN PASSWORD 'facturpro'; END IF; END `$`$;"
+Log "psql CREATE ROLE : $r"
 
-# Coupe les connexions actives avant de dropper
-Exec-Psql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='facturation' AND pid <> pg_backend_pid();" | Out-Null
-Exec-Psql "DROP DATABASE IF EXISTS facturation;" | Out-Null
-Exec-Psql "CREATE DATABASE facturation OWNER facturation;" | Out-Null
-Log "Base 'facturation' creee (vierge)"
+$r = Exec-Psql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='facturpro' AND pid <> pg_backend_pid();"
+Log "psql TERMINATE : $r"
+
+$r = Exec-Psql "DROP DATABASE IF EXISTS facturpro;"
+Log "psql DROP DB : $r"
+
+$r = Exec-Psql "CREATE DATABASE facturpro OWNER facturpro;"
+Log "psql CREATE DB : $r"
+if ($LASTEXITCODE -ne 0) { LogError "Impossible de creer la base de donnees. Verifiez le mot de passe PostgreSQL saisi. Detail : $r" }
+
+Log "Base 'facturpro' creee (vierge)"
 
 # -- 3. Generer .env ------------------------------------------------------------
 Log "Generation de la configuration (.env)..."
@@ -97,7 +108,7 @@ $bytes = [byte[]]::new(32)
 $jwtSecret = [Convert]::ToBase64String($bytes) -replace '[/+=]',''
 
 $envContent = @"
-DATABASE_URL=postgresql://facturation:facturation@localhost:5432/facturation
+DATABASE_URL=postgresql://facturpro:facturpro@localhost:5432/facturpro
 PORT=$Port
 JWT_SECRET=$jwtSecret
 ADMIN_EMAIL=$AdminEmail
@@ -151,7 +162,7 @@ NssmSet AppRestartDelay 3000
 
 # Variables d'environnement injectees directement dans le service
 $envVars = @(
-    "DATABASE_URL=postgresql://facturation:facturation@localhost:5432/facturation",
+    "DATABASE_URL=postgresql://facturpro:facturpro@localhost:5432/facturpro",
     "PORT=$Port",
     "JWT_SECRET=$jwtSecret",
     "ADMIN_EMAIL=$AdminEmail",

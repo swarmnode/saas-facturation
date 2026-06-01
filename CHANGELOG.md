@@ -38,9 +38,16 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 fix(email): envoyerEmail utilise entreprise_id pour le bon SMTP multi-tenant
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix(installer): toujours creer une base vierge a l installation
+
+DROP DATABASE IF EXISTS + terminate connexions actives avant de recreer,
+pour garantir une base propre meme en cas de reinstallation.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

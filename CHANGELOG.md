@@ -17,7 +17,31 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
+### Corrigé
+- Fix(installer): corriger installation service Windows et ouverture du port
+
+- Scripts .ps1 reecrits en ASCII pur (caracteres accentues causaient un crash
+  silencieux de Configure.ps1 sous PowerShell 5.1)
+- Find-PgBin : [version]'17' remplace par [int] (System.Version rejette les
+  versions sans composant mineur)
+- nssm stop/remove remplace par Stop-Service + sc.exe delete (nssm stop
+  bloquait si le service etait en boucle de redemarrage)
+- AppExit corrige : deux arguments separes au lieu d'une chaine unique
+  (causait echec NSSM puis MessageBox invisible qui gelait le script)
+- Regle pare-feu : profile=private -> profile=any
+- Port par defaut 3000 -> 3001 dans le wizard et Configure.ps1
+- Ajout storage\pdf dans [Dirs] et Configure.ps1
+- Variables d'environnement injectees via AppEnvironmentExtra NSSM
+- Dependance DependOnService postgresql-x64-* ajoutee automatiquement
+- Toutes les commandes NSSM loguees dans install.log
+
+fix(email): envoyerEmail utilise entreprise_id pour le bon SMTP multi-tenant
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

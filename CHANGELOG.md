@@ -5,31 +5,6 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
-
-## [2.9.1] — 2026-06-02
-
-### Corrigé
-- fix(security): conformité fiscale, isolation multi-tenant, injections SQL
-
-  - ScelleService : race condition corrigée via `pg_advisory_xact_lock` —
-    les émissions concurrentes ne peuvent plus rompre la chaîne SHA-256
-  - FactureService.emettre() : scellement + UPDATE statut + archivage + FEC
-    enveloppés dans une seule transaction atomique (withTransaction)
-  - FactureService.marquerPayee() : UPDATE + écritures FEC + lettrage atomiques
-  - AvenantService.signer() : UPDATE + scellement + archivage atomiques
-  - DevisService.changerStatut('signe') : txClient transmis à scellerDocument
-    et ArchiveService pour rester dans la même transaction
-  - FecExportService.exporterCSV() : valid_date ?? '' (évitait 'null' dans le FEC)
-  - FactureService.lister/getAvoirsCumul : interpolations SQL remplacées par
-    des paramètres $N (type, commercial_id, excludeId)
-  - DELETE /api/clients/:id : filtre AND entreprise_id ajouté (cross-tenant)
-  - GET /api/archives : requirePerm('factures:r') + filtre entreprise_id ;
-    migration 017 ajoute entreprise_id sur archive_documents avec backfill
-  - GET /:id/pdf (factures et devis) : requirePerm + filtre entreprise_id
-  - GET /:id/avenants (devis) : requirePerm('devis:r') ajouté
-  - obtenir() (FactureService, DevisService) : paramètre entreprise_id optionnel
-    transmis par toutes les routes user-facing
-
 ### Ajouté
 - Feat: filtres devis/factures, visibilite commerciaux, sauvegarde gzip
 
@@ -125,6 +100,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -138,6 +114,9 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore(installer): version 2.9.0 dans FacturPro.iss
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: release 2.9.1
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -1174,7 +1153,6 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
-[2.9.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.9.1
 [2.7.218]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.7.218
 [2.6.186]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.6.186
 [2.5.148]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.148

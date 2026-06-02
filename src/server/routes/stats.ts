@@ -539,4 +539,32 @@ router.get('/ca3', requirePerm('factures:r'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+// ── TVA déductible (section B CA3) — saisie manuelle ────────────────────────
+router.get('/tva-deductible', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const periode = req.query.periode as string;
+    if (!periode) return res.status(400).json({ error: 'Paramètre periode requis' });
+    const r = await query(
+      'SELECT * FROM tva_deductible WHERE entreprise_id=$1 AND periode=$2',
+      [req.user!.entreprise_id, periode]
+    );
+    res.json(r.rows[0] ?? { entreprise_id: req.user!.entreprise_id, periode, montant: 0 });
+  } catch(e) { next(e); }
+});
+
+router.put('/tva-deductible', requirePerm('factures:w'), async (req, res, next) => {
+  try {
+    const { periode, montant, notes } = req.body;
+    if (!periode) return res.status(400).json({ error: 'Paramètre periode requis' });
+    const r = await query(`
+      INSERT INTO tva_deductible (entreprise_id, periode, montant, notes, updated_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (entreprise_id, periode) DO UPDATE
+        SET montant = EXCLUDED.montant, notes = EXCLUDED.notes, updated_at = NOW()
+      RETURNING *
+    `, [req.user!.entreprise_id, periode, montant ?? 0, notes ?? null]);
+    res.json(r.rows[0]);
+  } catch(e) { next(e); }
+});
+
 export default router;

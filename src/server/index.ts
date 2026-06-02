@@ -17,6 +17,7 @@ import bonLivraisonRouter from './routes/bons-livraison';
 import backupRouter       from './routes/backup';
 import utilisateursRouter from './routes/utilisateurs';
 import { loadAndSchedule } from './services/BackupScheduler';
+import { initRelanceScheduler } from './services/RelanceScheduler';
 import searchRouter        from './routes/search';
 import sepaRouter          from './routes/sepa';
 import lettrageRouter      from './routes/lettrage';
@@ -68,6 +69,7 @@ app.use(errorHandler);
 initDb()
   .then(async () => {
     await loadAndSchedule();
+    await initRelanceScheduler();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Serveur démarré sur http://0.0.0.0:${PORT}`);
     });

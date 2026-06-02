@@ -4,6 +4,7 @@ import { FactureService } from '../services/FactureService';
 import { FecExportService } from '../services/FecExportService';
 import { ScelleService } from '../services/ScelleService';
 import { FacturXService } from '../services/FacturXService';
+import { ChorusProService } from '../services/ChorusProService';
 import { query } from '../db/database';
 import { requirePerm } from '../middleware/auth';
 import { execFile } from 'child_process';
@@ -344,6 +345,25 @@ if ($r -ne 0) { throw "MAPISendMail code $r" }
   } catch(e: any) {
     res.status(500).json({ error: e.message ?? 'Impossible d\'ouvrir le client mail via MAPI' });
   }
+});
+
+// ── Chorus Pro ───────────────────────────────────────────────────────────────
+router.post('/:id/chorus-pro/deposer', requirePerm('factures:w'), async (req, res, next) => {
+  try {
+    if (!ChorusProService.isConfigured())
+      return res.status(503).json({ error: 'Chorus Pro non configuré (CHORUS_PRO_CLIENT_ID/SECRET manquants dans .env)' });
+    const result = await ChorusProService.deposerFacture(Number(req.params.id));
+    await logAudit(req, 'chorus_pro_depot', 'factures', Number(req.params.id), result);
+    res.json(result);
+  } catch(e: any) { next(e); }
+});
+
+router.get('/:id/chorus-pro/statut', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    if (!ChorusProService.isConfigured())
+      return res.status(503).json({ error: 'Chorus Pro non configuré' });
+    res.json(await ChorusProService.consulterStatut(Number(req.params.id)));
+  } catch(e: any) { next(e); }
 });
 
 // Suppression d'un avoir brouillon uniquement

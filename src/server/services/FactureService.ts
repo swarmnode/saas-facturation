@@ -18,6 +18,10 @@ export interface FactureInput {
   mode_paiement?: string;
   notes?: string;
   tva_mode?: string;
+  numero_commande?: string;
+  escompte_taux?: number;
+  penalites_taux?: string;
+  indemnite_recouvrement?: number;
   lignes: Array<{
     designation: string;
     description?: string;
@@ -70,14 +74,17 @@ export class FactureService {
       const ins = await client.query(`
         INSERT INTO factures (numero, client_id, entreprise_id, devis_id, facture_origine_id, type_facture,
           type_avoir, date_echeance, conditions_paiement, mode_paiement, notes, tva_mode,
+          numero_commande, escompte_taux, penalites_taux, indemnite_recouvrement,
           montant_ht, montant_tva, montant_ttc)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
         RETURNING id
       `, [numero, input.client_id, input.entreprise_id, input.devis_id ?? null,
           input.facture_origine_id ?? null, input.type_facture ?? 'standard',
           typeAvoir,
           input.date_echeance ?? null, input.conditions_paiement ?? null,
           modePaiementCreer, input.notes ?? null, input.tva_mode ?? 'normal',
+          input.numero_commande ?? null, input.escompte_taux ?? 0,
+          input.penalites_taux ?? null, input.indemnite_recouvrement ?? null,
           totaux.ht, totaux.tva, totaux.ttc]);
 
       const factureId = ins.rows[0].id;
@@ -156,8 +163,9 @@ export class FactureService {
         UPDATE factures SET
           client_id=$1, date_echeance=$2, conditions_paiement=$3, mode_paiement=$4,
           notes=$5, tva_mode=$6, type_avoir=$7, objet=$8,
-          montant_ht=$9, montant_tva=$10, montant_ttc=$11, updated_at=NOW()
-        WHERE id=$12 AND locked=0
+          numero_commande=$9, escompte_taux=$10, penalites_taux=$11, indemnite_recouvrement=$12,
+          montant_ht=$13, montant_tva=$14, montant_ttc=$15, updated_at=NOW()
+        WHERE id=$16 AND locked=0
       `, [
         input.client_id ?? (cur as any).client_id,
         input.date_echeance ?? null,
@@ -167,6 +175,10 @@ export class FactureService {
         input.tva_mode ?? (cur as any).tva_mode,
         typeAvoir,
         (input as any).objet ?? (cur as any).objet ?? null,
+        input.numero_commande ?? (cur as any).numero_commande ?? null,
+        input.escompte_taux ?? (cur as any).escompte_taux ?? 0,
+        input.penalites_taux ?? (cur as any).penalites_taux ?? null,
+        input.indemnite_recouvrement ?? (cur as any).indemnite_recouvrement ?? null,
         totaux.ht, totaux.tva, totaux.ttc, id,
       ]);
 

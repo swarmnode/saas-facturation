@@ -757,7 +757,14 @@ async function renderDeclTVA(el) {
     let url = `/api/stats/ca3?annee=${annee}`;
     if (periode === 'mois') url += `&mois=${mois}`;
     else if (periode === 'trimestre') url += `&trimestre=${Math.ceil(mois / 3)}`;
-    const d = await api.get(url);
+    const periodeKey = periode === 'mois' ? `${annee}-${String(mois).padStart(2,'0')}`
+                     : periode === 'trimestre' ? `${annee}-T${Math.ceil(mois/3)}`
+                     : String(annee);
+    const [d, ded] = await Promise.all([
+      api.get(url),
+      api.get(`/api/stats/tva-deductible?periode=${periodeKey}`),
+    ]);
+    d._tva_deductible = ded;
     render(d);
   }
 
@@ -853,21 +860,34 @@ async function renderDeclTVA(el) {
         </table>
 
         <h3 style="font-size:13px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px">
-          B — TVA déductible (à compléter)
+          B — TVA déductible
         </h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px">
-          <thead>
-            <tr style="background:#1a3a5c;color:#fff">
-              <th style="padding:8px 12px;text-align:left;font-weight:600">Opération</th>
-              <th style="padding:8px 12px;text-align:right;font-weight:600">Montant</th>
-            </tr>
-          </thead>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px">
+          <thead><tr style="background:#1a3a5c;color:#fff">
+            <th style="padding:8px 12px;text-align:left;font-weight:600">Opération</th>
+            <th style="padding:8px 12px;text-align:right;font-weight:600">Montant</th>
+          </tr></thead>
           <tbody>
-            <tr><td style="padding:8px 12px">TVA déductible sur achats et charges</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">À saisir manuellement</td></tr>
-            <tr><td style="padding:8px 12px">Crédit de TVA reportable (période précédente)</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">À saisir manuellement</td></tr>
-            <tr style="font-weight:700;background:var(--primary-light)"><td style="padding:8px 12px">TOTAL TVA DÉDUCTIBLE</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">—</td></tr>
+            <tr>
+              <td style="padding:8px 12px">TVA déductible sur achats et charges</td>
+              <td style="padding:8px 12px;text-align:right">
+                <input id="tvaDed" type="number" min="0" step="0.01"
+                  value="${(d._tva_deductible?.montant||0).toFixed(2)}"
+                  style="width:110px;text-align:right;border:1px solid var(--border);border-radius:4px;padding:4px 6px"
+                  onchange="ca3SaveTvaDed(this.value)">
+              </td>
+            </tr>
+            <tr style="font-weight:700;background:var(--primary-light)">
+              <td style="padding:8px 12px">TOTAL TVA DÉDUCTIBLE</td>
+              <td style="padding:8px 12px;text-align:right" id="totalTvaDed">${fmt.money(d._tva_deductible?.montant||0)}</td>
+            </tr>
           </tbody>
         </table>
+        <div style="margin-bottom:20px">
+          <input id="tvaDedNotes" placeholder="Notes (optionnel)…" value="${d._tva_deductible?.notes||''}"
+            style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-size:12px;box-sizing:border-box"
+            onchange="ca3SaveTvaDed(document.getElementById('tvaDed').value, this.value)">
+        </div>
 
         <h3 style="font-size:13px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px">
           C — TVA à payer (ligne 16 CA3)
@@ -875,19 +895,17 @@ async function renderDeclTVA(el) {
         <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px">
           <tbody>
             <tr><td style="padding:8px 12px">TVA collectée nette (section A)</td><td style="padding:8px 12px;text-align:right;font-weight:600">${fmt.money(d.total_tva_nette)}</td></tr>
-            <tr><td style="padding:8px 12px">TVA déductible (section B)</td><td style="padding:8px 12px;text-align:right;color:#9ca3af;font-style:italic">— À compléter —</td></tr>
+            <tr><td style="padding:8px 12px">TVA déductible (section B)</td><td style="padding:8px 12px;text-align:right;font-weight:600" id="tvaDedDisplay">${fmt.money(d._tva_deductible?.montant||0)}</td></tr>
             <tr style="font-weight:700;font-size:14px;background:#1a3a5c;color:#fff">
               <td style="padding:10px 12px">SOLDE TVA À PAYER / CRÉDIT</td>
-              <td style="padding:10px 12px;text-align:right">— À calculer —</td>
+              <td style="padding:10px 12px;text-align:right" id="soldeTva">${fmt.money(d.total_tva_nette - (d._tva_deductible?.montant||0))}</td>
             </tr>
           </tbody>
         </table>
 
-        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;font-size:12px;color:#78350f">
-          <strong>⚠ Note :</strong> Seule la TVA collectée est calculée automatiquement depuis vos factures.
-          La TVA déductible (sur vos achats/charges) et le crédit reportable doivent être saisis manuellement
-          depuis vos factures d'achat et votre déclaration précédente.
-          Vérifiez ces montants avec votre expert-comptable avant dépôt.
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px 16px;font-size:12px;color:#166534">
+          <strong>ℹ TVA déductible :</strong> Saisissez le montant dans le champ ci-dessus — il est enregistré automatiquement pour cette période.
+          Vérifiez avec votre expert-comptable avant dépôt.
         </div>
 
         <div style="margin-top:20px;font-size:11px;color:#9ca3af;text-align:center">
@@ -900,6 +918,22 @@ async function renderDeclTVA(el) {
   window.ca3SetAnnee = a  => { annee = a; };
   window.ca3SetMois  = m  => { mois  = m; };
   window.ca3SetPeriode = p => { periode = p; load(); };
+
+  window.ca3SaveTvaDed = async function(montant, notes) {
+    const periodeKey = periode === 'mois' ? `${annee}-${String(mois).padStart(2,'0')}`
+                     : periode === 'trimestre' ? `${annee}-T${Math.ceil(mois/3)}`
+                     : String(annee);
+    const val = parseFloat(montant)||0;
+    await api.put('/api/stats/tva-deductible', { periode: periodeKey, montant: val, notes: notes||'' });
+    const dedEl = document.getElementById('totalTvaDed');
+    const dispEl = document.getElementById('tvaDedDisplay');
+    const soldeEl = document.getElementById('soldeTva');
+    if (dedEl) dedEl.textContent = fmt.money(val);
+    if (dispEl) dispEl.textContent = fmt.money(val);
+    // Re-fetch latest tva_nette from current render data
+    const curNette = parseFloat(document.querySelector('[data-tva-nette]')?.dataset.tvaNette||'0');
+    if (soldeEl) soldeEl.textContent = fmt.money(curNette - val);
+  };
 
   await load();
 }
@@ -2960,6 +2994,25 @@ async function verifierScellement() {
   alert(r.valide ? '✓ Chaîne de scellement intègre.' : `⚠ Rupture détectée à l'entrée ${r.premierEcartId}`);
 }
 
+async function deposerChorusPro(id) {
+  if (!confirm(`Déposer la facture sur Chorus Pro / Portail Public de Facturation ?\n\nCette action soumet la facture aux services de l'État.`)) return;
+  const r = await api.post(`/api/factures/${id}/chorus-pro/deposer`, {});
+  if (r?.idFactureCPP) {
+    alert(`✓ Déposée sur Chorus Pro\nID CPP : ${r.idFactureCPP}\nStatut : ${r.statut}`);
+  } else {
+    alert(r?.error ?? 'Erreur lors du dépôt Chorus Pro');
+  }
+}
+
+async function envoyerLienSignature(id) {
+  const r = await api.post(`/api/devis/${id}/envoyer-lien-signature`, {});
+  if (r?.ok) {
+    alert(`✓ Lien de signature envoyé au client.\n\nLien : ${r.lien}`);
+  } else {
+    alert(r?.error ?? 'Erreur lors de l\'envoi du lien de signature');
+  }
+}
+
 function showFactureForm() {
   const clientOpts = clientOptions.map(c =>
     `<option value="${c.id}">${c.raison_sociale || c.nom || 'Client ' + c.id}</option>`).join('');
@@ -4731,6 +4784,86 @@ async function renderParametres(el) {
       <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer CGV</button>
     </form>`;
   el.querySelector('#entrepriseForm').closest('.card').after(cgvSection);
+
+  // ── Section Mentions légales obligatoires sur factures ────────────────────
+  const mentSection = document.createElement('div');
+  mentSection.className = 'card';
+  mentSection.style.marginTop = '24px';
+  mentSection.innerHTML = `
+    <h3 style="margin-bottom:8px;color:var(--primary)">Mentions légales obligatoires (art. L441-9 et L441-10 CCom)</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+      Ces valeurs sont pré-remplies sur chaque nouvelle facture et apparaissent dans le PDF.
+    </p>
+    <form id="mentForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Taux pénalités de retard par défaut</label>
+          <input name="penalites_defaut" value="${(entreprise.penalites_defaut||'Taux directeur BCE majoré de 10 points').replace(/"/g,'&quot;')}"
+            placeholder="Taux directeur BCE majoré de 10 points"/>
+        </div>
+        <div class="form-group">
+          <label>Indemnité forfaitaire recouvrement (€)</label>
+          <input name="indemnite_defaut" type="number" min="0" step="1" value="${entreprise.indemnite_defaut??40}" style="width:120px"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Escompte par défaut (%)</label>
+        <input name="escompte_defaut" type="number" min="0" max="100" step="0.1" value="${entreprise.escompte_defaut??0}" style="width:120px"/>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:8px">0 = "Pas d'escompte pour paiement anticipé"</span>
+      </div>
+      <div id="mentAlert"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+    </form>`;
+  cgvSection.after(mentSection);
+  mentSection.querySelector('#mentForm').onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const base = Object.fromEntries(new FormData(el.querySelector('#entrepriseForm')));
+    await api.post('/api/entreprise', { ...base, ...Object.fromEntries(fd), is_EI: el.querySelector('[name=is_EI]')?.checked });
+    mentSection.querySelector('#mentAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">Enregistré.</div>';
+    setTimeout(() => { mentSection.querySelector('#mentAlert').innerHTML = ''; }, 2000);
+  };
+
+  // ── Section Relances automatiques ─────────────────────────────────────────
+  const relSection = document.createElement('div');
+  relSection.className = 'card';
+  relSection.style.marginTop = '24px';
+  relSection.innerHTML = `
+    <h3 style="margin-bottom:8px;color:var(--primary)">Relances automatiques</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+      Envoie un email de relance automatiquement aux clients dont la facture est en retard.
+    </p>
+    <form id="relanceForm">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+          <input type="checkbox" name="relance_auto_active" id="relanceActif" ${entreprise.relance_auto_active ? 'checked' : ''}/>
+          Activer les relances automatiques
+        </label>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Relancer après (jours de retard)</label>
+          <input name="relance_auto_jours" type="number" min="1" max="365" value="${entreprise.relance_auto_jours??15}" style="width:100px"/>
+        </div>
+        <div class="form-group">
+          <label>Heure d'envoi</label>
+          <input name="relance_auto_heure" type="time" value="${entreprise.relance_auto_heure||'08:00'}" style="width:120px"/>
+        </div>
+      </div>
+      <div id="relanceAlert"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+    </form>`;
+  mentSection.after(relSection);
+  relSection.querySelector('#relanceForm').onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd);
+    data.relance_auto_active = el.querySelector('#relanceActif')?.checked ? 1 : 0;
+    const base = Object.fromEntries(new FormData(el.querySelector('#entrepriseForm')));
+    await api.post('/api/entreprise', { ...base, ...data, is_EI: el.querySelector('[name=is_EI]')?.checked });
+    relSection.querySelector('#relanceAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">Enregistré.</div>';
+    setTimeout(() => { relSection.querySelector('#relanceAlert').innerHTML = ''; }, 2000);
+  };
   cgvSection.querySelector('#cgvForm').onsubmit = async e => {
     e.preventDefault();
     const fd = new FormData(e.target);

@@ -454,6 +454,8 @@ const DocEditor = (() => {
       ${doc?.devis_id || doc?.facture_id ? `<div class="e-meta-row"><span class="e-meta-label">Réf.</span><span style="font-size:9pt;color:#555">${doc.devis_ref||doc.facture_ref||''}</span></div>` : ''}`
     : isFacture ? `
       <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.objet||'').replace(/"/g,'&quot;')}" placeholder="Objet du document…"></div>
+      <div class="e-meta-row"><span class="e-meta-label">N° commande</span><input class="e-meta-inp" name="numero_commande" value="${(doc?.numero_commande||'').replace(/"/g,'&quot;')}" placeholder="Réf. bon de commande client…"></div>
+      <div class="e-meta-row"><span class="e-meta-label">Escompte (%)</span><input class="e-meta-inp" name="escompte_taux" type="number" min="0" max="100" step="0.1" value="${doc?.escompte_taux||0}" style="width:80px"></div>
       <div class="e-meta-row"><span class="e-meta-label">Régime TVA</span><select class="e-meta-sel" name="tva_mode">
         <option value="normal" ${(doc?.tva_mode||'normal')==='normal'?'selected':''}>Normal</option>
         <option value="franchise_293b" ${doc?.tva_mode==='franchise_293b'?'selected':''}>Franchise 293 B</option>
@@ -908,6 +910,8 @@ const DocEditor = (() => {
       data.notes               = page.querySelector('[name=notes]')?.innerText.trim()||undefined;
     } else {
       data.objet               = page.querySelector('[name=objet]')?.value.trim()||undefined;
+      data.numero_commande     = page.querySelector('[name=numero_commande]')?.value.trim()||undefined;
+      data.escompte_taux       = parseFloat(page.querySelector('[name=escompte_taux]')?.value||'0')||0;
       data.date_emission       = page.querySelector('[name=date_emission]')?.value||undefined;
       data.date_echeance       = page.querySelector('[name=date_echeance]')?.value||undefined;
       data.tva_mode            = page.querySelector('[name=tva_mode]')?.value||'normal';

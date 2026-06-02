@@ -198,14 +198,13 @@ function lightenColor(hex: string, amount = 0.92): string {
   return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
 }
 
-function drawCGV(doc: any, entreprise: any): void {
+function drawCGV(doc: any, entreprise: any, startY = 762): void {
   const cgv = (entreprise.cgv_texte || '').trim();
   const mention = (entreprise.mention_legale || '').trim();
   if (!cgv && !mention) return;
-  const y = 762;
-  doc.moveTo(50, y - 4).lineTo(545, y - 4).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
+  doc.moveTo(50, startY - 4).lineTo(545, startY - 4).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
   doc.lineWidth(1);
-  let cur = y;
+  let cur = startY;
   if (mention) {
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#888888')
        .text(mention, 50, cur, { width: 495, lineBreak: true });
@@ -216,6 +215,37 @@ function drawCGV(doc: any, entreprise: any): void {
        .text(cgv, 50, cur, { width: 495, lineBreak: true });
   }
   doc.fillColor('#000000');
+}
+
+// Affiche les mentions légales obligatoires (escompte, pénalités, indemnité) — retourne la hauteur utilisée
+function drawMentionsLegales(doc: any, facture: any, entreprise: any, startY = 748): number {
+  const isAvoir = facture.type_facture === 'avoir';
+  if (isAvoir) return 0;
+
+  const parts: string[] = [];
+
+  const escompte = Number(facture.escompte_taux ?? entreprise.escompte_defaut ?? 0);
+  if (escompte > 0) {
+    const montantEsc = (Number(facture.montant_ttc) * escompte / 100).toFixed(2);
+    parts.push(`Escompte pour paiement anticipé : ${escompte}% soit ${montantEsc} €`);
+  } else {
+    parts.push('Pas d\'escompte pour paiement anticipé.');
+  }
+
+  const penalite  = (facture.penalites_taux || entreprise.penalites_defaut || 'Taux directeur BCE majoré de 10 points').trim();
+  const indemnite = Number(facture.indemnite_recouvrement ?? entreprise.indemnite_defaut ?? 40);
+  parts.push(`Pénalités de retard : ${penalite} — Indemnité forfaitaire de recouvrement : ${indemnite} € (art. L441-10 C.com.)`);
+
+  doc.moveTo(50, startY - 3).lineTo(545, startY - 3).strokeColor('#EEEEEE').lineWidth(0.5).stroke();
+  doc.lineWidth(1);
+  let y = startY;
+  doc.fontSize(7).font('Helvetica').fillColor('#777777');
+  for (const p of parts) {
+    doc.text(p, 50, y, { width: 495, lineBreak: false });
+    y += 10;
+  }
+  doc.fillColor('#000000');
+  return y - startY + 4;
 }
 
 export class FacturXService {
@@ -302,6 +332,8 @@ export class FacturXService {
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)
         doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoir ? 70 : 58));
+      if (facture.numero_commande)
+        doc.text(`N° commande : ${facture.numero_commande}`, 50, titleY + (isAvoir ? 82 : 70));
 
       // ── Tableau des lignes ───────────────────────────────────────────
       let y = sepY + 100;
@@ -380,7 +412,8 @@ export class FacturXService {
         doc.fillColor('#000000').lineWidth(1);
       }
 
-      drawCGV(doc, entreprise);
+      const mentH = drawMentionsLegales(doc, facture, entreprise);
+      drawCGV(doc, entreprise, 762 + mentH);
       doc.end();
       stream.on('finish', resolve);
       stream.on('error', reject);
@@ -726,7 +759,9 @@ export class FacturXService {
       if (facture.date_echeance && !isAvoirFS && facture.statut !== 'payee')
         doc.text(`Échéance : ${formatDate(facture.date_echeance)}`, 50, titleY + 46);
       if (facture.objet)
-        doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoirFS ? 58 : 58));
+        doc.text(`Objet : ${facture.objet}`, 50, titleY + (isAvoirFS ? 70 : 58));
+      if (facture.numero_commande)
+        doc.text(`N° commande : ${facture.numero_commande}`, 50, titleY + (isAvoirFS ? 82 : 70));
 
       let y = sepY + 100;
       const colX = [50, 240, 300, 355, 410, 470];
@@ -802,7 +837,8 @@ export class FacturXService {
         doc.fillColor('#000000').lineWidth(1);
       }
 
-      drawCGV(doc, entreprise);
+      const mentHFS = drawMentionsLegales(doc, facture, entreprise);
+      drawCGV(doc, entreprise, 762 + mentHFS);
       doc.end();
       outputStream.on('finish', resolve);
       outputStream.on('error', reject);
@@ -950,6 +986,37 @@ export class FacturXService {
       </ram:SpecifiedLineTradeSettlement>
     </ram:IncludedSupplyChainTradeLineItem>`).join('\n');
 
+    const escompteTaux  = Number(facture.escompte_taux ?? 0);
+    const montantEsc    = escompteTaux > 0
+      ? (Number(facture.montant_ttc) * escompteTaux / 100).toFixed(2)
+      : '0.00';
+    const duPayable     = escompteTaux > 0
+      ? (Number(facture.montant_ttc) - Number(montantEsc)).toFixed(2)
+      : Number(facture.montant_ttc).toFixed(2);
+
+    const typeCode = facture.type_facture === 'avoir' ? '381' : '380';
+    const dateEcheance = facture.date_echeance
+      ? facture.date_echeance.replace(/-/g, '').slice(0, 8)
+      : '';
+
+    const buyerRefXML = facture.numero_commande
+      ? `\n      <ram:BuyerReference>${facture.numero_commande}</ram:BuyerReference>` : '';
+    const buyerSiretXML = client.siret
+      ? `\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID="FC">${client.siret}</ram:ID></ram:SpecifiedTaxRegistration>` : '';
+    const escompteXML = escompteTaux > 0
+      ? `\n      <ram:SpecifiedTradeAllowanceCharge>
+        <ram:ChargeIndicator><udt:Indicator>false</udt:Indicator></ram:ChargeIndicator>
+        <ram:CalculationPercent>${escompteTaux}</ram:CalculationPercent>
+        <ram:ActualAmount>${montantEsc}</ram:ActualAmount>
+        <ram:ReasonCode>66</ram:ReasonCode>
+        <ram:Reason>Escompte pour paiement anticipé</ram:Reason>
+      </ram:SpecifiedTradeAllowanceCharge>` : '';
+    const paymentTermsXML = facture.conditions_paiement
+      ? `\n      <ram:SpecifiedTradePaymentTerms>
+        <ram:Description>${facture.conditions_paiement}</ram:Description>
+        ${dateEcheance ? `<ram:DueDateDateTime><udt:DateTimeString format="102">${dateEcheance}</udt:DateTimeString></ram:DueDateDateTime>` : ''}
+      </ram:SpecifiedTradePaymentTerms>` : '';
+
     return `<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice
   xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
@@ -962,32 +1029,42 @@ export class FacturXService {
   </rsm:ExchangedDocumentContext>
   <rsm:ExchangedDocument>
     <ram:ID>${facture.numero}</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
+    <ram:TypeCode>${typeCode}</ram:TypeCode>
     <ram:IssueDateTime>
       <udt:DateTimeString format="102">${facture.date_emission.replace(/[-T:Z.]/g, '').slice(0, 8)}</udt:DateTimeString>
     </ram:IssueDateTime>
+    ${facture.notes ? `<ram:IncludedNote><ram:Content>${facture.notes}</ram:Content></ram:IncludedNote>` : ''}
   </rsm:ExchangedDocument>
   <rsm:SupplyChainTradeTransaction>
     ${lignesXML}
-    <ram:ApplicableHeaderTradeAgreement>
+    <ram:ApplicableHeaderTradeAgreement>${buyerRefXML}
       <ram:SellerTradeParty>
         <ram:Name>${entreprise.raison_sociale}${entreprise.is_EI ? ' EI' : ''}</ram:Name>
+        <ram:PostalTradeAddress>
+          <ram:PostcodeCode>${entreprise.code_postal ?? ''}</ram:PostcodeCode>
+          <ram:LineOne>${entreprise.adresse ?? ''}</ram:LineOne>
+          <ram:CityName>${entreprise.ville ?? ''}</ram:CityName>
+          <ram:CountryID>FR</ram:CountryID>
+        </ram:PostalTradeAddress>
         <ram:SpecifiedTaxRegistration>
           <ram:ID schemeID="VA">${entreprise.tva_intracom ?? ''}</ram:ID>
         </ram:SpecifiedTaxRegistration>
+        <ram:SpecifiedTaxRegistration>
+          <ram:ID schemeID="FC">${entreprise.siret ?? ''}</ram:ID>
+        </ram:SpecifiedTaxRegistration>
       </ram:SellerTradeParty>
       <ram:BuyerTradeParty>
-        <ram:Name>${clientNom}</ram:Name>
+        <ram:Name>${clientNom}</ram:Name>${buyerSiretXML}
       </ram:BuyerTradeParty>
     </ram:ApplicableHeaderTradeAgreement>
     <ram:ApplicableHeaderTradeDelivery/>
     <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
+      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>${escompteXML}${paymentTermsXML}
       <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>${facture.montant_ht.toFixed(2)}</ram:LineTotalAmount>
-        <ram:TaxTotalAmount currencyID="EUR">${facture.montant_tva.toFixed(2)}</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>${facture.montant_ttc.toFixed(2)}</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>${facture.montant_ttc.toFixed(2)}</ram:DuePayableAmount>
+        <ram:LineTotalAmount>${Number(facture.montant_ht).toFixed(2)}</ram:LineTotalAmount>
+        <ram:TaxTotalAmount currencyID="EUR">${Number(facture.montant_tva).toFixed(2)}</ram:TaxTotalAmount>
+        <ram:GrandTotalAmount>${Number(facture.montant_ttc).toFixed(2)}</ram:GrandTotalAmount>
+        <ram:DuePayableAmount>${duPayable}</ram:DuePayableAmount>
       </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
     </ram:ApplicableHeaderTradeSettlement>
   </rsm:SupplyChainTradeTransaction>

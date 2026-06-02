@@ -5,18 +5,6 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
-
-## [2.12.0] — 2026-06-02
-
-### Corrigé
-- fix(signature): route publique /api/devis/signer/:token montée avant le middleware JWT
-
-### Documentation
-- docs: manuel utilisateur complet v2.11.0 avec screenshots et exemples CSV
-
-
-## [2.11.0] — 2026-06-02
-
 ### Corrigé
 - Fix(signature): route publique /api/devis/signer/:token montée avant le middleware JWT
 
@@ -46,6 +34,13 @@ Login, tableau de bord, clients, articles, factures/devis/avoirs,
 statistiques KPIs, declaration TVA CA3, exercices comptables,
 lettrage, archives, parametres (mentions legales, relances),
 editeur WYSIWYG devis et factures, journal d audit, sauvegardes.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Chore: release 2.12.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -1303,7 +1298,6 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
-[2.12.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.12.0
 [2.11.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.11.0
 [2.10.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.10.0
 [2.9.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.9.1

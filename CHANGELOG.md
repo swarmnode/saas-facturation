@@ -17,6 +17,16 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: manuel utilisateur complet v2.11.0 avec screenshots et exemples
+
+- manuel-utilisateur.md : refonte complete (nouvelles fonctionnalites
+  v2.10/v2.11, import/export CSV details, screenshots integres)
+- docs/screenshots/ : 20 captures d ecran de l interface reelle
+- docs/exemples/ : fichiers CSV d exemple clients et articles
+- manuel-utilisateur.docx : genere par pandoc (1,4 Mo avec images)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.11.0] — 2026-06-02

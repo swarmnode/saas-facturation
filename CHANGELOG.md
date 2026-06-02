@@ -7,6 +7,15 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: version manuel utilisateur → v2.13.0
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+## [2.13.0] — 2026-06-02
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -1313,6 +1322,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.13.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.13.0
 [2.12.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.12.0
 [2.11.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.11.0
 [2.10.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.10.0

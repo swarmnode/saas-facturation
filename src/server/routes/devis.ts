@@ -302,39 +302,6 @@ router.post('/:id/envoyer-lien-signature', requirePerm('devis:w'), async (req, r
   } catch(e) { next(e); }
 });
 
-// Route publique — validation de la signature (pas de JWT requis)
-router.get('/signer/:token', async (req, res, next) => {
-  try {
-    const { token } = req.params;
-    const nom = (req.query.nom as string) || '';
-    const ip  = req.ip ?? req.socket?.remoteAddress ?? '';
-
-    const dr = await query(
-      `SELECT d.*, e.raison_sociale AS e_nom FROM devis d
-       JOIN entreprise e ON e.id = d.entreprise_id
-       WHERE d.signature_token = $1`,
-      [token]
-    );
-    const devis = dr.rows[0];
-    if (!devis) return res.status(404).send('<p>Lien de signature invalide ou expiré.</p>');
-    if (devis.statut === 'signe')
-      return res.send(`<p>Ce devis (${devis.numero}) a déjà été signé le ${new Date(devis.signature_date).toLocaleString('fr-FR')}.</p>`);
-
-    await query(`
-      UPDATE devis SET statut = 'signe', signature_date = NOW(), signature_ip = $2, signature_nom = $3, updated_at = NOW()
-      WHERE id = $1
-    `, [devis.id, ip, nom || null]);
-
-    res.send(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Devis signé</title>
-<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f0fdf4}
-.box{background:#fff;border:1px solid #a7f3d0;border-radius:12px;padding:40px;max-width:480px;text-align:center}
-h2{color:#065f46;margin:0 0 12px}p{color:#374151;margin:4px 0}</style></head>
-<body><div class="box"><h2>✓ Devis signé électroniquement</h2>
-<p><strong>${devis.numero}</strong> — ${devis.e_nom}</p>
-<p style="margin-top:16px;color:#6b7280;font-size:13px">Signé le ${new Date().toLocaleString('fr-FR')}</p></div></body></html>`);
-  } catch(e) { next(e); }
-});
-
 router.post('/:id/avenant', requirePerm('devis:w'), async (req, res, next) => {
   try {
     const { motif, lignes } = req.body;

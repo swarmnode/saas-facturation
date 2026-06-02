@@ -5,34 +5,12 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+
+## [2.10.0] — 2026-06-02
+
 ### Ajouté
-- Feat(exercices): clôture annuelle obligatoire loi anti-fraude TVA 2018
-
-- migration_018 : table exercices (annee, entreprise_id, statut, hash_cloture)
-- ExerciceService : ouvrir(), cloturer() avec hash SHA-256 du FEC, exporterFEC()
-- Routes /api/exercices : GET, POST (ouvrir), POST /:annee/cloturer,
-  GET /:annee/fec, GET /:annee/pv (PV de clôture PDF)
-- FecExportService.exporterCSV() : filtre par entreprise_id + annee optionnelle
-- Sidebar : entrée "Exercices" avec vue dédiée (liste, ouvrir, clôturer, télécharger PV)
-- Double clôture bloquée côté service
-- PV de clôture PDF : date, hash SHA-256, mention conformité art. 88 loi 2015-1785
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat(exercices): date_ouverture et date_cloture paramétrables (exercices non-civils)
-
-- ExerciceService.ouvrir() : date_ouverture optionnelle (défaut 01/01/N)
-- ExerciceService.cloturer() : date_cloture optionnelle (défaut 31/12/N)
-- Route POST /api/exercices : accepte { annee, date_ouverture }
-- Route POST /api/exercices/:annee/cloturer : accepte { date_cloture }
-- Frontend : sélecteur de date de début à l'ouverture ; à la clôture, prompt
-  pré-rempli avec le dernier jour de l'exercice (calculé depuis date_ouverture
-  pour les exercices décalés ex. 01/04/N → 31/03/N+1)
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-### Documentation
-- Docs: update CHANGELOG.md [skip ci]
+- feat(exercices): clôture annuelle obligatoire — loi anti-fraude TVA 2018 (art. 88 loi 2015-1785)
+- feat(exercices): date_ouverture et date_cloture paramétrables (exercices non-civils)
 
 
 ## [2.9.1] — 2026-06-02
@@ -1209,6 +1187,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 [2.4.140]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.4.140
 [2.3.133]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.3.133
 [2.2.129]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.2.129
+[2.10.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.10.0
 [2.1.81]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.1.81
 [2.0.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.9
 [2.0.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.0.8

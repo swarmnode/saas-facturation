@@ -1,0 +1,13 @@
+Reference;Designation;Description;Unite;Prix_HT;Prix_Achat_HT;TVA_Pct;Stock;Actif
+PREST-CONS;Prestation de conseil;Conseil et expertise métier - tarif journalier;jour;850;0;20;0;1
+PREST-DEV;Développement informatique;Développement sur mesure selon cahier des charges;heure;95;0;20;0;1
+FORM-001;Formation présentielle;Journée de formation en salle (jusqu'à 10 personnes);forfait;1200;0;20;0;1
+FORM-002;Formation à distance;Demi-journée de formation en visioconférence;forfait;480;0;20;0;1
+MAINT-AN;Maintenance annuelle;Contrat de maintenance annuelle logiciel;an;2400;0;20;0;1
+AUDIT-001;Audit informatique;Audit de sécurité et recommandations;forfait;3500;0;20;0;1
+DOC-001;Rédaction de documentation;Rédaction technique et fonctionnelle;page;45;0;20;0;1
+HEB-MENS;Hébergement mensuel;Hébergement serveur dédié - inclut 99,9% de disponibilité;mois;299;180;20;0;1
+LICL-001;Licence logicielle annuelle;Licence d'utilisation - 1 poste;an;490;0;20;0;1
+FORF-DEPL;Forfait déplacement;Frais de déplacement forfaitaires Ile-de-France;forfait;75;60;20;0;1
+RAPPORT;Rapport d'analyse;Rapport détaillé avec recommandations (jusqu'à 50 pages);pièce;650;0;20;0;1
+SMS-PACK;Pack SMS 1000;1000 crédits SMS professionnels;pièce;29.90;18;20;1000;1

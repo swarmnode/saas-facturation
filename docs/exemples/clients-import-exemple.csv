@@ -1,0 +1,9 @@
+Type;Raison_sociale;Civilite;Prenom;Nom;Adresse;Adresse2;Code_postal;Ville;Pays;Email;Telephone;SIRET;TVA_Intracom;Mode_TVA;Mode_reglement;Statut_RGPD
+professionnel;Dupont & Associés SAS;;; ;12 rue de la Paix;;75001;Paris;France;contact@dupont-assoc.fr;01 42 00 00 01;12345678900014;FR12123456789;normal;virement;client
+professionnel;Boulangerie Martin;;; ;5 place du Marché;;69001;Lyon;France;martin.boulangerie@gmail.com;04 72 00 00 02;98765432100028;;normal;cheque;client
+particulier;;M.;Jean;Lefebvre;8 allée des Roses;Bât. C Appt 12;33000;Bordeaux;France;jean.lefebvre@email.com;06 12 34 56 78;;;normal;virement;client
+professionnel;Atelier du Bois SARL;;; ;Zone Artisanale, lot 7;;44000;Nantes;France;contact@atelier-bois.fr;02 40 00 00 03;55544433322211;;normal;prelevement_sepa;prospect
+particulier;;Mme;Sophie;Dubois;23 avenue Foch;;31000;Toulouse;France;s.dubois@entreprise.com;05 61 00 00 04;;;normal;carte;client
+professionnel;Cabinet Conseil Innovation;;; ;Tour Alpha, 15ème étage;85 boulevard Haussmann;75008;Paris;France;info@cci-conseil.fr;01 55 00 00 05;77788899900033;FR77778889990;autoliquidation;virement;client
+professionnel;Garage Mécanique Auto;;; ;RN 7, km 45;;13100;Aix-en-Provence;France;garage.auto@wanadoo.fr;04 42 00 00 06;33322211100022;;normal;cheque;client
+particulier;;Dr;Pierre;Moreau;17 rue Pasteur;;67000;Strasbourg;France;pierre.moreau@clinique.fr;03 88 00 00 07;;;franchise_293b;;prospect

@@ -18,610 +18,20 @@ header-includes:
 
 # Présentation
 
-FacturPro est un logiciel de devis et facturation conforme au droit français :
+FacturPro est un logiciel de devis et facturation conforme au droit français, utilisable depuis n'importe quel navigateur web. Il s'installe en une fois sur un poste Windows et est accessible localement par tous les postes du réseau.
 
-- **Loi anti-fraude TVA 2018** — inaltérabilité des documents fiscaux garantie par des verrous de base de données et une chaîne de scellement SHA-256.
-- **Factur-X / EN 16931** — chaque facture émise embarque un fichier XML ZUGFeRD lisible par les systèmes comptables.
-- **FEC (Fichier des Écritures Comptables)** — export DGFiP à tout moment, prêt pour un contrôle fiscal.
-- **RGPD** — gestion du statut et de la durée de conservation des données clients.
-- **SEPA** — génération de fichiers de prélèvements bancaires au format pain.008.001.02.
+## Conformité légale
 
-Le logiciel est accessible depuis un navigateur à l'adresse `http://localhost:3000` (installation locale) ou à l'adresse fournie par votre administrateur.
-
----
-
-# Première connexion
-
-## Compte administrateur
-
-Lors du premier démarrage, le système crée automatiquement un compte super-administrateur :
-
-| Champ | Valeur par défaut |
+| Exigence | Implémentation |
 |---|---|
-| Email | `admin@localhost` |
-| Mot de passe | `Admin1234!` |
-
-**Changez ce mot de passe immédiatement** après la première connexion (menu *Mon compte > Modifier le mot de passe*).
-
-## Changer son mot de passe
-
-Toute session ouverte peut modifier son propre mot de passe depuis le menu utilisateur en haut à droite. L'ancien mot de passe est requis pour valider la modification.
-
----
-
-# Interface
-
-## Navigation
-
-La barre de navigation verticale à gauche donne accès aux rubriques principales : **Tableau de bord**, **Clients**, **Devis**, **Factures**, **Avoirs**, **Acomptes**, **Bons de livraison**, **Articles**, et **Paramètres**. Les icônes et libellés sont dimensionnés pour une lecture facile.
-
-## Onglets de travail
-
-FacturPro fonctionne par **onglets** : chaque document ouvert (devis, facture, client…) s'affiche dans un onglet persistent en haut de l'écran.
-
-- Les onglets sont conservés lors d'un rechargement de page — vous retrouvez exactement votre contexte de travail.
-- Un onglet **non encore sauvegardé** (nouveau document) est également restauré après rechargement.
-- L'ordre des onglets est fixe : il ne change pas entre les rechargements.
-- Pour fermer un onglet, cliquer la croix à droite de son libellé.
-
-## Tableau de bord
-
-La page d'accueil affiche :
-
-- Un résumé des **chiffres du mois** (devis en cours, factures émises, encaissements).
-- La liste chronologique de **tous les documents récents** toutes catégories confondues (devis, factures, avoirs, acomptes, BL), avec le statut et le montant, cliquables directement.
-
----
-
-# Configuration de l'entreprise
-
-Avant de créer le premier document, renseignez les informations de votre société dans **Paramètres > Entreprise**.
-
-## Informations légales obligatoires
-
-| Champ | Remarque |
-|---|---|
-| Raison sociale | Dénomination exacte (SIRET) |
-| Forme juridique | SAS, SARL, EI, etc. |
-| SIRET | 14 chiffres, contrôlé à l'enregistrement |
-| N° TVA intracommunautaire | FR + 2 chiffres + SIREN |
-| Adresse complète | Figurera sur tous les documents |
-| Régime TVA | Normal, franchise art. 293 B, ou autoliquidation |
-
-Pour les **entreprises individuelles** (`is_EI = oui`), la mention légale sur les documents est adaptée automatiquement (pas de capital social ni de RCS).
-
-## Logo
-
-Déposez votre logo (PNG, JPEG, WebP, SVG — 2 Mo max) via le bouton **Importer un logo**. Il sera intégré en haut de tous les PDFs et sa couleur dominante sera extraite pour adapter l'habillage graphique automatiquement.
-
-## Email / SMTP
-
-Configurez le serveur SMTP dans l'onglet **Email** pour envoyer les devis et factures directement depuis FacturPro. Sans configuration, le système utilise un compte Ethereal (emails de test visibles dans la console, non délivrés).
-
-| Champ | Exemple |
-|---|---|
-| Hôte SMTP | `smtp.mondomaine.fr` |
-| Port | `587` (STARTTLS) ou `465` (SSL) |
-| Utilisateur / Mot de passe | Identifiants du compte d'envoi |
-| Adresse expéditeur | `facturation@mondomaine.fr` |
-
-## Coordonnées bancaires et SEPA
-
-Pour pouvoir générer des fichiers de prélèvement SEPA, renseignez les coordonnées bancaires de votre entreprise dans l'onglet **Banque** :
-
-| Champ | Remarque |
-|---|---|
-| IBAN | IBAN de votre compte créditeur (receveur des prélèvements) |
-| BIC | BIC/SWIFT de votre banque |
-| ICS | Identifiant Créancier SEPA (obtenu auprès de votre banque) — **obligatoire** pour générer un fichier SEPA |
-
-Sans ICS valide, la génération de fichiers SEPA est bloquée.
-
----
-
-# Gestion des clients
-
-## Créer un client
-
-Accédez à **Clients > Nouveau client**. Deux types sont disponibles :
-
-- **Professionnel** — renseignez la raison sociale, SIRET et numéro de TVA intracommunautaire si applicable.
-- **Particulier** — civilité, prénom, nom.
-
-Les champs adresse, code postal et ville sont obligatoires (ils figurent sur les documents). Un champ **Adresse (complément)** est disponible pour les boîtes postales, bâtiments, étages, etc.
-
-Lorsque vous saisissez un **SIRET** et quittez le champ, FacturPro calcule automatiquement le **numéro de TVA intracommunautaire** français et le remplit dans le champ correspondant — à condition que ce champ soit encore vide. La formule utilisée est :
-
-```
-Clé TVA = (12 + 3 × (SIREN mod 97)) mod 97
-N° TVA  = "FR" + clé (2 chiffres) + SIREN
-```
-
-Ce calcul est purement local, sans appel réseau. Il est valide pour toutes les sociétés françaises soumises à TVA.
-
-## Mode TVA client
-
-Le champ **Mode TVA** permet de forcer un régime particulier pour ce client indépendamment du régime de l'entreprise :
-
-| Valeur | Effet sur les documents |
-|---|---|
-| Normal | TVA au taux de la ligne |
-| Franchise 293 B | Mention légale automatique, montant TVA = 0 |
-| Autoliquidation | Mention légale art. 283-2 CGI |
-
-## Mode de règlement par défaut
-
-Le champ **Mode de règlement par défaut** pré-sélectionne automatiquement le mode de paiement lors de la création d'une facture pour ce client (virement, chèque, prélèvement SEPA…). Cela évite de ressaisir le même choix à chaque facture.
-
-## Coordonnées bancaires SEPA
-
-Pour les clients payant par prélèvement SEPA, renseignez l'onglet **SEPA** de la fiche client :
-
-| Champ | Remarque |
-|---|---|
-| IBAN | IBAN du compte à débiter |
-| BIC | BIC/SWIFT de la banque du client |
-| Titulaire du compte | Nom du titulaire (peut différer de la raison sociale) |
-| Référence mandat (RUM) | Référence unique du mandat de prélèvement |
-| Date de signature du mandat | Date à laquelle le client a signé le mandat |
-| Type de mandat | CORE (particuliers/entreprises) ou B2B (interentreprises) |
-
-Ces informations sont nécessaires pour inclure le client dans un fichier de prélèvement SEPA.
-
-## RGPD
-
-Chaque client possède un **statut RGPD** :
-
-| Statut | Signification |
-|---|---|
-| Prospect | Contact initial, aucun document signé |
-| Client actif | Au moins un devis accepté ou document envoyé |
-| Inactif | Aucune activité récente |
-| Anonymisé | Données personnelles effacées (conservation légale 10 ans) |
-
-La date de dernière activité et la date de consentement sont tracées automatiquement. Lorsqu'un devis est **accepté**, le statut du client passe automatiquement de *Prospect* à *Client actif*.
-
----
-
-# Catalogue d'articles
-
-Le catalogue (**Articles**) vous permet de pré-renseigner vos produits et prestations pour les insérer rapidement dans les lignes de devis et factures.
-
-| Champ | Remarque |
-|---|---|
-| Référence | Optionnel, libre |
-| Désignation | Affiché sur les documents |
-| Description | Texte long, imprimé sous la désignation |
-| Unité | heure, jour, forfait, pièce… |
-| Prix unitaire HT | Valeur par défaut à l'insertion |
-| Prix d'achat HT | Optionnel — sert uniquement au calcul de marge, n'apparaît pas sur les documents |
-| Taux TVA | Taux pré-sélectionné dans les lignes |
-| Stock | Quantité disponible (optionnel) |
-| N° de série | Numéro de série ou lot (optionnel, saisi par ligne dans les documents) |
-
-Un article peut être désactivé (**Actif = Non**) pour le masquer des listes de sélection sans le supprimer.
-
-## Calcul de marge
-
-Lorsqu'un **prix d'achat HT** est renseigné, FacturPro affiche en temps réel dans le formulaire :
-
-| Indicateur | Formule |
-|---|---|
-| Marge brute | Prix vente HT − Prix achat HT |
-| Taux de marque | Marge brute ÷ Prix vente HT × 100 |
-| Taux de marge | Marge brute ÷ Prix achat HT × 100 |
-
-Le **taux de marque** est l'indicateur le plus courant en commerce et distribution. Le **taux de marge** (ou taux de marge sur coût) est davantage utilisé en industrie.
-
-La liste des articles affiche une colonne **Marge** (montant + taux de marque) en vert si positive, rouge si négative. Le prix d'achat n'est jamais transmis aux clients ni imprimé sur les documents.
-
----
-
-# Éditeur de documents (WYSIWYG)
-
-Tous les documents (devis, factures, avoirs, bons de livraison) s'ouvrent dans un **éditeur visuel page A4** qui reproduit l'aspect exact du document imprimé.
-
-## Mise en page
-
-- La page A4 est affichée à l'échelle, avec les marges, l'en-tête, le bloc client, les lignes et les totaux positionnés comme sur le PDF final.
-- Vous pouvez faire défiler le contenu vers le bas pour atteindre le bas de page (signatures, mentions, totaux).
-
-## Saisie des lignes
-
-| Colonne | Remarque |
-|---|---|
-| Désignation | Texte de la prestation ou produit |
-| Description | Détail optionnel sous la désignation |
-| Qté | Quantité (alignée à droite) |
-| P.U. HT | Prix unitaire hors taxe (aligné à droite) |
-| Remise | Remise en % (alignée à droite) |
-| TVA | Taux de TVA applicable (aligné à droite) |
-| Montant HT | Calculé automatiquement (aligné à droite) |
-
-Les totaux (HT, TVA ventilée par taux, TTC) sont recalculés en temps réel à chaque modification de ligne.
-
-## Sélection du client
-
-Le champ **Client** est un filtre de recherche : commencez à saisir le nom ou la raison sociale pour filtrer la liste. En bas de la liste déroulante, l'option **+ Nouveau client** permet de créer un client à la volée sans quitter le document.
-
-## Enregistrement
-
-- Le bouton **Enregistrer** (ou **Enregistré** en vert lorsqu'aucune modification n'est en attente) sauvegarde le document.
-- Un document nouveau reçoit son numéro (ex. `DEV-2026-0001`) dès le premier enregistrement — le numéro apparaît alors dans l'en-tête de la page et dans l'onglet.
-- Sur un document verrouillé (émis, signé), les champs sont en lecture seule et le bouton d'enregistrement est absent.
-
-## Impression
-
-Le bouton **🖨️ Imprimer** génère un aperçu d'impression navigateur de la page A4 actuelle. Utilisez-le pour une impression rapide sans passer par le PDF.
-
-## Sauts de page
-
-L'éditeur affiche des **indicateurs de saut de page** (ligne pointillée grise avec le label **— Page 2 —**, **— Page 3 —**…) positionnés aux mêmes endroits que dans le PDF généré. Ces indicateurs se mettent à jour automatiquement à chaque ajout ou suppression de ligne. Ils sont purement visuels et n'affectent pas le contenu du document.
-
-## Suppression et onglets
-
-Lorsqu'un document est supprimé depuis une liste, son onglet se ferme automatiquement si il était ouvert.
-
-## Barre d'actions
-
-La barre d'outils au-dessus de la page affiche les actions disponibles selon le type et le statut du document (voir les sections par type de document ci-dessous).
-
----
-
-# Devis
-
-## Cycle de vie
-
-```
-brouillon → envoyé → accepté → bon de livraison (optionnel)
-                              → facture
-                   ↘ refusé
-brouillon (signé = verrouillé définitivement)
-```
-
-Un devis **accepté** est verrouillé au niveau de la base de données — aucune modification n'est possible. Pour corriger un devis accepté, créez un **avenant**.
-
-## Créer un devis
-
-1. **Devis > Nouveau devis**
-2. Sélectionnez le client via le champ de recherche filtrée.
-3. Renseignez l'objet, la date de validité et les conditions de paiement.
-4. Ajoutez les lignes : désignation, quantité, prix HT, taux TVA, remise (%).
-5. Les lignes sont gratuites par défaut (case **Gratuit** cochée) — décochez pour activer la tarification.
-6. Cliquez **Enregistrer** — le numéro `DEV-YYYY-NNNN` est attribué automatiquement.
-
-## Envoyer un devis
-
-Bouton **Envoyer** :
-
-- Passe le statut à `envoyé`.
-- Si un email client est renseigné, propose l'envoi direct par email avec le PDF en pièce jointe.
-
-## Accepter un devis
-
-Bouton **Accepter** (affiché en blanc sur fond coloré lorsque le devis est `envoyé`) :
-
-- Verrouille le devis (statut `signé`).
-- Fait passer le statut RGPD du client de *Prospect* à *Client actif* si ce n'est pas déjà le cas.
-- Le bouton passe en vert avec le libellé **Accepté** (non cliquable).
-- Les boutons **Créer un BL** et **Créer la facture** apparaissent dans la barre d'actions.
-
-## Refuser
-
-Bouton **Refuser** : archive le devis sans le verrouiller (il reste modifiable pour être dupliqué).
-
-## Dupliquer
-
-Le bouton **Dupliquer** crée un nouveau devis `brouillon` avec les mêmes lignes, ce qui permet de repartir d'un modèle.
-
-## Aperçu PDF
-
-Le bouton **Aperçu PDF** génère un PDF à la volée sans le sauvegarder.
-
-## Convertir en bon de livraison
-
-Depuis un devis accepté, le bouton **Créer un BL** génère un bon de livraison pré-rempli à partir des lignes du devis.
-
-## Convertir en facture
-
-Depuis un devis accepté, le bouton **Créer la facture** génère une facture pré-remplie à partir des lignes du devis.
-
----
-
-# Avenants
-
-Un avenant modifie un devis accepté sans altérer l'original (exigence d'inaltérabilité).
-
-## Créer un avenant
-
-Depuis la fiche d'un devis accepté : **Nouvel avenant**.
-
-| Champ | Remarque |
-|---|---|
-| Motif | Obligatoire — justification de la modification |
-| Lignes | Modifications / ajouts / suppressions par rapport au devis initial |
-| Delta montant | Calculé automatiquement (positif = surcoût, négatif = déduction) |
-
-L'avenant suit le même cycle que le devis : `brouillon → envoyé → signé (verrouillé)`.
-
-Le PDF de l'avenant récapitule le montant initial du devis, les modifications et le nouveau montant total.
-
----
-
-# Factures
-
-## Cycle de vie
-
-```
-brouillon → émise (verrouillée) → payée
-```
-
-Une fois **émise**, la facture est verrouillée. La seule transition possible est de la passer à **payée**. Pour annuler une facture émise, créez un **avoir**.
-
-## Types de factures
-
-| Type | Usage |
-|---|---|
-| Standard | Facture classique |
-| Avoir | Note de crédit (voir section dédiée) |
-| Acompte | Facture d'acompte (voir section dédiée) |
-
-## Créer une facture
-
-Soit depuis un devis accepté (bouton **Créer la facture**), soit depuis un bon de livraison (bouton **Créer la facture**), soit directement depuis **Factures > Nouvelle facture**.
-
-Les champs suivants sont importants :
-
-| Champ | Remarque |
-|---|---|
-| Date d'émission | Date légale de la facture |
-| Date d'échéance | Délai de paiement convenu (omis sur le PDF si non renseigné) |
-| Conditions de paiement | Texte libre (virement, chèque…) |
-| Mode de paiement | Pré-rempli si un mode par défaut est défini sur le client |
-
-## Émettre une facture
-
-Le bouton **Émettre** :
-
-1. Verrouille la facture.
-2. Génère le PDF Factur-X (PDF + XML ZUGFeRD embarqué) et le sauvegarde dans `storage/pdf/`.
-3. Inscrit les écritures comptables dans la table FEC.
-4. Inscrit un scellement SHA-256 dans `journal_scellement`.
-
-**Une facture émise ne peut pas être supprimée ni modifiée.** Pour annuler, créez un avoir.
-
-## Marquer comme payée
-
-Bouton **Enregistrer le paiement** : renseignez la date de paiement et le mode. Le statut passe à `payée`.
-
-Lors du paiement, deux opérations comptables sont déclenchées automatiquement :
-
-1. Les **écritures de règlement** sont inscrites au FEC (journal BQ — Banque) : débit du compte d'encaissement (512 Banque, 530 Caisse ou 5112 Chèques selon le mode) et crédit du compte 411 Clients.
-2. Les lignes 411 de l'émission et du règlement sont **lettrées** automatiquement (voir section Lettrage).
-
-Sur la facture payée, dans l'éditeur WYSIWYG :
-- La **date d'échéance** disparaît (remplacée par la date de paiement en vert)
-- Les **conditions de paiement** sont masquées
-- Le **mode de règlement** affiche la valeur enregistrée au paiement (non modifiable)
-
-Sur le PDF, un bandeau **✓ ACQUITTÉE** apparaît à gauche des totaux, au même niveau horizontal, avec la date et le mode de paiement.
-
-## Télécharger le PDF Factur-X
-
-Le bouton **Télécharger PDF** livre le fichier PDF avec le fichier XML EN 16931 embarqué, compatible avec les logiciels comptables (Sage, EBP, Cegid…).
-
-## Envoi groupé
-
-Dans la liste des factures, cochez plusieurs factures via les cases à cocher, puis cliquez **Envoyer la sélection** : un email est envoyé à chaque client avec sa facture en pièce jointe. Le bouton n'est disponible que pour les factures au statut `emise`.
-
-## Créer une facture depuis un bon de livraison
-
-Depuis la fiche d'un bon de livraison, le bouton **Créer la facture** génère une facture pré-remplie avec les lignes du BL et le client associé.
-
----
-
-# Avoirs (Factures d'avoir)
-
-Un avoir (ou note de crédit) annule partiellement ou totalement une facture émise. Il est intitulé **FACTURE D'AVOIR** sur le document.
-
-## Créer un avoir
-
-Deux façons :
-
-1. **Depuis une facture émise** : bouton **Créer un avoir** — le système pré-remplit l'avoir avec les lignes de la facture d'origine et lie les deux documents.
-2. **Directement** : **Avoirs > Nouvel avoir** — saisissez manuellement les lignes.
-
-| Champ | Remarque |
-|---|---|
-| Facture d'origine | Lien vers la facture annulée (recommandé) |
-| Type d'avoir | **À valoir** (défaut) ou **Remboursement au client** |
-| Mode de règlement | Affiché uniquement si type = Remboursement |
-| Lignes | Montants positifs — le PDF les présente comme note de crédit |
-
-## Type d'avoir
-
-| Type | Usage | Mode de règlement |
-|---|---|---|
-| **À valoir** | Crédit sur prochaine commande | Masqué |
-| **Remboursement** | Virement ou chèque vers le client | Obligatoire |
-
-Si le client était configuré en prélèvement SEPA, le mode est automatiquement converti en **Virement SEPA** pour un remboursement (sens inverse d'un prélèvement).
-
-## Plafonnement du montant
-
-Plusieurs avoirs partiels sur la même facture sont autorisés, mais leur **total cumulé ne peut pas dépasser le montant TTC de la facture d'origine**. Un bandeau informatif dans l'éditeur affiche en permanence :
-
-- Montant de la facture d'origine
-- Total des avoirs déjà émis
-- **Solde disponible** (en vert si positif, en rouge si épuisé)
-
-L'émission est bloquée avec un message d'erreur si le montant dépasserait le solde disponible.
-
-## Émettre un avoir
-
-Bouton **Émettre** : l'avoir est verrouillé, un PDF Factur-X est généré et les écritures comptables sont inscrites en FEC. Les lignes 411 de la facture d'origine et de l'avoir sont **lettrées automatiquement**.
-
-## Supprimer un avoir brouillon
-
-Un avoir en statut **brouillon** peut être supprimé depuis la liste **Avoirs** (bouton 🗑️). Un avoir émis est définitivement verrouillé et ne peut pas être supprimé.
-
----
-
-# Acomptes
-
-Les acomptes permettent de facturer une partie du montant avant la livraison.
-
-## Cycle de vie
-
-```
-en_attente → encaissé (verrouillé définitivement)
-```
-
-## Créer un acompte
-
-Depuis un devis accepté ou une facture : **Nouvel acompte**.
-
-| Champ | Remarque |
-|---|---|
-| Pourcentage | Optionnel — calcule automatiquement le montant |
-| Montant HT | Peut être saisi directement |
-| Taux TVA | Appliqué à la totalité de l'acompte |
-| TVA exigible à l'encaissement | Cocher si vous êtes en TVA sur encaissements |
-
-## Encaisser un acompte
-
-Bouton **Encaisser** : renseignez la date et le mode de paiement. L'acompte est verrouillé et un PDF est généré.
-
----
-
-# Bons de livraison
-
-Les bons de livraison (BL) documentent la remise physique des biens ou la réalisation des prestations.
-
-## Créer un bon de livraison
-
-**Bons de livraison > Nouveau BL**, ou depuis un devis accepté via le bouton **Créer un BL**. Un BL peut être lié à un devis et/ou une facture.
-
-| Champ | Remarque |
-|---|---|
-| Lieu de livraison | Adresse si différente de la fiche client |
-| Lignes | Désignation + quantité + article (optionnel) + N° de série |
-
-La **date de livraison** n'est pas saisie dans le système — elle est apposée manuellement à la main dans le cadre prévu à cet effet en bas du document imprimé.
-
-## Créer une facture depuis un BL
-
-Depuis un bon de livraison validé, le bouton **Créer la facture** génère une facture pré-remplie avec les lignes du BL.
-
-## Suppression
-
-Un BL peut être supprimé tant qu'il n'est pas lié à une facture émise ou à un chaînage documentaire (devis → BL → facture).
-
----
-
-# Prélèvements SEPA
-
-FacturPro génère des fichiers de prélèvement bancaire au format **pain.008.001.02** (norme SEPA) directement importables dans votre logiciel bancaire.
-
-## Prérequis
-
-Avant de générer un fichier SEPA, vérifiez que :
-
-1. L'**ICS** (Identifiant Créancier SEPA) est renseigné dans **Paramètres > Entreprise > Banque**.
-2. L'**IBAN** et le **BIC** de l'entreprise sont renseignés.
-3. Chaque client à prélever possède un **IBAN**, un **BIC**, une **RUM** (référence mandat) et une **date de mandat** dans sa fiche.
-
-## Générer un fichier SEPA
-
-1. Allez dans **Factures** (liste).
-2. Cochez les factures à prélever via les cases à cocher (seules les factures `emise` avec mode de règlement SEPA sont sélectionnables).
-3. Cliquez **Générer SEPA**.
-4. Le système valide chaque facture :
-   - Vérifie que le client a un IBAN, BIC, RUM et une date de mandat.
-   - Affiche un message d'erreur par facture si une information est manquante.
-5. Un fichier XML `sepa_YYYY-MM-DD.xml` est téléchargé. Importez-le dans votre interface bancaire.
-
-## Structure du fichier
-
-Le fichier suit le schéma ISO 20022 pain.008.001.02 (prélèvement CORE ou B2B selon le type de mandat). Chaque transaction correspond à une facture. La date de règlement demandée est le lendemain de la génération (D+1 ouvré à paramétrer dans votre banque).
-
----
-
-# Lettrage
-
-Le lettrage est le rapprochement comptable des écritures du compte **411 Clients** : chaque débit (émission d'une facture) est mis en regard du crédit correspondant (paiement reçu ou avoir émis). Les deux lignes reçoivent la même **lettre** (A, B, C… Z, AA, AB…) pour signifier qu'elles s'annulent mutuellement.
-
-Les lignes **non lettrées** représentent des créances encore ouvertes (factures impayées sans avoir associé).
-
-## Lettrage automatique
-
-FacturPro letttre automatiquement dans deux situations :
-
-| Événement | Effet |
-|---|---|
-| Facture marquée **payée** | Les lignes 411 de l'émission et du règlement reçoivent la même lettre |
-| Avoir émis sur une facture | Les lignes 411 de la facture et de l'avoir reçoivent la même lettre |
-
-## Page Lettrage
-
-Accessible depuis la barre de navigation **⚖️ Lettrage**.
-
-La page affiche, pour chaque client sélectionné dans le filtre, deux sections :
-
-**Non-lettrées (créances ouvertes)**
-
-- Liste des écritures 411 sans lettre attribuée.
-- Le **solde non lettré** (débit – crédit) apparaît en rouge si positif (impayé) ou en vert si soldé.
-- Cochez les lignes à rapprocher, puis cliquez **Lettrer la sélection**.
-- Le bouton **Tout lettrer** tente de lettrer toutes les lignes non-lettrées du client en une seule fois.
-
-**Lettrées (créances soldées)**
-
-- Regroupées par lettre (A, B…).
-- Chaque groupe dispose d'un bouton **Délettrer** pour annuler le rapprochement si une erreur a été commise.
-
-## Lettrage manuel
-
-Le lettrage manuel exige que la **somme des débits** sélectionnés soit **égale à la somme des crédits** (tolérance de 0,01 €). Si ce n'est pas le cas, le système rejette l'opération avec un message indiquant l'écart.
-
-## Impact sur le FEC
-
-Depuis l'introduction du lettrage, chaque paiement de facture génère également des **écritures de règlement** dans le FEC (journal BQ — Banque) :
-
-| Compte | Sens | Libellé |
-|---|---|---|
-| 512 Banque / 530 Caisse / 5112 Chèques | Débit | Règlement FAC-YYYY-NNNN |
-| 411 Clients | Crédit | Règlement FAC-YYYY-NNNN |
-
-Le FEC est ainsi complet : émission + règlement + lettrage, vérifiable lors d'un contrôle fiscal.
-
----
-
-# Gestion des utilisateurs
-
-## Rôles
-
-| Rôle | Droits |
-|---|---|
-| `admin` | Toutes les fonctions : clients, devis, factures, acomptes, BL, avoirs, articles, paramètres, utilisateurs, sauvegardes |
-| `comptable` | Clients, devis, factures, acomptes, BL, avoirs, articles — pas de gestion des utilisateurs ni des sauvegardes |
-| `commercial` | Clients, devis (lecture+écriture), factures et acomptes en lecture seule, BL, articles |
-| `lecteur` | Lecture seule sur clients, devis, factures, acomptes, BL, articles |
-| `super_admin` | Passe outre toutes les vérifications de permission ; gère plusieurs sociétés |
-
-## Créer un utilisateur
-
-**Paramètres > Utilisateurs > Nouvel utilisateur**.
-
-Un `admin` peut créer des utilisateurs et les affecter à sa propre société. Seul un `super_admin` peut créer des comptes affectés à plusieurs sociétés.
-
-## Multi-société
-
-Le `super_admin` peut gérer plusieurs entreprises depuis une seule interface :
-
-- **Paramètres > Entreprise > Nouvelle société** crée une deuxième entité.
-- Un utilisateur peut être affecté à plusieurs sociétés avec des rôles différents par société.
-- Le commutateur de société apparaît dans le menu de navigation si l'utilisateur a accès à plusieurs entités.
+| **Loi anti-fraude TVA 2018** | Inaltérabilité des documents garantie par des verrous base de données + chaîne SHA-256 |
+| **Factur-X / EN 16931** | Chaque facture embarque un XML ZUGFeRD lisible par les logiciels comptables |
+| **FEC DGFiP** | Export Fichier des Écritures Comptables à tout moment, par exercice fiscal |
+| **Clôture annuelle** | Procédure de clôture d'exercice avec Procès-Verbal horodaté (art. 88 loi 2015-1785) |
+| **Mentions légales factures** | Escompte, pénalités de retard et indemnité forfaitaire automatiquement générées (art. L441-9/L441-10 CCom) |
+| **e-invoicing 2026** | Intégration Chorus Pro / Portail Public de Facturation (dépôt XML Factur-X) |
+| **RGPD** | Statuts clients, durée de conservation, anonymisation |
+| **SEPA** | Fichiers de prélèvement pain.008.001.02 |
 
 ---
 
@@ -629,97 +39,1050 @@ Le `super_admin` peut gérer plusieurs entreprises depuis une seule interface :
 
 ## Assistant d'installation
 
-L'installeur Windows (`FacturPro-Setup.exe`) guide la configuration en trois étapes après le choix du répertoire d'installation :
+Double-cliquez sur `FacturPro-Setup.exe` et suivez les trois étapes de configuration.
 
-**Page 1 — PostgreSQL**
+![Écran de connexion](screenshots/00-login.png)
+
+**Étape 1 — PostgreSQL**
 
 | Champ | Valeur par défaut |
 |---|---|
-| Mot de passe superutilisateur (`postgres`) | `postgres` |
+| Mot de passe `postgres` | `postgres` |
 
-Si PostgreSQL n'est pas encore installé sur le poste, l'installeur le télécharge et l'installe automatiquement via `winget`.
+Si PostgreSQL 17 n'est pas installé, l'installeur le télécharge et l'installe automatiquement. **Ne modifiez pas le port PostgreSQL** (5432 par défaut).
 
-**Page 2 — Compte administrateur**
+**Étape 2 — Nom de votre société**
+
+Saisissez la raison sociale exacte de votre entreprise. Elle sera utilisée pour créer la première société dans FacturPro et ne peut pas être vide.
+
+**Étape 3 — Compte administrateur**
 
 | Champ | Remarque |
 |---|---|
 | Adresse e-mail | Identifiant de connexion du super-administrateur |
-| Mot de passe | Minimum 8 caractères |
+| Mot de passe | Minimum 8 caractères, mémorisez-le |
 
-**Page 3 — Configuration du serveur**
+**Étape 4 — Port TCP**
 
-| Champ | Valeur par défaut | Plage autorisée |
+| Champ | Défaut | Plage |
 |---|---|---|
-| Port TCP | `3000` | 1024 à 65535 |
+| Port serveur | `3000` | 1024 – 65535 |
 
-Changez le port si `3000` est déjà utilisé par un autre logiciel sur le poste. Le port choisi est appliqué automatiquement dans :
-- Le fichier de configuration (`.env`)
-- La règle pare-feu Windows (entrante, réseau privé)
-- Les raccourcis bureau et menu Démarrer
+Changez le port si 3000 est déjà utilisé (Skype, IIS, autre logiciel). Le pare-feu Windows est configuré automatiquement.
 
 ## Après l'installation
 
-- Le service Windows **FacturPro** démarre automatiquement et se relance à chaque redémarrage.
-- L'interface est accessible à `http://localhost:<port>` depuis n'importe quel navigateur du poste.
-- Les journaux se trouvent dans `<répertoire_installation>\logs\`.
+- Le service Windows **FacturPro** démarre automatiquement à chaque démarrage du poste.
+- L'interface est accessible à `http://localhost:<port>` depuis n'importe quel navigateur du réseau local.
+- Logs : `<dossier_installation>\logs\app.log`
 
 ## Désinstallation
 
-Passez par **Ajout/Suppression de programmes** (Paramètres Windows). Le script de désinstallation arrête le service, le supprime et nettoie les règles pare-feu. La base de données PostgreSQL et les données ne sont **pas** supprimées automatiquement.
+Via **Paramètres Windows > Applications**. La base de données PostgreSQL et les données **ne sont pas supprimées** automatiquement — exportez vos données avant.
+
+---
+
+# Première connexion
+
+## Écran de connexion
+
+![Connexion à FacturPro](screenshots/01-login-rempli.png)
+
+Saisissez l'adresse e-mail et le mot de passe configurés pendant l'installation. Si vous avez plusieurs sociétés, un sélecteur apparaît après la saisie du mot de passe.
+
+![Sélection de société](screenshots/02-choix-societe.png)
+
+## Changer son mot de passe
+
+Menu utilisateur (en bas de la barre latérale) **> Modifier le mot de passe**. L'ancien mot de passe est requis.
+
+---
+
+# Interface générale
+
+## Tableau de bord
+
+![Tableau de bord](screenshots/03-dashboard.png)
+
+La page d'accueil affiche :
+
+- **Chiffres du mois** : devis en cours, factures émises, montant encaissé.
+- **Liste chronologique** de tous les documents récents (devis, factures, avoirs, acomptes, BL) avec statut, montant et boutons d'action directs.
+- **Badges de notification** sur les entrées de navigation : nombre de factures en retard (rouge) et devis expirés (orange), mis à jour toutes les 5 minutes.
+
+## Navigation latérale
+
+La barre de gauche donne accès à toutes les rubriques. Sur mobile ou petit écran, elle se replie avec le bouton **☰** et peut être rouverte avec le même bouton.
+
+| Icône | Rubrique |
+|---|---|
+| 📊 | Tableau de bord |
+| 📈 | Statistiques |
+| 🧑 | Clients |
+| 📋 | Devis |
+| 🧾 | Factures |
+| ↩️ | Avoirs |
+| 💰 | Acomptes |
+| 🚚 | Bons de livraison |
+| 📦 | Articles |
+| 🔍 | Journal d'audit |
+| 📑 | Déclaration TVA |
+| 📅 | Exercices |
+| 🗄️ | Archives |
+| ⚖️ | Lettrage |
+| ⚙️ | Paramètres |
+
+## Onglets de travail
+
+Chaque document ouvert s'affiche dans un **onglet persistant** en haut de l'écran. Les onglets sont conservés au rechargement — vous retrouvez exactement votre contexte. Un onglet non sauvegardé (brouillon) est également restauré.
+
+**Raccourcis clavier** disponibles dans l'éditeur de documents :
+
+| Raccourci | Action |
+|---|---|
+| `Ctrl+S` | Enregistrer le document |
+| `Ctrl+P` | Imprimer (aperçu PDF) |
+
+---
+
+# Configuration de l'entreprise
+
+Avant de créer le premier document, renseignez les informations de votre société dans **Paramètres**.
+
+![Paramètres entreprise](screenshots/13-parametres.png)
+
+## Informations légales
+
+| Champ | Remarque |
+|---|---|
+| Raison sociale | Dénomination exacte telle qu'au SIRET |
+| Forme juridique | SAS, SARL, EI, EURL, etc. |
+| Mention EI | Cocher si entrepreneur individuel — adapte automatiquement les mentions légales |
+| SIRET | 14 chiffres |
+| N° TVA intracommunautaire | FR + 2 chiffres + SIREN |
+| Régime TVA | Normal, Franchise art. 293 B, ou Autoliquidation |
+| Capital social / RCS | Figurent en pied de page des documents |
+
+## Logo
+
+Cliquez **Importer un logo** pour déposer votre fichier (PNG, JPEG, WebP — 2 Mo max). Le logo est intégré en haut de tous les PDFs et sa **couleur dominante est extraite automatiquement** pour habiller les en-têtes de tableaux.
+
+## Email / SMTP
+
+Sans configuration SMTP, les emails sont envoyés via un compte de test Ethereal (lien de prévisualisation affiché, emails non délivrés réellement).
+
+| Champ | Exemple |
+|---|---|
+| Mode | SMTP — Envoi automatique |
+| Hôte SMTP | `smtp.gmail.com` |
+| Port | `587` (STARTTLS) ou `465` (SSL) |
+| Utilisateur | `facturation@modomaine.fr` |
+| Mot de passe | Mot de passe ou token d'application |
+
+Pour Gmail, créez un **mot de passe d'application** dans les paramètres de sécurité Google (compte > Sécurité > Mots de passe des applications).
+
+## Coordonnées bancaires SEPA
+
+Requis pour la génération de fichiers de prélèvement SEPA.
+
+| Champ | Remarque |
+|---|---|
+| IBAN | IBAN de votre compte receveur |
+| BIC | BIC/SWIFT de votre banque |
+| ICS | Identifiant Créancier SEPA — **obligatoire** — obtenu auprès de votre banque |
+
+## CGV et mentions légales
+
+La section **CGV et mentions légales** dans les Paramètres permet de renseigner deux textes qui s'impriment automatiquement en bas de chaque document PDF :
+
+- **Mention légale** (ligne de titre, en gras) : ex. `RCS Paris B 123 456 789 — Capital social : 10 000 €`
+- **CGV** (texte long) : vos conditions générales de vente complètes
+
+## Mentions légales obligatoires sur les factures
+
+![Paramètres mentions légales](screenshots/14-parametres-mentions-legales.png)
+
+Depuis **Paramètres > Mentions légales obligatoires** (nouveau en v2.11.0), configurez les valeurs par défaut qui seront pré-remplies sur chaque nouvelle facture :
+
+| Champ | Valeur légale recommandée |
+|---|---|
+| Pénalités de retard | `Taux directeur BCE majoré de 10 points` (art. L441-10 CCom) |
+| Indemnité forfaitaire de recouvrement | `40` € (fixé par décret, obligatoire en B2B) |
+| Escompte par défaut | `0` (si vous n'accordez pas d'escompte) |
+
+Ces valeurs apparaissent automatiquement dans le pied de page de chaque facture PDF et sont modifiables facture par facture.
+
+## Relances automatiques
+
+Depuis **Paramètres > Relances automatiques**, activez l'envoi automatique d'emails de relance pour les factures impayées :
+
+| Champ | Remarque |
+|---|---|
+| Activer | Cocher pour activer |
+| Relancer après N jours de retard | Ex. `15` — le système attend 15 jours après l'échéance avant la première relance |
+| Heure d'envoi | Ex. `08:00` — heure à laquelle le serveur envoie les relances quotidiennement |
+
+> **Note :** Les relances s'appuient sur le SMTP configuré. Sans SMTP, elles sont envoyées via Ethereal (test uniquement). Le compteur de relances (`nb_relances`) est incrémenté et la date de dernière relance (`derniere_relance`) est enregistrée sur chaque facture.
+
+---
+
+# Gestion des clients
+
+## Liste des clients
+
+![Liste des clients](screenshots/04-clients-liste.png)
+
+La liste affiche tous les clients actifs (les clients anonymisés RGPD n'apparaissent plus). Utilisez la barre de recherche pour filtrer par nom, raison sociale ou ville.
+
+## Créer un client
+
+Cliquez **+ Nouveau client**. Deux types :
+
+- **Professionnel** — raison sociale, SIRET, TVA intracom.
+- **Particulier** — civilité, prénom, nom.
+
+Les champs **adresse**, **code postal** et **ville** sont obligatoires (ils figurent sur les documents).
+
+### Calcul automatique de TVA intracom
+
+Lorsque vous saisissez un **SIRET** et quittez le champ, FacturPro calcule automatiquement le numéro de TVA intracommunautaire (uniquement si le champ TVA est encore vide) :
+
+```
+Clé = (12 + 3 × (SIREN mod 97)) mod 97
+N° TVA = "FR" + clé (2 chiffres) + SIREN
+```
+
+Exemple : SIRET `12345678900014` → SIREN `123456789` → clé `(12 + 3×789 mod 97) mod 97 = 12` → TVA `FR12123456789`.
+
+### Mode de règlement par défaut
+
+Pré-sélectionné automatiquement lors de la création d'une facture pour ce client. Évite de ressaisir le mode à chaque fois.
+
+| Mode | Code |
+|---|---|
+| Virement bancaire | `virement` |
+| Virement SEPA | `virement_sepa` |
+| Prélèvement SEPA | `prelevement_sepa` |
+| Chèque | `cheque` |
+| Espèces | `especes` |
+| Carte bancaire | `carte` |
+
+### Section SEPA client
+
+Pour les clients payant par prélèvement SEPA, renseignez dans la fiche client :
+
+| Champ | Remarque |
+|---|---|
+| IBAN | IBAN du compte à débiter |
+| BIC | BIC/SWIFT de la banque du client |
+| Titulaire du compte | Peut différer de la raison sociale |
+| Référence mandat (RUM) | Référence unique du mandat signé par le client |
+| Date de signature | Date à laquelle le client a signé le mandat |
+| Type | `CORE` (standard) ou `B2B` (interentreprises) |
+
+### RGPD
+
+| Statut | Signification |
+|---|---|
+| Prospect | Contact initial, pas encore de document signé |
+| Client actif | Au moins un devis accepté |
+| Inactif | Aucune activité récente |
+| Anonymisé | Données personnelles effacées (conservation légale 10 ans) |
+
+Le statut passe automatiquement de *Prospect* à *Client actif* lors de l'acceptation d'un devis.
+
+---
+
+## Import CSV clients
+
+L'import CSV permet de créer des dizaines ou centaines de clients en une seule opération.
+
+### Accès
+
+**Clients > Importer CSV** (bouton dans la barre d'outils).
+
+### Format attendu
+
+Le fichier doit être encodé en **UTF-8** (sans BOM), séparateur **point-virgule (`;`)**, avec en-têtes en première ligne.
+
+**Fichier d'exemple** : `docs/exemples/clients-import-exemple.csv`
+
+**En-têtes acceptées** (ordre libre) :
+
+| Colonne | Obligatoire | Valeurs acceptées | Exemple |
+|---|---|---|---|
+| `Type` | Non | `professionnel` ou `particulier` | `professionnel` |
+| `Raison_sociale` | Si professionnel | Texte libre | `Dupont & Associés SAS` |
+| `Civilite` | Si particulier | `M.`, `Mme`, `Dr`… | `M.` |
+| `Prenom` | Si particulier | Texte libre | `Jean` |
+| `Nom` | Si particulier | Texte libre | `Dupont` |
+| `Adresse` | **Oui** | Texte libre | `12 rue de la Paix` |
+| `Adresse2` | Non | Complément | `Bât. C Appt 12` |
+| `Code_postal` | **Oui** | Texte libre | `75001` |
+| `Ville` | **Oui** | Texte libre | `Paris` |
+| `Pays` | Non | Défaut : `France` | `France` |
+| `Email` | Non | Adresse valide | `contact@exemple.fr` |
+| `Telephone` | Non | Texte libre | `01 42 00 00 01` |
+| `SIRET` | Non | 14 chiffres (espaces ignorés) | `12345678900014` |
+| `TVA_Intracom` | Non | FR + clé + SIREN | `FR12123456789` |
+| `Mode_TVA` | Non | `normal`, `franchise_293b`, `autoliquidation` | `normal` |
+| `Mode_reglement` | Non | Voir tableau modes | `virement` |
+| `Statut_RGPD` | Non | `prospect`, `client`, `inactif` | `client` |
+
+### Exemple de fichier
+
+```csv
+Type;Raison_sociale;Civilite;Prenom;Nom;Adresse;Adresse2;Code_postal;Ville;Pays;Email;Telephone;SIRET;TVA_Intracom;Mode_TVA;Mode_reglement;Statut_RGPD
+professionnel;Dupont & Associés SAS;;; ;12 rue de la Paix;;75001;Paris;France;contact@dupont-assoc.fr;01 42 00 00 01;12345678900014;FR12123456789;normal;virement;client
+particulier;;M.;Jean;Lefebvre;8 allée des Roses;Bât. C Appt 12;33000;Bordeaux;France;jean.lefebvre@email.com;06 12 34 56 78;;;normal;virement;client
+```
+
+### Déroulement de l'import
+
+1. Préparez votre fichier CSV (dans Excel : `Fichier > Enregistrer sous > CSV UTF-8 séparé par des virgules`, puis remplacez les virgules par des points-virgules).
+2. Cliquez **Importer CSV** dans la liste des clients.
+3. Sélectionnez votre fichier.
+4. Patientez — FacturPro insère les lignes une par une et affiche un rapport :
+
+```
+Import terminé :
+  ✓ 45 clients créés
+  ✗  3 lignes ignorées :
+     Ligne 12 : adresse, code postal et ville obligatoires
+     Ligne 28 : email invalide
+     Ligne 31 : adresse, code postal et ville obligatoires
+```
+
+### Erreurs fréquentes
+
+| Erreur | Cause | Solution |
+|---|---|---|
+| "adresse, code postal et ville obligatoires" | Une des trois colonnes est vide | Compléter la colonne manquante |
+| Caractères corrompus (â, é→é) | Mauvais encodage | Enregistrer en UTF-8 dans l'éditeur de texte |
+| Ligne ignorée sans message | SIRET en doublon (ON CONFLICT DO NOTHING) | Supprimer le doublon du fichier |
+| Colonne non reconnue | Nom de colonne mal orthographié | Vérifier les en-têtes (casse insensible) |
+
+> **Astuce Excel :** Ouvrez Excel, allez dans `Données > À partir d'un fichier texte/CSV`, choisissez le séparateur `;` et l'encodage UTF-8. Modifiez, puis exportez avec **Fichier > Enregistrer sous > CSV UTF-8**.
+
+## Export CSV clients
+
+**Clients > Exporter CSV** — télécharge tous les clients non-anonymisés au même format que l'import. Idéal pour une migration ou une synchronisation avec un autre outil.
+
+---
+
+# Catalogue d'articles
+
+![Liste des articles](screenshots/05-articles-liste.png)
+
+## Créer un article
+
+| Champ | Remarque |
+|---|---|
+| Référence | Optionnel, libre (ex. `PREST-001`) |
+| Désignation | Affiché sur les documents |
+| Description | Texte long, imprimé sous la désignation en petit |
+| Unité | heure, jour, forfait, pièce, m², km… |
+| Prix unitaire HT | Valeur par défaut à l'insertion dans un document |
+| Prix d'achat HT | Confidentiel — sert uniquement au calcul de marge |
+| Taux TVA | Taux pré-sélectionné dans les lignes |
+| Stock | Quantité disponible (optionnel) |
+| Actif | Décocher pour masquer sans supprimer |
+
+### Calcul de marge en temps réel
+
+Quand un prix d'achat est renseigné, le formulaire affiche instantanément :
+
+| Indicateur | Formule | Couleur |
+|---|---|---|
+| Marge brute | Prix vente − Prix achat | Vert si > 0, rouge si < 0 |
+| **Taux de marque** | Marge ÷ Prix vente × 100 | Taux le plus utilisé en commerce |
+| Taux de marge | Marge ÷ Prix achat × 100 | Utilisé en industrie |
+
+> Le prix d'achat n'apparaît jamais sur les documents envoyés aux clients.
+
+---
+
+## Import CSV articles
+
+Importez votre catalogue en une seule opération depuis un fichier CSV.
+
+### Accès
+
+**Articles > Importer CSV**.
+
+### Format attendu
+
+Même principe que pour les clients : UTF-8, séparateur `;`.
+
+**Fichier d'exemple** : `docs/exemples/articles-import-exemple.csv`
+
+**En-têtes acceptées** :
+
+| Colonne | Obligatoire | Valeurs acceptées | Exemple |
+|---|---|---|---|
+| `Reference` | Non | Texte libre | `PREST-001` |
+| `Designation` | **Oui** | Texte libre | `Prestation de conseil` |
+| `Description` | Non | Texte long | `Conseil et expertise métier` |
+| `Unite` | Non | Texte libre | `jour`, `heure`, `forfait`, `pièce` |
+| `Prix_HT` | Non | Nombre décimal (`.` ou `,`) | `850` ou `850.00` |
+| `Prix_Achat_HT` | Non | Nombre décimal | `600` |
+| `TVA_Pct` | Non | Taux en % (`20`, `10`, `5.5`, `2.1`, `0`) | `20` |
+| `Stock` | Non | Entier ou vide | `100` |
+| `Actif` | Non | `1` (actif) ou `0` (inactif) | `1` |
+
+### Exemple de fichier
+
+```csv
+Reference;Designation;Description;Unite;Prix_HT;Prix_Achat_HT;TVA_Pct;Stock;Actif
+PREST-CONS;Prestation de conseil;Conseil et expertise métier;jour;850;0;20;0;1
+FORM-001;Formation présentielle;Journée de formation en salle (10 pers. max);forfait;1200;0;20;0;1
+HEB-MENS;Hébergement mensuel;Serveur dédié - 99,9% disponibilité;mois;299;180;20;0;1
+```
+
+### Comportement
+
+- Si un article avec la même **désignation** existe déjà dans le catalogue, la ligne est **ignorée** silencieusement (`ON CONFLICT DO NOTHING`).
+- Le rapport d'import indique le nombre d'articles créés et les lignes ignorées.
+- Les articles importés sont **actifs** par défaut (sauf si `Actif=0`).
+
+### Correspondance des taux TVA
+
+| Valeur CSV | Taux dans FacturPro |
+|---|---|
+| `20` | TVA normale 20% |
+| `10` | TVA intermédiaire 10% |
+| `5.5` | TVA réduite 5,5% |
+| `2.1` | TVA particulière 2,1% |
+| `0` | Exonéré |
+
+> Si le taux indiqué n'existe pas dans FacturPro, le premier taux disponible est utilisé par défaut.
+
+## Export CSV articles
+
+**Articles > Exporter CSV** — exporte les articles actifs au format compatible avec l'import.
+
+---
+
+# Éditeur de documents (WYSIWYG)
+
+Tous les documents s'ouvrent dans un éditeur visuel A4 qui reproduit l'aspect exact du PDF final.
+
+## Devis
+
+![Éditeur de devis](screenshots/15-editeur-devis.png)
+
+## Factures
+
+![Éditeur de facture](screenshots/16-editeur-facture.png)
+
+## Saisie des lignes
+
+| Colonne | Remarque |
+|---|---|
+| Désignation | Texte de la prestation ou du produit |
+| Description (icône +) | Détail optionnel, imprimé sous la désignation en plus petit |
+| Qté | Quantité |
+| P.U. HT | Prix unitaire hors taxe |
+| Remise % | Remise en pourcentage sur la ligne |
+| TVA | Taux sélectionnable dans un menu |
+| Total HT | Calculé automatiquement |
+
+Les totaux (HT, TVA par taux, TTC) sont recalculés en temps réel.
+
+### Insérer un article du catalogue
+
+Dans le champ **Désignation**, commencez à taper le nom — un menu de saisie semi-automatique filtre le catalogue. Cliquer sur un article pré-remplit désignation, description, prix et TVA.
+
+### Réordonner les lignes
+
+Chaque ligne dispose d'une **poignée de glisser-déposer** (icône ⠿ à gauche). Faites glisser la ligne à la position souhaitée — les totaux et les indicateurs de saut de page se recalculent automatiquement.
+
+## Sélection du client
+
+Le champ **Client** est un filtre de recherche : saisissez quelques lettres pour filtrer. L'option **+ Nouveau client** en bas de liste permet de créer un client à la volée.
+
+## Sauts de page
+
+L'éditeur affiche des **indicateurs visuels de saut de page** (ligne pointillée + label `— Page 2 —`) aux mêmes endroits que dans le PDF généré. Ils se mettent à jour à chaque modification de ligne.
+
+## Nouveaux champs sur les factures (v2.11.0)
+
+![Champs mentions légales sur la facture](screenshots/17-facture-mentions-legales.png)
+
+| Champ | Où | Description |
+|---|---|---|
+| **N° commande** | En-tête de la facture | Référence du bon de commande client (art. L441-9 CCom) — apparaît dans l'en-tête du PDF |
+| **Escompte (%)** | Métadonnées | Taux d'escompte pour paiement anticipé — affiché dans le pied de page du PDF avec le montant calculé |
+| **Pénalités de retard** | Pré-rempli depuis les paramètres | Modifiable par facture — imprimé en pied de page |
+
+---
+
+# Devis
+
+![Liste des devis](screenshots/07-devis-liste.png)
+
+## Cycle de vie
+
+```
+Brouillon ──► Envoyé ──► Accepté (signé = verrouillé)
+                │                └──► Bon de livraison (optionnel)
+                │                └──► Facture
+                └──► Refusé
+```
+
+## Créer un devis
+
+1. **Devis > + Nouveau devis**
+2. Sélectionnez le **client** via la recherche filtrée.
+3. Renseignez **objet**, **date de validité**, **conditions de paiement**.
+4. Ajoutez les lignes (désignation, quantité, prix HT, TVA, remise).
+5. Cliquez **Enregistrer** — le numéro `DEV-2026-0001` est attribué au premier enregistrement.
+
+La case **Devis gratuit** est cochée par défaut — décochez-la pour activer la tarification.
+
+## Envoyer un devis
+
+Bouton **Envoyer** dans la barre d'outils :
+
+- Passe le statut à `envoyé`.
+- Si un email client est renseigné, propose l'envoi par email avec le PDF joint.
+
+## Accepter un devis
+
+Bouton **Accepter** :
+
+- Verrouille le devis (statut `signé`).
+- Le statut RGPD du client passe automatiquement de *Prospect* à *Client actif*.
+- Les boutons **Créer un BL** et **Créer la facture** apparaissent dans la barre.
+
+## Signature électronique (v2.11.0)
+
+Le bouton **✍ Envoyer lien de signature** (disponible sur les devis envoyés) permet à votre client de signer électroniquement depuis son navigateur, sans logiciel tiers.
+
+**Flux de signature :**
+
+1. Vous cliquez **Envoyer lien de signature** → un email est envoyé au client avec un lien unique.
+2. Le client clique le lien → une page de signature s'ouvre dans son navigateur.
+3. Il confirme → le devis passe automatiquement au statut **Accepté**.
+4. L'IP, le nom et l'horodatage sont enregistrés sur le devis pour traçabilité.
+
+> **Sécurité :** Le lien contient un UUID unique généré à la création du devis. Il ne peut être utilisé qu'une seule fois. Toute tentative avec un lien déjà utilisé affiche "Ce devis a déjà été signé le..."
+
+## Dupliquer
+
+Bouton **Dupliquer** : crée un devis `brouillon` avec les mêmes lignes — idéal pour créer des variantes.
+
+## Convertir en bon de livraison
+
+Depuis un devis accepté : **Créer un BL** → BL pré-rempli avec les lignes du devis.
+
+## Convertir en facture
+
+Depuis un devis accepté : **Créer la facture** → facture pré-remplie.
+
+## Télécharger le PDF
+
+Bouton **PDF** → télécharge le PDF généré (ou l'aperçu si non encore émis).
+
+---
+
+# Avenants
+
+Un avenant modifie un devis accepté sans altérer l'original.
+
+## Créer un avenant
+
+Depuis la barre d'outils d'un devis accepté : **Nouvel avenant**.
+
+| Champ | Remarque |
+|---|---|
+| Motif | Obligatoire — justification de la modification |
+| Lignes | Modifications par rapport au devis initial (ajout, suppression, modification de prix) |
+| Delta montant | Calculé automatiquement |
+
+L'avenant suit le même cycle : `brouillon → envoyé → signé`. Une fois signé, il est verrouillé.
+
+---
+
+# Factures
+
+![Liste des factures](screenshots/06-factures-liste.png)
+
+## Cycle de vie
+
+```
+Brouillon ──► Émise (verrouillée) ──► Payée
+```
+
+Une fois **émise**, la facture est verrouillée définitivement. Pour annuler, créez un avoir.
+
+## Créer une facture
+
+Depuis un devis accepté (**Créer la facture**), depuis un BL (**Créer la facture**), ou directement **Factures > Nouvelle facture**.
+
+### Mentions légales obligatoires
+
+Depuis v2.11.0, chaque facture dispose des champs légaux obligatoires (art. L441-9/L441-10 CCom) :
+
+| Champ | Valeur par défaut (depuis paramètres) | Modifiable |
+|---|---|---|
+| **N° commande client** | Vide | Oui — saisir la référence du bon de commande reçu |
+| **Escompte (%)** | 0 ou valeur paramétrique | Oui — ex. `2.5` pour 2,5% |
+| **Pénalités de retard** | `Taux directeur BCE + 10 points` | Oui |
+| **Indemnité forfaitaire** | `40 €` | Non modifiable par facture (paramètre global) |
+
+Ces mentions apparaissent automatiquement dans le pied de page du PDF :
+
+```
+Pas d'escompte pour paiement anticipé.
+Pénalités de retard : Taux directeur BCE majoré de 10 points —
+Indemnité forfaitaire de recouvrement : 40 € (art. L441-10 C.com.)
+```
+
+## Émettre une facture
+
+Le bouton **Émettre** :
+
+1. Verrouille la facture (aucune modification possible ensuite).
+2. Génère le **PDF Factur-X** (PDF + XML EN 16931 embarqué).
+3. Inscrit les **écritures FEC** (journal VT — Ventes).
+4. Enregistre un **scellement SHA-256** dans la chaîne d'intégrité.
+5. Archive un snapshot JSON du document (conservation 10 ans).
+
+## Marquer comme payée
+
+Bouton **Enregistrer le paiement** : date de paiement + mode. Déclenche automatiquement :
+
+- Écritures de règlement au FEC (journal BQ — Banque)
+- Lettrage automatique des lignes 411 de l'émission et du règlement
+
+## Envoyer par email
+
+- **Envoyer** : envoie au email du client en base.
+- **Envoyer à…** : saisissez l'adresse manuellement.
+- **Relancer** : email de relance avec sujet/corps personnalisables et PDF joint.
+- **Ouvrir dans Outlook** (Windows) : ouvre le client mail avec l'email pré-composé via MAPI.
+- **Télécharger .eml** : fichier email téléchargeable pour envoi depuis n'importe quel client mail.
+
+## Envoi groupé
+
+Dans la liste, cochez plusieurs factures `émises`, puis cliquez **Envoyer la sélection (N)** dans la barre d'outils — un email est envoyé à chaque client avec sa facture.
+
+## Dépôt Chorus Pro (e-invoicing 2026)
+
+Si votre client est une entité publique ou si vous participez au déploiement progressif de la facture électronique obligatoire, le bouton **Déposer Chorus Pro** soumet la facture au Portail Public de Facturation.
+
+**Prérequis** : définir dans `.env` :
+```
+CHORUS_PRO_CLIENT_ID=votre_client_id
+CHORUS_PRO_CLIENT_SECRET=votre_secret
+CHORUS_PRO_LOGIN=votre_login_piste
+```
+
+L'ID de dépôt et le statut Chorus Pro sont enregistrés sur la facture et consultables via **Vérifier statut Chorus Pro**.
+
+---
+
+# Avoirs (Factures d'avoir)
+
+## Créer un avoir
+
+Deux méthodes :
+
+1. **Depuis une facture émise** : bouton **Créer un avoir** — lignes pré-remplies, lien automatique.
+2. **Directement** : **Avoirs > Nouvel avoir**.
+
+| Champ | Remarque |
+|---|---|
+| Facture d'origine | Lien vers la facture annulée (recommandé) |
+| Type d'avoir | **À valoir** (défaut) ou **Remboursement** |
+| Mode de règlement | Affiché uniquement si type = Remboursement |
+
+## Plafonnement
+
+Plusieurs avoirs partiels sont possibles sur la même facture, mais leur total cumulé ne peut pas dépasser le montant TTC de la facture d'origine. Un bandeau dans l'éditeur affiche en permanence le **solde disponible**.
+
+---
+
+# Acomptes
+
+Les acomptes facturent une partie du montant avant livraison.
+
+## Créer un acompte
+
+Depuis un devis accepté ou une facture.
+
+| Champ | Remarque |
+|---|---|
+| Pourcentage | Calcule automatiquement le montant |
+| Montant HT | Peut être saisi directement |
+| Taux TVA | Appliqué à la totalité de l'acompte |
+
+## Encaisser
+
+Bouton **Encaisser** → date + mode de paiement → verrouillage + PDF.
+
+---
+
+# Bons de livraison
+
+Les BL documentent la remise des biens ou la réalisation des prestations.
+
+## Créer un BL
+
+**Bons de livraison > Nouveau BL**, ou depuis un devis accepté (**Créer un BL**).
+
+| Champ | Remarque |
+|---|---|
+| Lieu de livraison | Si différent de l'adresse client |
+| Lignes | Désignation + quantité + unité + N° de série (optionnel) |
+
+## Créer une facture depuis un BL
+
+Bouton **Créer la facture** → facture pré-remplie avec client et lignes du BL.
+
+---
+
+# Prélèvements SEPA
+
+Génère des fichiers XML pain.008.001.02 importables dans votre interface bancaire.
+
+## Prérequis
+
+1. **Entreprise** : ICS, IBAN, BIC renseignés dans Paramètres.
+2. **Client** : IBAN, BIC, RUM, date de mandat dans la fiche client.
+
+## Générer un fichier SEPA
+
+1. **Factures** → cocher les factures à prélever (mode `prelevement_sepa` uniquement).
+2. Cliquer **Générer SEPA**.
+3. Choisir la date d'exécution et le type de séquence (`FRST`, `RCUR`, `FNAL`, `OOFF`).
+4. Télécharger le fichier XML et l'importer dans votre banque.
+
+---
+
+# Statistiques
+
+![Statistiques KPIs](screenshots/08-stats-kpis.png)
+
+## KPIs (indicateurs clés)
+
+Accessible via **📈 Statistiques**. Sélectionnez la période : mois, trimestre, ou année.
+
+| Indicateur | Calcul |
+|---|---|
+| CA facturé HT | Somme HT des factures émises (hors avoirs) |
+| CA encaissé | Somme TTC des factures payées |
+| Montant moyen | CA facturé ÷ nombre de factures |
+| En attente | Factures émises non payées, échéance non dépassée |
+| En retard | Factures émises non payées, échéance dépassée |
+| Taux de conversion | Devis acceptés ÷ devis envoyés |
+| Délai moyen d'acceptation | Jours entre création et acceptation (180 j max) |
+
+## Balance âgée
+
+Créances non payées groupées par tranche :
+
+| Tranche | Couleur |
+|---|---|
+| Non échu | Vert |
+| 1 à 30 jours | Jaune |
+| 31 à 60 jours | Orange |
+| 61 à 90 jours | Orange foncé |
+| Plus de 90 jours | Rouge |
+
+## Évolution du CA
+
+Graphique en barres sur 12 mois glissants : CA facturé vs CA encaissé.
+
+## Pipeline commercial
+
+Entonnoir brouillons → envoyés → acceptés → facturés, avec montants à chaque étape.
+
+## Top clients et top articles
+
+Top 10 clients par CA HT et top 10 articles sur l'année.
+
+## Trésorerie et DSO
+
+- **DSO** (Days Sales Outstanding) : délai moyen de paiement en jours.
+- **Prévisions** : encaissements attendus groupés par semaine sur 90 jours.
+
+## Taux de marge catalogue
+
+Tableau des articles avec prix achat, taux de marque (rouge < 20%, orange < 40%, vert ≥ 40%).
+
+---
+
+# Déclaration TVA (CA3)
+
+![Déclaration TVA](screenshots/09-decl-tva.png)
+
+Accédez via **📑 Déclaration TVA**. Sélectionnez la période (mensuelle, trimestrielle, annuelle).
+
+## Section A — TVA collectée (calculée automatiquement)
+
+FacturPro calcule automatiquement depuis vos factures émises :
+
+| Ligne | Contenu |
+|---|---|
+| Par taux | Base HT et TVA par taux (20%, 10%, 5,5%, 2,1%) |
+| Avoirs émis | Montants à déduire |
+| Franchise 293 B | Opérations non soumises |
+| **Total TVA brute** | Somme des TVA collectées |
+| **Total TVA nette** | Après déduction des avoirs |
+
+## Section B — TVA déductible (saisie manuelle)
+
+Depuis v2.11.0, **saisissez directement le montant** de TVA déductible sur vos achats dans le champ prévu. La valeur est **automatiquement enregistrée** par période et persist entre les sessions.
+
+| Champ | Contenu |
+|---|---|
+| TVA déductible sur achats | Montant à saisir depuis vos factures d'achat |
+| Notes | Commentaire libre pour votre comptable |
+
+## Section C — Solde TVA à payer
+
+Calculé automatiquement : **TVA collectée nette − TVA déductible = Solde à payer** (ou crédit de TVA si négatif).
+
+> **Important :** Ce document est un outil d'aide au calcul. Vérifiez avec votre expert-comptable avant le dépôt officiel sur impots.gouv.fr.
+
+---
+
+# Exercices comptables
+
+![Exercices comptables](screenshots/10-exercices.png)
+
+La clôture annuelle est **obligatoire** en droit français (art. L123-12 Code de Commerce et art. 88 loi 2015-1785 anti-fraude TVA).
+
+## Ouvrir un exercice
+
+1. Cliquez **+ Ouvrir cet exercice** dans la vue **📅 Exercices**.
+2. Sélectionnez l'**année**.
+3. Renseignez la **date de début** (défaut : 1er janvier de l'année sélectionnée).
+
+> **Exercice non-civil :** Si votre exercice commence le 1er avril 2025 et se termine le 31 mars 2026, sélectionnez l'année 2025 et définissez la date d'ouverture au 01/04/2025.
+
+## Clôturer un exercice
+
+1. Cliquez **🔒 Clôturer** sur la ligne de l'exercice.
+2. Une boîte de dialogue propose automatiquement la **date de clôture** calculée depuis la date d'ouverture (ex. 01/04/2025 → 31/03/2026).
+3. Modifiez si nécessaire, puis confirmez.
+
+La clôture est **irréversible**. Elle :
+
+- Calcule l'**empreinte SHA-256** du FEC de l'exercice (identique au contenu exporté).
+- Enregistre la date, le nombre d'écritures et l'empreinte.
+- Génère un **Procès-Verbal de clôture** PDF téléchargeable.
+
+> ⚠️ **La clôture ne peut pas être annulée.** Pour l'exercice en cours, attendez que toutes les factures soient saisies.
+
+## Télécharger le FEC par exercice
+
+Bouton **⬇ FEC 2025** → fichier texte tabulé `FEC_2025.txt` contenant uniquement les écritures de cet exercice, conforme DGFiP.
+
+Vous pouvez aussi télécharger le FEC depuis **Factures > Export FEC** avec le filtre année : `?annee=2025`.
+
+## Procès-Verbal de clôture (PV)
+
+Bouton **📄 PV** → PDF A4 contenant :
+
+- Raison sociale, SIRET
+- Période fiscale
+- Date et heure de clôture
+- Nombre d'écritures comptables
+- **Empreinte SHA-256** du FEC (preuve d'intégrité opposable)
+- Référence légale : art. 88 loi 2015-1785 + art. 286-I-3° CGI
+- Zone de signature
+
+Ce document doit être **conservé** et peut être demandé lors d'un contrôle fiscal.
+
+---
+
+# Lettrage
+
+![Lettrage comptable](screenshots/11-lettrage.png)
+
+Le lettrage rapproche les écritures du compte 411 Clients : chaque débit (facture émise) est mis en regard de son crédit (paiement ou avoir).
+
+## Lettrage automatique
+
+| Événement | Effet |
+|---|---|
+| Facture marquée **payée** | Lignes 411 de l'émission + règlement → même lettre |
+| **Avoir émis** sur une facture | Lignes 411 de la facture + avoir → même lettre |
+
+## Lettrage manuel
+
+1. Sélectionnez un client dans le filtre.
+2. Cochez les lignes à rapprocher (débit = crédit à 0,01 € près requis).
+3. Cliquez **Lettrer la sélection** — une lettre est attribuée (A, B… Z, AA…).
+4. Bouton **Délettrer** pour annuler un lettrage erroné.
+
+---
+
+# Journal d'audit
+
+![Journal d'audit](screenshots/18-audit.png)
+
+Accessible via **🔍 Journal d'audit** (administrateurs uniquement). Affiche les 200 dernières actions sensibles :
+
+| Action enregistrée | Détail |
+|---|---|
+| Connexion | Email, IP, horodatage |
+| Émission de facture | Numéro de facture |
+| Paiement de facture | Mode de paiement |
+| Dépôt Chorus Pro | ID de dépôt |
+
+---
+
+# Archives
+
+![Archives](screenshots/12-archives.png)
+
+Accessible via **🗄️ Archives**. Affiche les snapshots JSON immuables de tous les documents fiscaux.
+
+- Chaque document émis est archivé automatiquement avec un **hash SHA-256**.
+- Conservation légale : **10 ans**.
+- Lecture seule — modification et suppression impossibles (trigger DB).
+
+---
+
+# Relances automatiques (v2.11.0)
+
+Une fois configurées dans **Paramètres > Relances automatiques**, FacturPro envoie automatiquement chaque jour un email de relance aux clients dont la facture est en retard.
+
+## Comment ça fonctionne
+
+1. Chaque jour à l'heure configurée (ex. 08:00), le serveur vérifie les factures `émises` dont l'échéance est dépassée depuis plus de N jours.
+2. Pour chaque facture, il vérifie qu'aucune relance n'a été envoyée dans les N derniers jours.
+3. Un email de relance est envoyé au client.
+4. La date de dernière relance et le compteur sont mis à jour sur la facture.
+
+## Email de relance automatique
+
+L'objet de l'email est : `Relance — Facture FAC-2026-NNNN en attente de règlement`
+
+Le corps mentionne : le numéro de facture, le montant TTC, la date d'échéance et le nombre de jours de retard.
+
+## Suivi
+
+Sur chaque facture en retard, vous pouvez voir :
+- **Dernière relance** : date du dernier email envoyé
+- **Nb relances** : nombre total de relances envoyées
+
+---
+
+# Gestion des utilisateurs
+
+## Rôles
+
+| Rôle | Droits principaux |
+|---|---|
+| `admin` | Tout : clients, documents, articles, paramètres, utilisateurs, sauvegardes |
+| `comptable` | Clients + documents complets — pas de gestion utilisateurs ni sauvegardes |
+| `commercial` | Clients + devis (lecture/écriture) + factures/BL/articles en lecture |
+| `lecteur` | Lecture seule sur tout |
+| `super_admin` | Passe outre toutes les permissions — gère plusieurs sociétés |
+
+## Visibilité des commerciaux
+
+Un commercial peut être configuré pour voir **uniquement ses propres devis et factures** (ceux qu'il a créés) ou **tous les documents de la société**. Ce paramètre se configure dans Paramètres > Utilisateurs, colonne **Voir tout**.
+
+## Multi-société
+
+Le super-administrateur peut gérer plusieurs entités depuis un seul compte :
+- **Paramètres > Entreprise > Nouvelle société** pour créer une entité supplémentaire.
+- Le commutateur de société apparaît lors de la connexion si plusieurs entités sont accessibles.
 
 ---
 
 # Sauvegardes
 
-## Configuration
+![Sauvegardes](screenshots/19-sauvegardes.png)
 
-**Paramètres > Sauvegardes** (réservé aux administrateurs).
+## Configuration (admin uniquement)
 
-| Paramètre | Valeur par défaut |
+**Paramètres > Sauvegarde automatique**.
+
+| Paramètre | Remarque |
 |---|---|
-| Répertoire de destination | Chemin local ou réseau |
+| Répertoire de destination | Chemin local ou réseau (ex. `C:\Sauvegardes\FacturPro`) |
 | Fréquence | Quotidienne, hebdomadaire, mensuelle |
 | Heure | Heure locale du serveur |
-| Rétention | Nombre de sauvegardes à conserver |
+| Taille max (Mo) | Alerte si le total des sauvegardes dépasse ce seuil |
 
-Les sauvegardes sont effectuées via `pg_dump` (chemin des binaires PostgreSQL configuré dans `PG_BIN`, par défaut `C:\Program Files\PostgreSQL\17\bin`).
+Les sauvegardes sont des fichiers `.sql.gz` (compression gzip, ~6× de compression). Elles sont générées via `pg_dump`.
 
-## Déclencher une sauvegarde manuelle
+## Lancer une sauvegarde manuelle
 
-Bouton **Sauvegarder maintenant** disponible sur la page de configuration.
+Bouton **▶ Lancer maintenant**.
 
-## Restauration
+## Restaurer
 
-La restauration n'est pas intégrée à l'interface ; elle se fait manuellement via `pg_restore` ou `psql` en ligne de commande. Contactez votre administrateur système.
+La restauration se fait en ligne de commande (contactez votre administrateur) :
+
+```bash
+# Décompresser
+gunzip sauvegarde.sql.gz
+
+# Restaurer
+psql -U facturpro -d facturpro -f sauvegarde.sql
+```
 
 ---
 
 # Conformité fiscale
 
-## Export FEC
+## Chaîne de scellement SHA-256
 
-Le **Fichier des Écritures Comptables** (FEC) est généré automatiquement à chaque émission de facture ou d'avoir. Pour l'exporter :
+Chaque document fiscal émis est chaîné par un hash SHA-256 cumulatif dans la table `journal_scellement`. Pour vérifier l'intégrité :
 
-**Factures > Exporter FEC** — télécharge un fichier texte tabulé au format DGFiP, nommé `FEC_YYYY-MM-DD.txt`.
+**Factures > Vérifier le scellement** → retourne ✓ si la chaîne est intacte, ou identifie le premier document altéré.
 
-Ce fichier est directement utilisable lors d'un contrôle fiscal (article L. 47 A du Livre des Procédures Fiscales).
+Cette vérification prouve que les données n'ont pas été modifiées après émission, même directement dans la base.
 
-## Vérification de la chaîne de scellement
+## Export FEC global
 
-Chaque document fiscal (facture, avoir, acompte, avenant signé) est chaîné par un hash SHA-256 cumulatif. Pour vérifier l'intégrité :
+**Factures > Export FEC** → fichier texte tabulé DGFiP `FEC_YYYY-MM-DD.txt` (toutes les écritures de toutes les années).
 
-**Factures > Vérifier le scellement** — retourne `{ valide: true }` si la chaîne est intacte, ou identifie le premier document altéré.
+Pour un export par exercice : **Exercices > ⬇ FEC 2025**.
 
-Cette vérification peut être demandée par l'administration fiscale pour prouver que les documents n'ont pas été modifiés après émission.
+## Format Factur-X EN 16931
 
-## Pourquoi les documents sont-ils verrouillés ?
+Chaque facture émise est un **PDF/A-3b** avec un fichier XML ZUGFeRD embarqué conforme au profil EN 16931. Ce format est :
 
-La **loi anti-fraude TVA 2018** (article 88 de la loi de finances 2016) impose que les logiciels de facturation garantissent l'**inaltérabilité**, la **sécurisation**, la **conservation** et l'**archivage** des données. FacturPro satisfait à cette obligation via :
+- Lisible directement par les logiciels comptables (Sage, EBP, Cegid, Pennylane…).
+- Compatible avec l'e-invoicing européen (e-Reporting, PPF).
+- Obligatoire à partir de 2026 pour les transactions B2B en France.
 
-1. Des verrous de base de données (triggers `BEFORE UPDATE`) qui bloquent toute modification d'un document émis.
-2. Une chaîne de hachage SHA-256 (`journal_scellement`) qui détecte toute altération, même directement dans la base.
-3. Un archivage automatique des snapshots JSON des documents avec conservation de 10 ans.
+L'XML contient notamment :
+- Identités vendeur/acheteur avec SIRET et TVA intracom
+- Lignes de facture détaillées
+- Montants HT/TVA/TTC
+- Conditions de paiement et escompte
+- N° de commande client (BuyerReference)
+- Pénalités de retard
 
-## Format Factur-X
+## Attestation de conformité
 
-Les PDFs générés par FacturPro sont au format **Factur-X** (profil EN 16931 / ZUGFeRD) : le fichier XML structuré conforme à la norme européenne est embarqué dans le PDF comme pièce jointe. Les logiciels comptables compatibles (Sage, EBP, Cegid, QuadraFact…) peuvent lire ce XML directement pour importer les écritures sans ressaisie.
+**Factures > Attestation** → document HTML imprimable attestant la conformité du logiciel à la loi anti-fraude TVA 2018. Peut être demandé par l'administration fiscale.
+
+---
+
+# Attestation loi anti-fraude TVA 2018
+
+FacturPro satisfait aux conditions de l'article 88 de la loi n° 2015-1785 du 29 décembre 2015 de finances pour 2016 par les mécanismes suivants :
+
+| Condition légale | Implémentation technique |
+|---|---|
+| **Inaltérabilité** | Triggers `BEFORE UPDATE` bloquant toute modification d'un document émis |
+| **Sécurisation** | Chaîne SHA-256 dans `journal_scellement` — toute altération détectable |
+| **Conservation** | Archivage automatique des snapshots JSON, 10 ans, immuable |
+| **Archivage** | Table `archive_documents` avec triggers bloquant UPDATE/DELETE |
+| **Clôture de période** | Table `exercices` avec hash SHA-256 du FEC à la clôture |
+| **PV de clôture** | PDF horodaté et signable, référence légale incluse |
+
+---
+
+*Document généré par FacturPro v2.11.0 — 2026*

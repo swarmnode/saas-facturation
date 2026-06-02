@@ -31,21 +31,23 @@ export class ExerciceService {
     return r.rows[0] ?? null;
   }
 
-  static async ouvrir(annee: number, entreprise_id: number): Promise<Exercice> {
+  static async ouvrir(annee: number, entreprise_id: number, date_ouverture?: string): Promise<Exercice> {
+    const dateOuv = date_ouverture ?? `${annee}-01-01`;
     const r = await query(`
       INSERT INTO exercices (annee, entreprise_id, date_ouverture)
-      VALUES ($1, $2, CURRENT_DATE)
+      VALUES ($1, $2, $3)
       ON CONFLICT (annee, entreprise_id) DO UPDATE SET statut = exercices.statut
       RETURNING *
-    `, [annee, entreprise_id]);
+    `, [annee, entreprise_id, dateOuv]);
     return r.rows[0];
   }
 
-  static async cloturer(annee: number, entreprise_id: number): Promise<{
+  static async cloturer(annee: number, entreprise_id: number, date_cloture?: string): Promise<{
     exercice: Exercice;
     nb_ecritures: number;
     hash_cloture: string;
   }> {
+    const dateClo = date_cloture ?? `${annee}-12-31`;
     // Auto-crée l'exercice s'il n'existe pas encore
     await this.ouvrir(annee, entreprise_id);
 
@@ -84,13 +86,13 @@ export class ExerciceService {
       const upd = await client.query(`
         UPDATE exercices
         SET statut = 'clos',
-            date_cloture = CURRENT_DATE,
+            date_cloture = $3,
             clos_le = NOW(),
-            nb_ecritures = $3,
-            hash_cloture = $4
+            nb_ecritures = $4,
+            hash_cloture = $5
         WHERE annee = $1 AND entreprise_id = $2
         RETURNING *
-      `, [annee, entreprise_id, nb_ecritures, hash_cloture]);
+      `, [annee, entreprise_id, dateClo, nb_ecritures, hash_cloture]);
       return upd.rows[0] as Exercice;
     });
 

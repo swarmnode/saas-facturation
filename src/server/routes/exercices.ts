@@ -16,9 +16,9 @@ router.get('/', requirePerm('factures:r'), async (req, res, next) => {
 // ── Ouvrir un exercice ────────────────────────────────────────────────────
 router.post('/', requirePerm('factures:w'), async (req, res, next) => {
   try {
-    const { annee } = req.body;
+    const { annee, date_ouverture } = req.body;
     if (!annee || isNaN(Number(annee))) return res.status(400).json({ error: 'Année invalide' });
-    res.status(201).json(await ExerciceService.ouvrir(Number(annee), req.user!.entreprise_id));
+    res.status(201).json(await ExerciceService.ouvrir(Number(annee), req.user!.entreprise_id, date_ouverture));
   } catch(e) { next(e); }
 });
 
@@ -27,7 +27,8 @@ router.post('/:annee/cloturer', requirePerm('factures:w'), async (req, res, next
   try {
     const annee = Number(req.params.annee);
     if (isNaN(annee)) return res.status(400).json({ error: 'Année invalide' });
-    const result = await ExerciceService.cloturer(annee, req.user!.entreprise_id);
+    const { date_cloture } = req.body ?? {};
+    const result = await ExerciceService.cloturer(annee, req.user!.entreprise_id, date_cloture);
     res.json(result);
   } catch(e) { next(e); }
 });

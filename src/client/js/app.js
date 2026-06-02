@@ -2851,10 +2851,18 @@ async function renderExercices(el) {
         </p>
 
         ${anneesDispos.length ? `
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px">
-          <select id="selNouvelAnnee" class="form-control" style="width:120px">
-            ${anneesDispos.map(a => `<option value="${a}">${a}</option>`).join('')}
-          </select>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+          <div class="form-group" style="margin:0">
+            <label style="font-size:12px">Année</label>
+            <select id="selNouvelAnnee" class="form-control" style="width:100px">
+              ${anneesDispos.map(a => `<option value="${a}">${a}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:12px">Début d'exercice</label>
+            <input type="date" id="inputDateOuv" class="form-control" style="width:150px"
+              value="${anneeActuelle}-01-01"/>
+          </div>
           <button class="btn btn-outline" onclick="ouvrirExercice()">+ Ouvrir cet exercice</button>
         </div>` : ''}
 
@@ -2885,7 +2893,7 @@ async function renderExercices(el) {
                     onclick="ouvrirPV(${e.annee})">📄 PV</button>
                 ` : `
                   <button class="btn btn-primary" style="font-size:12px"
-                    onclick="cloturer(${e.annee})">🔒 Clôturer</button>
+                    onclick="cloturer(${e.annee}, '${e.date_ouverture}')">🔒 Clôturer</button>
                 `}
               </td>
             </tr>
@@ -2900,13 +2908,30 @@ async function renderExercices(el) {
 
   window.ouvrirExercice = async function() {
     const annee = Number(document.getElementById('selNouvelAnnee').value);
-    const r = await api.post('/api/exercices', { annee });
+    const date_ouverture = document.getElementById('inputDateOuv')?.value || undefined;
+    const r = await api.post('/api/exercices', { annee, date_ouverture });
     if (r?.id) { load(); } else { alert(r?.error ?? 'Erreur'); }
   };
 
-  window.cloturer = async function(annee) {
-    if (!confirm(`Clôturer l'exercice ${annee} ? Cette opération est irréversible.`)) return;
-    const r = await api.post(`/api/exercices/${annee}/cloturer`, {});
+  window.cloturer = async function(annee, dateOuvStr) {
+    // Déduit la date de clôture par défaut = dernier jour de l'exercice
+    // Si l'exercice commence le 01/04/N il se termine le 31/03/N+1
+    let dateCloDefault;
+    if (dateOuvStr) {
+      const d = new Date(dateOuvStr);
+      d.setFullYear(d.getFullYear() + 1);
+      d.setDate(d.getDate() - 1);
+      dateCloDefault = d.toISOString().slice(0, 10);
+    } else {
+      dateCloDefault = `${annee}-12-31`;
+    }
+    const dateClo = prompt(
+      `Date de clôture de l'exercice ${annee} (dernier jour inclus) :`,
+      dateCloDefault
+    );
+    if (!dateClo) return;
+    if (!confirm(`Clôturer l'exercice ${annee} au ${dateClo} ? Cette opération est irréversible.`)) return;
+    const r = await api.post(`/api/exercices/${annee}/cloturer`, { date_cloture: dateClo });
     if (r?.exercice) {
       document.getElementById('exResult').innerHTML =
         `<div class="alert alert-success" style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:6px;padding:12px;font-size:13px">

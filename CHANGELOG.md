@@ -77,9 +77,19 @@ Remplace par overflow-x:hidden pour conserver le masquage lateral
 lors du collapse tout en permettant le scroll vertical interne.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix(security): corrections code review — conformité fiscale, isolation tenant, injections SQL
+
+Race condition sur la chaîne de scellement (pg_advisory_xact_lock), atomicité de
+emettre/marquerPayee/signer via withTransaction + propagation txClient aux services,
+valid_date FEC corrigé (null → ''), injections SQL paramétrées dans lister/getAvoirsCumul,
+isolation multi-tenant sur DELETE clients, archives (migration 017 + requirePerm),
+PDF devis/factures protégés par requirePerm + filtre entreprise_id.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

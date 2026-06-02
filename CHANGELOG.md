@@ -5,6 +5,22 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix(signature): route publique /api/devis/signer/:token montée avant le middleware JWT
+
+La route était bloquée par app.use('/api', authenticate) car montée
+dans le router devis après le middleware global. Déplacée dans index.ts
+avant authenticate ; doublon dans routes/devis.ts supprimé.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+## [2.11.0] — 2026-06-02
+
 ### Ajouté
 - Feat: priorités 2 et 3 — mentions légales, TVA déductible, relances auto, signature devis, Chorus Pro
 
@@ -1256,6 +1272,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.11.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.11.0
 [2.10.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.10.0
 [2.9.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.9.1
 [2.7.218]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.7.218

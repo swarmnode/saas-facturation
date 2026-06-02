@@ -674,6 +674,7 @@ async function renderView(view, el) {
     case 'acomptes':        return renderDocList('acomptes', el);
     case 'bons-livraison':  return renderDocList('bons-livraison', el);
     case 'articles':        return renderArticles(el);
+    case 'exercices':       return renderExercices(el);
     case 'archives':        return renderArchives(el);
     case 'lettrage':        return renderLettrage(el);
     case 'parametres':      return renderParametres(el);
@@ -2820,15 +2821,113 @@ async function ouvrirAttestation() {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-async function exportFEC() {
+async function exportFEC(annee) {
   const token = localStorage.getItem('jwt');
-  const res = await fetch('/api/factures/export/fec', { headers: { Authorization: `Bearer ${token}` } });
+  const url = annee ? `/api/factures/export/fec?annee=${annee}` : '/api/factures/export/fec';
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) { alert('Erreur export FEC'); return; }
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const objUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'FEC.txt'; a.click();
-  URL.revokeObjectURL(url);
+  a.href = objUrl; a.download = annee ? `FEC_${annee}.txt` : 'FEC.txt'; a.click();
+  URL.revokeObjectURL(objUrl);
+}
+
+async function renderExercices(el) {
+  const anneeActuelle = new Date().getFullYear();
+  async function load() {
+    const exercices = await api.get('/api/exercices') ?? [];
+    const anneesExistantes = new Set(exercices.map(e => e.annee));
+    const anneesDispos = [];
+    for (let a = anneeActuelle; a >= anneeActuelle - 5; a--) {
+      if (!anneesExistantes.has(a)) anneesDispos.push(a);
+    }
+
+    el.innerHTML = `
+      <div class="card" style="max-width:760px">
+        <h2 style="margin-bottom:4px;color:var(--primary)">Exercices comptables</h2>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">
+          Clôture annuelle obligatoire — loi anti-fraude TVA 2018 (art. 88 loi 2015-1785)
+        </p>
+
+        ${anneesDispos.length ? `
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px">
+          <select id="selNouvelAnnee" class="form-control" style="width:120px">
+            ${anneesDispos.map(a => `<option value="${a}">${a}</option>`).join('')}
+          </select>
+          <button class="btn btn-outline" onclick="ouvrirExercice()">+ Ouvrir cet exercice</button>
+        </div>` : ''}
+
+        ${exercices.length === 0 ? `<p style="color:var(--text-muted)">Aucun exercice ouvert.</p>` : `
+        <table class="list-table" style="width:100%">
+          <thead><tr>
+            <th>Année</th><th>Ouverture</th><th>Clôture</th><th>Écritures</th><th>Statut</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+          ${exercices.map(e => `
+            <tr>
+              <td><strong>${e.annee}</strong></td>
+              <td>${e.date_ouverture ?? '-'}</td>
+              <td>${e.date_cloture ?? '-'}</td>
+              <td>${e.nb_ecritures ?? '-'}</td>
+              <td>
+                <span style="padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;
+                  background:${e.statut === 'clos' ? '#d1fae5' : '#fef3c7'};
+                  color:${e.statut === 'clos' ? '#065f46' : '#92400e'}">
+                  ${e.statut === 'clos' ? '✓ Clôturé' : '⏳ Ouvert'}
+                </span>
+              </td>
+              <td style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-outline" style="font-size:12px"
+                  onclick="exportFEC(${e.annee})">⬇ FEC ${e.annee}</button>
+                ${e.statut === 'clos' ? `
+                  <button class="btn btn-outline" style="font-size:12px"
+                    onclick="ouvrirPV(${e.annee})">📄 PV</button>
+                ` : `
+                  <button class="btn btn-primary" style="font-size:12px"
+                    onclick="cloturer(${e.annee})">🔒 Clôturer</button>
+                `}
+              </td>
+            </tr>
+          `).join('')}
+          </tbody>
+        </table>`}
+
+        <div id="exResult" style="margin-top:16px"></div>
+      </div>
+    `;
+  }
+
+  window.ouvrirExercice = async function() {
+    const annee = Number(document.getElementById('selNouvelAnnee').value);
+    const r = await api.post('/api/exercices', { annee });
+    if (r?.id) { load(); } else { alert(r?.error ?? 'Erreur'); }
+  };
+
+  window.cloturer = async function(annee) {
+    if (!confirm(`Clôturer l'exercice ${annee} ? Cette opération est irréversible.`)) return;
+    const r = await api.post(`/api/exercices/${annee}/cloturer`, {});
+    if (r?.exercice) {
+      document.getElementById('exResult').innerHTML =
+        `<div class="alert alert-success" style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:6px;padding:12px;font-size:13px">
+          ✓ Exercice ${annee} clôturé — ${r.nb_ecritures} écritures —
+          Hash SHA-256 : <code style="font-size:11px">${r.hash_cloture}</code>
+        </div>`;
+      load();
+    } else { alert(r?.error ?? 'Erreur lors de la clôture'); }
+  };
+
+  window.ouvrirPV = async function(annee) {
+    const token = localStorage.getItem('jwt');
+    const res = await fetch(`/api/exercices/${annee}/pv`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) { alert('Erreur génération PV'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
+
+  await load();
 }
 
 async function verifierScellement() {

@@ -76,8 +76,18 @@ export class FecExportService {
     }
   }
 
-  static async exporterCSV(): Promise<string> {
-    const r     = await query('SELECT * FROM fec_ecritures ORDER BY ecriture_date, ecriture_num');
+  static async exporterCSV(annee?: number, entreprise_id?: number): Promise<string> {
+    const params: any[] = [];
+    const entrepriseJoin = entreprise_id
+      ? `JOIN factures f ON f.id = e.facture_id AND f.entreprise_id = $${params.push(entreprise_id)}`
+      : '';
+    const anneeFilter = annee
+      ? `WHERE LEFT(e.ecriture_date, 4) = $${params.push(String(annee))}`
+      : '';
+    const r = await query(
+      `SELECT e.* FROM fec_ecritures e ${entrepriseJoin} ${anneeFilter} ORDER BY e.ecriture_date, e.ecriture_num`,
+      params
+    );
     const lignes = r.rows as any[];
     const headers = [
       'JournalCode','JournalLib','EcritureNum','EcritureDate','CompteNum','CompteLib',

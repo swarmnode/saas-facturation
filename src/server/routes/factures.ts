@@ -13,11 +13,13 @@ import fs from 'fs';
 
 const router = Router();
 
-router.get('/export/fec', requirePerm('factures:r'), async (_req, res, next) => {
+router.get('/export/fec', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const csv = await FecExportService.exporterCSV();
+    const annee = req.query.annee ? Number(req.query.annee) : undefined;
+    const csv   = await FecExportService.exporterCSV(annee, req.user!.entreprise_id);
+    const suffix = annee ? `_${annee}` : `_${new Date().toISOString().slice(0,10)}`;
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="FEC_${new Date().toISOString().slice(0,10)}.txt"`);
+    res.setHeader('Content-Disposition', `attachment; filename="FEC${suffix}.txt"`);
     res.send(csv);
   } catch(e) { next(e); }
 });

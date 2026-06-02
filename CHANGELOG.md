@@ -5,6 +5,23 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix(migration017): supprimer le backfill UPDATE bloqué par le trigger d'immutabilité
+
+archive_documents est immuable (BEFORE UPDATE trigger check_archive_immutable).
+Le UPDATE de backfill échouait au démarrage. Suppression du backfill :
+les archives existantes ont entreprise_id=NULL et restent visibles uniquement
+via super_admin; les nouvelles archives sont créées avec entreprise_id.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+## [2.9.1] — 2026-06-02
+
 ### Ajouté
 - Feat: filtres devis/factures, visibilite commerciaux, sauvegarde gzip
 
@@ -1153,6 +1170,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.9.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.9.1
 [2.7.218]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.7.218
 [2.6.186]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.6.186
 [2.5.148]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.5.148

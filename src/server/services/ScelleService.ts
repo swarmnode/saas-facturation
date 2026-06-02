@@ -1,36 +1,41 @@
 import crypto from 'crypto';
-import { query } from '../db/database';
+import { query, withTransaction } from '../db/database';
 
 export class ScelleService {
   static async scellerDocument(
     typeDocument: string,
     documentId: number,
     documentNumero: string,
-    contenu: object
+    contenu: object,
+    txClient?: any
   ): Promise<string> {
     const hashDocument = crypto
       .createHash('sha256')
       .update(JSON.stringify(contenu))
       .digest('hex');
 
-    const dernierResult = await query(
-      'SELECT hash_cumule FROM journal_scellement ORDER BY id DESC LIMIT 1'
-    );
-    const dernier = dernierResult.rows[0] as { hash_cumule: string } | undefined;
+    const run = async (client: any): Promise<string> => {
+      // Verrou consultatif transactionnel : sérialise toutes les insertions dans la chaîne
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('journal_scellement'))");
+      const dr = await client.query(
+        'SELECT hash_cumule FROM journal_scellement ORDER BY id DESC LIMIT 1'
+      );
+      const dernier = dr.rows[0] as { hash_cumule: string } | undefined;
+      const hashPrecedent = dernier?.hash_cumule ?? null;
+      const hashCumule = crypto
+        .createHash('sha256')
+        .update(hashDocument + (hashPrecedent ?? ''))
+        .digest('hex');
+      await client.query(`
+        INSERT INTO journal_scellement
+          (type_document, document_id, document_numero, hash_document, hash_precedent, hash_cumule)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [typeDocument, documentId, documentNumero, hashDocument, hashPrecedent, hashCumule]);
+      return hashCumule;
+    };
 
-    const hashPrecedent = dernier?.hash_cumule ?? null;
-    const hashCumule = crypto
-      .createHash('sha256')
-      .update(hashDocument + (hashPrecedent ?? ''))
-      .digest('hex');
-
-    await query(`
-      INSERT INTO journal_scellement
-        (type_document, document_id, document_numero, hash_document, hash_precedent, hash_cumule)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [typeDocument, documentId, documentNumero, hashDocument, hashPrecedent, hashCumule]);
-
-    return hashCumule;
+    if (txClient) return run(txClient);
+    return withTransaction(run);
   }
 
   static async verifierChaine(): Promise<{ valide: boolean; premierEcartId?: number }> {

@@ -31,7 +31,16 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–016 (009 is intentionally absent — do not reuse that number). Notable late migrations: 014 adds `clients.conditions_paiement`, 015 adds `devis.created_by` (FK to `utilisateurs`), 016 adds `user_entreprises.voir_tout` (commercial visibility flag).
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–016 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+- 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
+- 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
+- 008: `clients.mode_reglement_defaut`
+- 011: `factures.type_avoir` — `'valoir'` (default) or `'remboursement'`
+- 012: `entreprise.cgv_texte` and `entreprise.mention_legale`
+- 013: creates `audit_log` table
+- 014: `clients.conditions_paiement`
+- 015: `devis.created_by` (FK → `utilisateurs`)
+- 016: `user_entreprises.voir_tout` (commercial visibility flag)
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -51,6 +60,8 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `LettreService` — lettrage (account matching) of `fec_ecritures` compte 411 lines. `getNextLettre()` uses `sequence_numerotation` with type `LETTRAGE`; `lettrerPaiement()` is called automatically when marking a facture `payee`.
 - `BackupScheduler` — `node-cron` job calling `pg_dump.exe` (path from `PG_BIN` env var). Config stored in `backup_config` table; reloaded via `loadAndSchedule()`.
 - `EmailService` — Nodemailer; uses SMTP config from `entreprise` table if present, otherwise falls back to Ethereal test account auto-created at runtime.
+- `ArchiveService` — stores immutable JSON snapshots of documents in `archive_documents` (SHA-256 hash, 10-year retention). `archiver()` is idempotent (`ON CONFLICT DO NOTHING` on `type_document + document_id_original`). Must be called when a document reaches a terminal status.
+- `AvenantService` — creates amendments to signed devis. An avenant can only be created when the parent `devis.statut = 'signe'`; it allocates its own number via `NumerotationService` and seals via `ScelleService`.
 
 **Additional routes** not listed above:
 - `sepa` — generates SEPA direct debit XML (pain.008) for a batch of factures. POST `/api/sepa/generer` with `{ facture_ids, date_execution, sequence }`.

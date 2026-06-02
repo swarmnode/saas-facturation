@@ -43,7 +43,7 @@ router.get('/avoirs/liste', requirePerm('factures:r'), async (req, res, next) =>
 router.get('/:id/avoirs-cumul', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const f  = await FactureService.obtenir(id);
+    const f  = await FactureService.obtenir(id, req.user!.entreprise_id);
     if (!f) return res.status(404).json({ error: 'Introuvable' });
     const factureTtc  = Math.abs(parseFloat((f as any).montant_ttc));
     const avoirsTtc   = await FactureService.getAvoirsCumul(id);
@@ -63,7 +63,7 @@ router.get('/:id/avoirs-cumul', requirePerm('factures:r'), async (req, res, next
 
 router.get('/:id', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const f = await FactureService.obtenir(Number(req.params.id));
+    const f = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!f) return res.status(404).json({ error: 'Introuvable' });
     res.json(f);
   } catch(e) { next(e); }
@@ -95,13 +95,15 @@ router.post('/:id/payer', requirePerm('factures:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-router.get('/:id/pdf', async (req, res) => {
-  const f = await FactureService.obtenir(Number(req.params.id));
-  const pdf_path = (f as any)?.pdf_path;
-  if (!pdf_path) return res.status(404).json({ error: 'PDF non généré' });
-  const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
-  if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });
-  res.sendFile(full);
+router.get('/:id/pdf', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const f = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+    const pdf_path = (f as any)?.pdf_path;
+    if (!pdf_path) return res.status(404).json({ error: 'PDF non généré' });
+    const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
+    if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });
+    res.sendFile(full);
+  } catch(e) { next(e); }
 });
 
 // Relance client — POST /api/factures/:id/relancer

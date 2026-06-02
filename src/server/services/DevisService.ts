@@ -85,12 +85,16 @@ export class DevisService {
     return r.rows;
   }
 
-  static async obtenir(id: number) {
+  static async obtenir(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id
+      ? `AND d.entreprise_id = $${params.push(entreprise_id)}`
+      : '';
     const dr = await query(`
       SELECT d.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
       FROM devis d LEFT JOIN clients c ON d.client_id = c.id
-      WHERE d.id = $1
-    `, [id]);
+      WHERE d.id = $1 ${tenantFilter}
+    `, params);
     const devis = dr.rows[0];
     if (!devis) return null;
     const lr = await query('SELECT * FROM devis_lignes WHERE devis_id = $1 ORDER BY position', [id]);
@@ -170,9 +174,9 @@ export class DevisService {
 
       if (statut === 'signe') {
         const complet = await this.obtenir(id);
-        const hash    = await ScelleService.scellerDocument('DEVIS', id, devis.numero, complet!);
+        const hash    = await ScelleService.scellerDocument('DEVIS', id, devis.numero, complet!, client);
         await client.query("UPDATE devis SET hash_scellement=$1 WHERE id=$2", [hash, id]);
-        await ArchiveService.archiver('DEVIS', id, devis.numero, complet!);
+        await ArchiveService.archiver('DEVIS', id, devis.numero, complet!, devis.entreprise_id, client);
       }
     });
     return this.obtenir(id);

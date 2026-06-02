@@ -10,9 +10,9 @@ function compteEncaissement(mode?: string): [string, string] {
 
 export class FecExportService {
 
-  // Enregistre les écritures de règlement (journal BQ) au moment du paiement.
-  static async enregistrerPaiement(factureId: number): Promise<void> {
-    const r = await query(`
+  static async enregistrerPaiement(factureId: number, txClient?: any): Promise<void> {
+    const q = txClient ? txClient.query.bind(txClient) : query;
+    const r = await q(`
       SELECT f.*,
              COALESCE(c.raison_sociale, c.prenom || ' ' || c.nom) AS client_nom,
              COALESCE(c.siret, 'CLI' || c.id::text) AS client_num
@@ -28,7 +28,7 @@ export class FecExportService {
     const [cptEnc, libEnc] = compteEncaissement(f.mode_paiement);
 
     const ins = async (sfx: string, cptNum: string, cptLib: string, lib: string, debit: number, credit: number) => {
-      await query(`
+      await q(`
         INSERT INTO fec_ecritures
           (journal_code, journal_lib, ecriture_num, ecriture_date, compte_num, compte_lib,
            comp_aux_num, comp_aux_lib, piece_ref, piece_date, ecriture_lib, debit, credit, facture_id)
@@ -43,8 +43,9 @@ export class FecExportService {
     await ins('2', '411', 'Clients', `Règlement ${f.numero}`, 0, f.montant_ttc);
   }
 
-  static async enregistrerFacture(factureId: number) {
-    const r = await query(`
+  static async enregistrerFacture(factureId: number, txClient?: any) {
+    const q = txClient ? txClient.query.bind(txClient) : query;
+    const r = await q(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part, c.siret AS client_siret
       FROM factures f LEFT JOIN clients c ON f.client_id = c.id
       WHERE f.id = $1
@@ -58,7 +59,7 @@ export class FecExportService {
     const num       = `VT-${facture.numero}`;
 
     const ins = async (suffix: string, compteNum: string, compteLib: string, auxNum: string | null, auxLib: string | null, lib: string, debit: number, credit: number) => {
-      await query(`
+      await q(`
         INSERT INTO fec_ecritures
           (journal_code, journal_lib, ecriture_num, ecriture_date, compte_num, compte_lib,
            comp_aux_num, comp_aux_lib, piece_ref, piece_date, ecriture_lib, debit, credit, facture_id)
@@ -89,7 +90,7 @@ export class FecExportService {
       l.compte_num, l.compte_lib, l.comp_aux_num ?? '', l.comp_aux_lib ?? '',
       l.piece_ref ?? '', l.piece_date ?? '', l.ecriture_lib,
       l.debit.toFixed(2), l.credit.toFixed(2),
-      l.ecriture_let ?? '', l.date_let ?? '', l.valid_date,
+      l.ecriture_let ?? '', l.date_let ?? '', l.valid_date ?? '',
       l.montant_devise ?? '', l.idevise ?? ''
     ].join('\t'));
 

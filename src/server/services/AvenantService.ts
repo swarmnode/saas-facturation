@@ -71,17 +71,23 @@ export class AvenantService {
     if (!avenant) throw new Error('Avenant introuvable');
     if (avenant.locked) throw new Error('Avenant déjà signé');
 
-    await query("UPDATE avenants SET statut='signe', updated_at=NOW() WHERE id=$1", [id]);
+    // Récupère l'entreprise_id depuis le devis parent
+    const dr = await query('SELECT entreprise_id FROM devis WHERE id = $1', [avenant.devis_initial_id]);
+    const entreprise_id: number | undefined = dr.rows[0]?.entreprise_id;
+
+    await withTransaction(async (client) => {
+      await client.query("UPDATE avenants SET statut='signe', updated_at=NOW() WHERE id=$1", [id]);
+      const ar2 = await client.query('SELECT * FROM avenants WHERE id = $1', [id]);
+      const lr  = await client.query('SELECT * FROM avenants_lignes WHERE avenant_id = $1', [id]);
+      const complet = { ...ar2.rows[0], lignes: lr.rows };
+      const hash = await ScelleService.scellerDocument('AVENANT', id, avenant.numero, complet, client);
+      await client.query("UPDATE avenants SET hash_scellement=$1 WHERE id=$2", [hash, id]);
+      await ArchiveService.archiver('AVENANT', id, avenant.numero, complet, entreprise_id, client);
+    });
 
     const ar2 = await query('SELECT * FROM avenants WHERE id = $1', [id]);
     const lr  = await query('SELECT * FROM avenants_lignes WHERE avenant_id = $1', [id]);
-    const complet = { ...ar2.rows[0], lignes: lr.rows };
-
-    const hash = await ScelleService.scellerDocument('AVENANT', id, avenant.numero, complet);
-    await query("UPDATE avenants SET hash_scellement=$1 WHERE id=$2", [hash, id]);
-    await ArchiveService.archiver('AVENANT', id, avenant.numero, complet);
-
-    return complet;
+    return { ...ar2.rows[0], lignes: lr.rows };
   }
 
   static async lister(devisId?: number) {

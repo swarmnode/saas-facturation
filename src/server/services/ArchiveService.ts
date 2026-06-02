@@ -2,39 +2,51 @@ import crypto from 'crypto';
 import { query } from '../db/database';
 
 export class ArchiveService {
-  static async archiver(typeDocument: string, documentId: number, numero: string, contenu: object) {
+  static async archiver(
+    typeDocument: string,
+    documentId: number,
+    numero: string,
+    contenu: object,
+    entreprise_id?: number,
+    txClient?: any
+  ) {
     const jsonSnapshot  = JSON.stringify(contenu);
     const hashArchive   = crypto.createHash('sha256').update(jsonSnapshot).digest('hex');
     const annee         = new Date().getFullYear();
     const conservation  = new Date();
     conservation.setFullYear(conservation.getFullYear() + 10);
 
-    await query(`
+    const q = txClient ? txClient.query.bind(txClient) : query;
+    await q(`
       INSERT INTO archive_documents
         (type_document, document_id_original, numero, json_snapshot, hash_archive,
-         annee_archivage, conservation_jusqu_au)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+         annee_archivage, conservation_jusqu_au, entreprise_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (type_document, document_id_original) DO NOTHING
     `, [typeDocument, documentId, numero, jsonSnapshot, hashArchive,
-        annee, conservation.toISOString()]);
+        annee, conservation.toISOString(), entreprise_id ?? null]);
   }
 
-  static async lister(type?: string) {
-    if (type) {
-      const r = await query(
-        'SELECT id, type_document, numero, date_archivage, conservation_jusqu_au FROM archive_documents WHERE type_document = $1 ORDER BY date_archivage DESC',
-        [type]
-      );
-      return r.rows;
-    }
+  static async lister(type?: string, entreprise_id?: number) {
+    const params: any[] = [];
+    const typeFilter   = type          ? `AND type_document  = $${params.push(type)}`          : '';
+    const tenantFilter = entreprise_id ? `AND entreprise_id  = $${params.push(entreprise_id)}` : '';
     const r = await query(
-      'SELECT id, type_document, numero, date_archivage, conservation_jusqu_au FROM archive_documents ORDER BY date_archivage DESC'
+      `SELECT id, type_document, numero, date_archivage, conservation_jusqu_au
+       FROM archive_documents WHERE 1=1 ${typeFilter} ${tenantFilter}
+       ORDER BY date_archivage DESC`,
+      params
     );
     return r.rows;
   }
 
-  static async obtenir(id: number) {
-    const r   = await query('SELECT * FROM archive_documents WHERE id = $1', [id]);
+  static async obtenir(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id ? `AND entreprise_id = $${params.push(entreprise_id)}` : '';
+    const r   = await query(
+      `SELECT * FROM archive_documents WHERE id = $1 ${tenantFilter}`,
+      params
+    );
     const doc = r.rows[0];
     if (!doc) return null;
     return { ...doc, contenu: JSON.parse(doc.json_snapshot) };

@@ -99,10 +99,15 @@ export class FactureService {
   }
 
   static async lister(entreprise_id: number, type?: string, commercial_id?: number) {
-    const typeFilter = type ? `AND f.type_facture = '${type}'` : `AND f.type_facture != 'avoir'`;
-    const commercialFilter = commercial_id
-      ? `AND f.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = ${commercial_id} AND entreprise_id = ${entreprise_id})`
-      : '';
+    const params: any[] = [entreprise_id];
+    const typeFilter = type
+      ? `AND f.type_facture = $${params.push(type)}`
+      : `AND f.type_facture != 'avoir'`;
+    let commercialFilter = '';
+    if (commercial_id) {
+      const cidIdx = params.push(commercial_id);
+      commercialFilter = `AND f.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = $${cidIdx} AND entreprise_id = $1)`;
+    }
     const r = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
              c.mode_reglement_defaut,
@@ -111,7 +116,7 @@ export class FactureService {
       LEFT JOIN clients c ON f.client_id = c.id
       LEFT JOIN factures fo ON fo.id = f.facture_origine_id
       WHERE f.entreprise_id = $1 ${typeFilter} ${commercialFilter} ORDER BY f.created_at DESC
-    `, [entreprise_id]);
+    `, params);
     return r.rows;
   }
 
@@ -143,7 +148,6 @@ export class FactureService {
 
     return withTransaction(async (client) => {
       const typeAvoir = input.type_avoir ?? (cur as any).type_avoir ?? 'valoir';
-      // Un remboursement ne peut pas passer par prélèvement SEPA (sens inverse)
       const modePaiement = (typeAvoir === 'remboursement' && input.mode_paiement === 'prelevement_sepa')
         ? 'virement_sepa'
         : (input.mode_paiement ?? null);
@@ -182,7 +186,11 @@ export class FactureService {
     });
   }
 
-  static async obtenir(id: number) {
+  static async obtenir(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id
+      ? `AND f.entreprise_id = $${params.push(entreprise_id)}`
+      : '';
     const fr = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
              c.mode_reglement_defaut,
@@ -190,24 +198,25 @@ export class FactureService {
       FROM factures f
       LEFT JOIN clients c ON f.client_id = c.id
       LEFT JOIN factures fo ON fo.id = f.facture_origine_id
-      WHERE f.id = $1
-    `, [id]);
+      WHERE f.id = $1 ${tenantFilter}
+    `, params);
     const facture = fr.rows[0];
     if (!facture) return null;
     const lr = await query('SELECT * FROM factures_lignes WHERE facture_id = $1 ORDER BY position', [id]);
     return { ...facture, lignes: lr.rows };
   }
 
-  // Retourne le cumul TTC des avoirs déjà émis sur une facture d'origine.
   static async getAvoirsCumul(factureOrigineId: number, excludeId?: number): Promise<number> {
+    const params: any[] = [factureOrigineId];
+    const excludeFilter = excludeId ? `AND id != $${params.push(excludeId)}` : '';
     const r = await query(`
       SELECT COALESCE(SUM(ABS(montant_ttc)), 0) AS total
       FROM factures
       WHERE facture_origine_id = $1
         AND type_facture = 'avoir'
         AND statut IN ('emise', 'payee')
-        ${excludeId ? `AND id != ${excludeId}` : ''}
-    `, [factureOrigineId]);
+        ${excludeFilter}
+    `, params);
     return parseFloat(r.rows[0].total) || 0;
   }
 
@@ -217,7 +226,6 @@ export class FactureService {
     if (!facture) throw new Error('Facture introuvable');
     if (facture.locked) throw new Error('INALTÉRABILITÉ : cette facture est verrouillée (Loi anti-fraude TVA 2018).');
 
-    // Validation du plafond pour les avoirs
     if (facture.type_facture === 'avoir' && facture.facture_origine_id) {
       const origineRes = await query('SELECT montant_ttc, numero FROM factures WHERE id = $1', [facture.facture_origine_id]);
       if (origineRes.rows[0]) {
@@ -240,23 +248,23 @@ export class FactureService {
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
+    // Génération PDF hors transaction (I/O fichier)
     const complet = await this.obtenir(id);
     const pdfPath = await FacturXService.genererFacture(complet as any, entreprise, client);
-    const hash    = await ScelleService.scellerDocument('FACTURE', id, facture.numero, complet!);
 
-    await query(`
-      UPDATE factures SET statut='emise', date_emission=to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-        hash_scellement=$1, pdf_path=$2, updated_at=NOW() WHERE id=$3
-    `, [hash, pdfPath, id]);
-
-    const final = await this.obtenir(id);
-    await ArchiveService.archiver('FACTURE', id, facture.numero, final!);
-    await FecExportService.enregistrerFacture(id);
-
-    // Lettrage automatique avoir ↔ facture d'origine
-    if (facture.type_facture === 'avoir' && facture.facture_origine_id) {
-      await LettreService.lettrerAvoir(id, facture.facture_origine_id, facture.entreprise_id);
-    }
+    // Toutes les écritures DB en une seule transaction atomique
+    await withTransaction(async (tx) => {
+      const hash = await ScelleService.scellerDocument('FACTURE', id, facture.numero, complet!, tx);
+      await tx.query(`
+        UPDATE factures SET statut='emise', date_emission=to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+          hash_scellement=$1, pdf_path=$2, updated_at=NOW() WHERE id=$3
+      `, [hash, pdfPath, id]);
+      await ArchiveService.archiver('FACTURE', id, facture.numero, complet!, facture.entreprise_id, tx);
+      await FecExportService.enregistrerFacture(id, tx);
+      if (facture.type_facture === 'avoir' && facture.facture_origine_id) {
+        await LettreService.lettrerAvoir(id, facture.facture_origine_id, facture.entreprise_id, tx);
+      }
+    });
 
     return this.obtenir(id);
   }
@@ -265,16 +273,16 @@ export class FactureService {
     const fr = await query('SELECT entreprise_id FROM factures WHERE id = $1', [id]);
     const entreprise_id = fr.rows[0]?.entreprise_id;
 
-    await query(`
-      UPDATE factures SET statut='payee', date_paiement=$1, mode_paiement=$2, updated_at=NOW()
-      WHERE id=$3 AND locked=1
-    `, [datePaiement ?? new Date().toISOString(), modePaiement ?? null, id]);
-
-    // Enregistrer les écritures de règlement en FEC et lettrer
-    await FecExportService.enregistrerPaiement(id);
-    if (entreprise_id) {
-      await LettreService.lettrerPaiement(id, entreprise_id);
-    }
+    await withTransaction(async (tx) => {
+      await tx.query(`
+        UPDATE factures SET statut='payee', date_paiement=$1, mode_paiement=$2, updated_at=NOW()
+        WHERE id=$3 AND locked=1
+      `, [datePaiement ?? new Date().toISOString(), modePaiement ?? null, id]);
+      await FecExportService.enregistrerPaiement(id, tx);
+      if (entreprise_id) {
+        await LettreService.lettrerPaiement(id, entreprise_id, tx);
+      }
+    });
 
     return this.obtenir(id);
   }

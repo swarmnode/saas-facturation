@@ -21,7 +21,7 @@ router.get('/', requirePerm('devis:r'), async (req, res, next) => {
 
 router.get('/:id', requirePerm('devis:r'), async (req, res, next) => {
   try {
-    const d = await DevisService.obtenir(Number(req.params.id));
+    const d = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!d) return res.status(404).json({ error: 'Introuvable' });
     res.json(d);
   } catch(e) { next(e); }
@@ -263,17 +263,19 @@ router.post('/:id/avenant', requirePerm('devis:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-router.get('/:id/avenants', async (req, res, next) => {
+router.get('/:id/avenants', requirePerm('devis:r'), async (req, res, next) => {
   try { res.json(await AvenantService.lister(Number(req.params.id))); } catch(e) { next(e); }
 });
 
-router.get('/:id/pdf', async (req, res) => {
-  const d = await DevisService.obtenir(Number(req.params.id));
-  const pdf_path = (d as any)?.pdf_path;
-  if (!pdf_path) return res.status(404).json({ error: 'PDF non généré' });
-  const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
-  if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });
-  res.sendFile(full);
+router.get('/:id/pdf', requirePerm('devis:r'), async (req, res, next) => {
+  try {
+    const d = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+    const pdf_path = (d as any)?.pdf_path;
+    if (!pdf_path) return res.status(404).json({ error: 'PDF non généré' });
+    const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
+    if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });
+    res.sendFile(full);
+  } catch(e) { next(e); }
 });
 
 router.delete('/:id', requirePerm('devis:w'), async (req, res, next) => {

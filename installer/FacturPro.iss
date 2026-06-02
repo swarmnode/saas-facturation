@@ -5,7 +5,7 @@
 ; ============================================================
 
 #define AppName    "FacturPro"
-#define AppVersion "2.12.0"
+#define AppVersion "2.13.0"
 #define AppURL     "http://localhost:3000"
 
 [Setup]

@@ -18,6 +18,21 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - PV de clôture PDF : date, hash SHA-256, mention conformité art. 88 loi 2015-1785
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat(exercices): date_ouverture et date_cloture paramétrables (exercices non-civils)
+
+- ExerciceService.ouvrir() : date_ouverture optionnelle (défaut 01/01/N)
+- ExerciceService.cloturer() : date_cloture optionnelle (défaut 31/12/N)
+- Route POST /api/exercices : accepte { annee, date_ouverture }
+- Route POST /api/exercices/:annee/cloturer : accepte { date_cloture }
+- Frontend : sélecteur de date de début à l'ouverture ; à la clôture, prompt
+  pré-rempli avec le dernier jour de l'exercice (calculé depuis date_ouverture
+  pour les exercices décalés ex. 01/04/N → 31/03/N+1)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ## [2.9.1] — 2026-06-02

@@ -202,7 +202,7 @@ La section **CGV et mentions légales** dans les Paramètres permet de renseigne
 
 ![Paramètres mentions légales](screenshots/14-parametres-mentions-legales.png)
 
-Depuis **Paramètres > Mentions légales obligatoires** (nouveau en v2.11.0), configurez les valeurs par défaut qui seront pré-remplies sur chaque nouvelle facture :
+Depuis **Paramètres > Mentions légales obligatoires** (nouveau en v2.13.0), configurez les valeurs par défaut qui seront pré-remplies sur chaque nouvelle facture :
 
 | Champ | Valeur légale recommandée |
 |---|---|
@@ -505,7 +505,7 @@ Le champ **Client** est un filtre de recherche : saisissez quelques lettres pour
 
 L'éditeur affiche des **indicateurs visuels de saut de page** (ligne pointillée + label `— Page 2 —`) aux mêmes endroits que dans le PDF généré. Ils se mettent à jour à chaque modification de ligne.
 
-## Nouveaux champs sur les factures (v2.11.0)
+## Nouveaux champs sur les factures (v2.13.0)
 
 ![Champs mentions légales sur la facture](screenshots/17-facture-mentions-legales.png)
 
@@ -555,7 +555,7 @@ Bouton **Accepter** :
 - Le statut RGPD du client passe automatiquement de *Prospect* à *Client actif*.
 - Les boutons **Créer un BL** et **Créer la facture** apparaissent dans la barre.
 
-## Signature électronique (v2.11.0)
+## Signature électronique (v2.13.0)
 
 Le bouton **✍ Envoyer lien de signature** (disponible sur les devis envoyés) permet à votre client de signer électroniquement depuis son navigateur, sans logiciel tiers.
 
@@ -622,7 +622,7 @@ Depuis un devis accepté (**Créer la facture**), depuis un BL (**Créer la fact
 
 ### Mentions légales obligatoires
 
-Depuis v2.11.0, chaque facture dispose des champs légaux obligatoires (art. L441-9/L441-10 CCom) :
+Depuis v2.13.0, chaque facture dispose des champs légaux obligatoires (art. L441-9/L441-10 CCom) :
 
 | Champ | Valeur par défaut (depuis paramètres) | Modifiable |
 |---|---|---|
@@ -834,7 +834,7 @@ FacturPro calcule automatiquement depuis vos factures émises :
 
 ## Section B — TVA déductible (saisie manuelle)
 
-Depuis v2.11.0, **saisissez directement le montant** de TVA déductible sur vos achats dans le champ prévu. La valeur est **automatiquement enregistrée** par période et persist entre les sessions.
+Depuis v2.13.0, **saisissez directement le montant** de TVA déductible sur vos achats dans le champ prévu. La valeur est **automatiquement enregistrée** par période et persist entre les sessions.
 
 | Champ | Contenu |
 |---|---|
@@ -948,7 +948,7 @@ Accessible via **🗄️ Archives**. Affiche les snapshots JSON immuables de tou
 
 ---
 
-# Relances automatiques (v2.11.0)
+# Relances automatiques (v2.13.0)
 
 Une fois configurées dans **Paramètres > Relances automatiques**, FacturPro envoie automatiquement chaque jour un email de relance aux clients dont la facture est en retard.
 
@@ -1085,4 +1085,4 @@ FacturPro satisfait aux conditions de l'article 88 de la loi n° 2015-1785 du 29
 
 ---
 
-*Document généré par FacturPro v2.11.0 — 2026*
+*Document généré par FacturPro v2.13.0 — 2026*

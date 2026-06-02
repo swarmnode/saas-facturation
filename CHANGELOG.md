@@ -5,43 +5,16 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+
+## [2.11.0] — 2026-06-02
+
 ### Ajouté
-- Feat: priorités 2 et 3 — mentions légales, TVA déductible, relances auto, signature devis, Chorus Pro
-
-## Priorité 2 — Mentions légales obligatoires (art. L441-9/L441-10 CCom)
-- migration_019 : factures.numero_commande, escompte_taux, penalites_taux, indemnite_recouvrement,
-  chorus_pro_id/statut ; entreprise.penalites_defaut, escompte_defaut, indemnite_defaut
-- PDF factures : N° commande dans l'en-tête, mentions escompte + pénalités avant CGV
-- XML Factur-X EN 16931 enrichi : BuyerReference, PaymentTerms, AllowanceCharge (escompte),
-  TypeCode 381 pour avoirs, adresse vendeur/acheteur complète, notes facture
-- WYSIWYG factures : champs N° commande et Escompte (%)
-- Paramètres : section "Mentions légales obligatoires" avec valeurs par défaut
-
-## Priorité 2b — TVA déductible CA3
-- migration_020 : table tva_deductible (par entreprise et période)
-- Route GET/PUT /api/stats/tva-deductible
-- CA3 : section B saisissable avec calcul automatique du solde TVA à payer
-
-## Priorité 3a — Relances automatiques
-- migration_021 : entreprise.relance_auto_active/jours/heure + factures.derniere_relance/nb_relances
-- RelanceScheduler : cron quotidien, filtre factures en retard depuis N jours, email automatique
-- Paramètres : section "Relances automatiques" avec activation et configuration
-
-## Priorité 3b — Signature électronique des devis
-- migration_021 : devis.signature_token (UUID), signature_ip, signature_date, signature_nom
-- Route POST /api/devis/:id/envoyer-lien-signature : email avec lien signable
-- Route GET /api/devis/signer/:token (publique) : valide la signature, affiche page de confirmation
-
-## Priorité 1 — Chorus Pro / e-invoicing
-- ChorusProService : OAuth2 PISTE, dépôt Factur-X, consultation statut
-- Routes POST /api/factures/:id/chorus-pro/deposer et GET /statut
-- Bouton "Déposer Chorus Pro" dans les factures (actif si CHORUS_PRO_CLIENT_ID configuré)
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-### Documentation
-- Docs: update CHANGELOG.md [skip ci]
+- feat: mentions légales obligatoires sur les factures (art. L441-9/L441-10 CCom)
+- feat: TVA déductible saisissable dans la déclaration CA3 (section B)
+- feat: relances automatiques des factures impayées (scheduler quotidien)
+- feat: signature électronique des devis par lien email
+- feat: intégration Chorus Pro / Portail Public de Facturation (e-invoicing 2026)
+- feat: XML Factur-X EN 16931 enrichi (BuyerReference, PaymentTerms, AllowanceCharge)
 
 
 ## [2.10.0] — 2026-06-02
@@ -1249,6 +1222,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.11.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.11.0
 [2.10.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.10.0
 [2.9.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.9.1
 [2.7.218]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.7.218

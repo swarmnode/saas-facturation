@@ -27,6 +27,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - manuel-utilisateur.docx : genere par pandoc (1,4 Mo avec images)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: screenshots interface FacturPro v2.11.0 (20 captures)
+
+Login, tableau de bord, clients, articles, factures/devis/avoirs,
+statistiques KPIs, declaration TVA CA3, exercices comptables,
+lettrage, archives, parametres (mentions legales, relances),
+editeur WYSIWYG devis et factures, journal d audit, sauvegardes.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.11.0] — 2026-06-02

@@ -12,6 +12,8 @@ storage/archive/*.json
 
 # Screenshots et artefacts de test
 *.png
+# Exceptions : screenshots du manuel utilisateur
+!docs/screenshots/*.png
 *.eml
 *.~lock.*
 diag.js

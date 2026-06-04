@@ -76,6 +76,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -86,6 +87,21 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - express-rate-limit : 10 tentatives / 15 min par IP sur /api/auth/login
   — bloque le bruteforce sur les mots de passe.
 - JWT expiresIn '8h' était déjà en place (pas de changement nécessaire).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Performance
+- Perf: pagination serveur sur toutes les listes (50 docs/page)
+
+- utils/paginate.ts : helper paginateParams + buildPage (COUNT(*) OVER())
+- FactureService, DevisService, AcompteService, BonLivraisonService :
+  paramètres page/limit optionnels sur lister()
+- Routes factures, devis, acomptes, bons-livraison : réponse paginée
+  { data, total, page, pages, limit } — ?all=1 retourne tout (dashboard)
+- Frontend renderDocList : détecte la réponse paginée, affiche barre de
+  navigation (préc./n°/suiv. + compteur "X–Y sur N")
+- Dashboard : passe ?all=1 pour conserver les KPIs et la liste complète
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 

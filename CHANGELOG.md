@@ -20,6 +20,20 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
   (après échéance / avant échéance)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: import factures fournisseurs (FEC compte 401 + CA3 auto)
+
+- Migration 023 : table factures_fournisseurs + FK facture_fournisseur_id
+  sur fec_ecritures
+- FournisseurService : creer/payer/supprimer avec écritures FEC atomiques
+  (journal AC : 401/crédit + 6xx/débit + 44566/débit) et mise à jour
+  automatique de tva_deductible par période (CA3 section B)
+- Route /api/factures-fournisseurs : CRUD + POST /:id/payer
+- FecExportService : filtre multi-tenant étendu aux écritures fournisseurs
+  (EXISTS sur factures_fournisseurs en plus de factures)
+- Frontend : nouvelle page "Factures fournisseurs" avec liste filtrée,
+  formulaire de saisie avec calcul TVA automatique, et workflow paiement
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -27,6 +41,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

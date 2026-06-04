@@ -47,6 +47,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - 020: creates `tva_deductible` table (section B of CA3 VAT return, keyed by `(entreprise_id, periode)`)
 - 021: auto-dunning fields on `entreprise` (`relance_auto_active`, `relance_auto_jours`, `relance_auto_heure`); tracking fields on `factures` (`derniere_relance`, `nb_relances`); e-signature fields on `devis` (`signature_token`, `signature_ip`, `signature_date`, `signature_nom`)
 - 022: pre-due notification fields on `entreprise` (`notif_echeance_active`, `notif_echeance_jours`); `factures.notif_echeance_envoyee` (timestamp, prevents double-sending)
+- 023: creates `factures_fournisseurs` table (supplier invoices); adds `facture_fournisseur_id` FK on `fec_ecritures`
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -70,6 +71,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `AvenantService` — creates amendments to signed devis. An avenant can only be created when the parent `devis.statut = 'signe'`; it allocates its own number via `NumerotationService` and seals via `ScelleService`.
 - `ExerciceService` — fiscal year lifecycle (`ouvrir`, `cloturer`). Closing an exercice hashes all `fec_ecritures` for that year and persists the hash in `exercices.hash_cloture`. A closed exercice cannot be re-opened.
 - `ChorusProService` — submits Factur-X PDFs to the Chorus Pro public procurement portal via PISTE OAuth2. Requires `CHORUS_PRO_CLIENT_ID`, `CHORUS_PRO_CLIENT_SECRET`, and `CHORUS_PRO_LOGIN` env vars. Persists the CPP document ID on `factures.chorus_pro_id`. Only acts on factures with `statut = 'emise'` and an existing PDF.
+- `FournisseurService` — supplier invoice lifecycle (`creer`, `payer`, `supprimer`, `lister`). Creating an invoice atomically writes 3 FEC entries (journal `AC`: compte 401/crédit, `6xx`/débit, `44566`/débit) and upserts `tva_deductible` for the invoice's month. Paying writes 2 FEC entries (journal `BQ`). Deletion reverses FEC entries and recalculates `tva_deductible` (only allowed on `recue` invoices).
 - `RelanceScheduler` — `node-cron` job running two functions daily at the configured hour: `envoyerRelancesAuto()` sends dunning emails for overdue factures (controlled by `relance_auto_active/jours`); `envoyerNotifsEcheance()` sends a reminder N days *before* the due date (controlled by `notif_echeance_active/jours`, default 3 days). The pre-due notification is sent at most once per facture (`notif_echeance_envoyee` timestamp guards against duplicates).
 
 **Additional routes** not listed above:
@@ -79,6 +81,9 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `audit` — GET `/api/audit` reads `audit_log`. The exported `logAudit()` helper is used by other routes to record sensitive actions.
 - `exercices` — GET `/api/exercices` lists fiscal years; POST `/api/exercices` opens one; POST `/api/exercices/:annee/cloturer` closes it (hashes FEC entries, returns a bilan PDF).
 - `chorus-pro` (on `factures` router) — POST `/api/factures/:id/chorus-pro` deposits the facture on Chorus Pro; GET `/api/factures/:id/chorus-pro/statut` refreshes its status.
+- `factures-fournisseurs` — GET `/api/factures-fournisseurs[?statut=recue|payee]` lists supplier invoices; POST `/` creates; POST `/:id/payer` marks paid; DELETE `/:id` removes (only `recue`).
+
+**FEC multi-tenant filter**: `FecExportService.exporterCSV()` filters by `entreprise_id` via EXISTS subqueries on both `factures` and `factures_fournisseurs` — entries without either FK are excluded.
 
 **Email endpoints on factures** (`src/server/routes/factures.ts`):
 - `POST /:id/envoyer` — auto-sends to the client's email from DB.

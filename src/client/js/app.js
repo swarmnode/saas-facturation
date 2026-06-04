@@ -390,8 +390,9 @@ const tabMgr = (() => {
     dashboard:        { title: 'Tableau de bord', icon: '📊', permanent: true },
     clients:          { title: 'Clients',          icon: '👥' },
     devis:            { title: 'Devis',            icon: '📋' },
-    factures:         { title: 'Factures',         icon: '🧾' },
-    avoirs:           { title: 'Avoirs',           icon: '↩️' },
+    factures:                { title: 'Factures',              icon: '🧾' },
+    'factures-fournisseurs': { title: 'Factures fournisseurs', icon: '🛒' },
+    avoirs:                  { title: 'Avoirs',                icon: '↩️' },
     acomptes:         { title: 'Acomptes',         icon: '💰' },
     'bons-livraison': { title: 'Bons de livraison', icon: '🚚' },
     articles:         { title: 'Articles',         icon: '📦' },
@@ -669,8 +670,9 @@ async function renderView(view, el) {
     case 'audit':           return renderAudit(el);
     case 'clients':         return renderClients(el);
     case 'devis':           return renderDocList('devis', el);
-    case 'factures':        return renderDocList('factures', el);
-    case 'avoirs':          return renderDocList('avoirs', el);
+    case 'factures':               return renderDocList('factures', el);
+    case 'factures-fournisseurs':  return renderFournisseurs(el);
+    case 'avoirs':                 return renderDocList('avoirs', el);
     case 'acomptes':        return renderDocList('acomptes', el);
     case 'bons-livraison':  return renderDocList('bons-livraison', el);
     case 'articles':        return renderArticles(el);
@@ -4400,6 +4402,207 @@ function showAcompteForm() {
       tabMgr.openViewTab('acomptes');
     };
   });
+}
+
+// ── Factures fournisseurs ─────────────────────────────────────────────────
+async function renderFournisseurs(el) {
+  let filtreStatut = 'all';
+
+  async function reload() {
+    const url = filtreStatut === 'all' ? '/api/factures-fournisseurs' : `/api/factures-fournisseurs?statut=${filtreStatut}`;
+    const factures = await api.get(url) ?? [];
+
+    const totalHT  = factures.reduce((s, f) => s + Number(f.montant_ht),  0);
+    const totalTVA = factures.reduce((s, f) => s + Number(f.montant_tva), 0);
+    const totalTTC = factures.reduce((s, f) => s + Number(f.montant_ttc), 0);
+    const nbAPayer = factures.filter(f => f.statut === 'recue').length;
+
+    const rows = factures.map(f => {
+      const ech = f.date_echeance ? new Date(f.date_echeance).toLocaleDateString('fr-FR') : '—';
+      const enRetard = f.statut === 'recue' && f.date_echeance && new Date(f.date_echeance) < new Date();
+      const statutBadge = f.statut === 'payee'
+        ? `<span class="badge badge-success">Payée</span>`
+        : enRetard
+          ? `<span class="badge badge-danger">En retard</span>`
+          : `<span class="badge badge-warning">À payer</span>`;
+      const actions = f.statut === 'recue'
+        ? `<button class="btn-sm btn-primary" onclick="payerFournisseur(${f.id})">Payer</button>
+           <button class="btn-sm btn-danger"  onclick="supprimerFournisseur(${f.id})">Supprimer</button>`
+        : '';
+      return `<tr>
+        <td>${new Date(f.date_facture).toLocaleDateString('fr-FR')}</td>
+        <td><strong>${f.fournisseur_nom}</strong>${f.fournisseur_siret ? `<br><small style="color:var(--text-muted)">${f.fournisseur_siret}</small>` : ''}</td>
+        <td>${f.numero}</td>
+        <td style="color:var(--text-muted);font-size:13px">${f.description ?? ''}</td>
+        <td style="text-align:right">${Number(f.montant_ht).toFixed(2)} €</td>
+        <td style="text-align:right">${Number(f.taux_tva).toFixed(0)}% — ${Number(f.montant_tva).toFixed(2)} €</td>
+        <td style="text-align:right"><strong>${Number(f.montant_ttc).toFixed(2)} €</strong></td>
+        <td style="color:${enRetard ? 'var(--danger)' : 'inherit'}">${ech}</td>
+        <td>${statutBadge}</td>
+        <td style="white-space:nowrap">${actions}</td>
+      </tr>`;
+    }).join('');
+
+    const emptyRow = factures.length === 0
+      ? `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:32px">Aucune facture fournisseur</td></tr>`
+      : '';
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">Factures fournisseurs</h2>
+        <button class="btn btn-primary" id="btnNouveauFF">+ Nouvelle facture</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn ${filtreStatut==='all'   ? 'btn-primary' : 'btn-outline'}" onclick="window._ffFiltre('all')">Toutes</button>
+        <button class="btn ${filtreStatut==='recue' ? 'btn-primary' : 'btn-outline'}" onclick="window._ffFiltre('recue')">À payer${nbAPayer ? ` (${nbAPayer})` : ''}</button>
+        <button class="btn ${filtreStatut==='payee' ? 'btn-primary' : 'btn-outline'}" onclick="window._ffFiltre('payee')">Payées</button>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <table class="table">
+          <thead><tr>
+            <th>Date</th><th>Fournisseur</th><th>N° facture</th><th>Description</th>
+            <th style="text-align:right">HT</th><th style="text-align:right">TVA</th>
+            <th style="text-align:right">TTC</th><th>Échéance</th><th>Statut</th><th></th>
+          </tr></thead>
+          <tbody>${rows}${emptyRow}</tbody>
+          ${factures.length > 0 ? `<tfoot><tr style="background:var(--bg-alt);font-weight:600">
+            <td colspan="4" style="text-align:right">Totaux</td>
+            <td style="text-align:right">${totalHT.toFixed(2)} €</td>
+            <td style="text-align:right">${totalTVA.toFixed(2)} €</td>
+            <td style="text-align:right">${totalTTC.toFixed(2)} €</td>
+            <td colspan="3"></td>
+          </tr></tfoot>` : ''}
+        </table>
+      </div>`;
+
+    el.querySelector('#btnNouveauFF').onclick = () => ouvrirFormulaireFF();
+  }
+
+  window._ffFiltre = (s) => { filtreStatut = s; reload(); };
+
+  window.payerFournisseur = async (id) => {
+    const today = new Date().toISOString().slice(0, 10);
+    modal.show('Enregistrer le paiement', `
+      <div class="form-group"><label>Date de paiement</label>
+        <input id="ffDatePaie" type="date" value="${today}"/></div>
+      <div class="form-group"><label>Mode de paiement</label>
+        <select id="ffModePaie">
+          <option value="virement">Virement</option>
+          <option value="cheque">Chèque</option>
+          <option value="especes">Espèces</option>
+          <option value="prelevement">Prélèvement</option>
+          <option value="cb">Carte bancaire</option>
+        </select></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" id="btnConfirmPaie">Confirmer</button>
+        <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+      </div>`, body => {
+      body.querySelector('#btnConfirmPaie').onclick = async () => {
+        await api.post(`/api/factures-fournisseurs/${id}/payer`, {
+          date_paiement: body.querySelector('#ffDatePaie').value,
+          mode_paiement: body.querySelector('#ffModePaie').value,
+        });
+        modal.hide();
+        reload();
+      };
+    });
+  };
+
+  window.supprimerFournisseur = async (id) => {
+    if (!confirm('Supprimer cette facture fournisseur ? Les écritures FEC associées seront également supprimées.')) return;
+    await api.delete(`/api/factures-fournisseurs/${id}`);
+    reload();
+  };
+
+  function ouvrirFormulaireFF() {
+    const today = new Date().toISOString().slice(0, 10);
+    modal.show('Nouvelle facture fournisseur', `
+      <form id="ffForm" style="display:grid;gap:12px">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fournisseur *</label>
+            <input name="fournisseur_nom" required placeholder="Nom ou raison sociale"/>
+          </div>
+          <div class="form-group">
+            <label>SIRET</label>
+            <input name="fournisseur_siret" placeholder="Facultatif"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>N° de facture *</label>
+            <input name="numero" required placeholder="Ex. FA-2024-001"/>
+          </div>
+          <div class="form-group">
+            <label>Date *</label>
+            <input name="date_facture" type="date" value="${today}" required/>
+          </div>
+          <div class="form-group">
+            <label>Échéance</label>
+            <input name="date_echeance" type="date"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input name="description" placeholder="Objet de la facture"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Montant HT * (€)</label>
+            <input name="montant_ht" type="number" step="0.01" min="0" required id="ffHT"/>
+          </div>
+          <div class="form-group">
+            <label>Taux TVA *</label>
+            <select name="taux_tva" id="ffTaux">
+              <option value="20">20 %</option>
+              <option value="10">10 %</option>
+              <option value="5.5">5,5 %</option>
+              <option value="0">0 % (exonéré)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Montant TVA</label>
+            <input id="ffTVA" readonly style="background:var(--bg-alt)" placeholder="Calculé"/>
+          </div>
+          <div class="form-group">
+            <label>Montant TTC</label>
+            <input id="ffTTC" readonly style="background:var(--bg-alt)" placeholder="Calculé"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Compte de charge</label>
+          <input name="compte_charge" value="606" placeholder="Ex. 606, 607, 615…"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+        </div>
+      </form>`, body => {
+      const htInput   = body.querySelector('#ffHT');
+      const tauxSel   = body.querySelector('#ffTaux');
+      const tvaInput  = body.querySelector('#ffTVA');
+      const ttcInput  = body.querySelector('#ffTTC');
+      function recalc() {
+        const ht   = parseFloat(htInput.value) || 0;
+        const taux = parseFloat(tauxSel.value) || 0;
+        const tva  = Math.round(ht * taux) / 100;
+        tvaInput.value = tva.toFixed(2);
+        ttcInput.value = (ht + tva).toFixed(2);
+      }
+      htInput.addEventListener('input', recalc);
+      tauxSel.addEventListener('change', recalc);
+
+      body.querySelector('#ffForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target));
+        await api.post('/api/factures-fournisseurs', data);
+        modal.hide();
+        reload();
+      };
+    });
+  }
+
+  await reload();
 }
 
 // ── Lettrage ──────────────────────────────────────────────────────────────

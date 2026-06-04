@@ -78,14 +78,27 @@ export class FecExportService {
 
   static async exporterCSV(annee?: number, entreprise_id?: number): Promise<string> {
     const params: any[] = [];
-    const entrepriseJoin = entreprise_id
-      ? `JOIN factures f ON f.id = e.facture_id AND f.entreprise_id = $${params.push(entreprise_id)}`
-      : '';
-    const anneeFilter = annee
-      ? `WHERE LEFT(e.ecriture_date, 4) = $${params.push(String(annee))}`
-      : '';
+    const conditions: string[] = [];
+
+    if (entreprise_id) {
+      const p = params.push(entreprise_id);
+      conditions.push(`(
+        (e.facture_id IS NOT NULL AND EXISTS (
+          SELECT 1 FROM factures f WHERE f.id = e.facture_id AND f.entreprise_id = $${p}
+        ))
+        OR
+        (e.facture_fournisseur_id IS NOT NULL AND EXISTS (
+          SELECT 1 FROM factures_fournisseurs ff WHERE ff.id = e.facture_fournisseur_id AND ff.entreprise_id = $${p}
+        ))
+      )`);
+    }
+    if (annee) {
+      conditions.push(`LEFT(e.ecriture_date, 4) = $${params.push(String(annee))}`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const r = await query(
-      `SELECT e.* FROM fec_ecritures e ${entrepriseJoin} ${anneeFilter} ORDER BY e.ecriture_date, e.ecriture_num`,
+      `SELECT e.* FROM fec_ecritures e ${where} ORDER BY e.ecriture_date, e.ecriture_num`,
       params
     );
     const lignes = r.rows as any[];

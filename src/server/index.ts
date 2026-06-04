@@ -45,6 +45,10 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' },
+  skip: (req) => {
+    const ip = req.ip ?? '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  },
 });
 
 app.use(express.static(path.resolve(__dirname, '../client')));

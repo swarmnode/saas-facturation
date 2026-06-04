@@ -40,6 +40,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: dates exercices comptables en format JJ/MM/AAAA
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: exercices — proposer l'année suivant le dernier exercice existant
+
+Au lieu de descendre depuis l'année courante-5 (ce qui affichait 2024
+alors que 2027 existe déjà), on part du max des exercices existants +1.
+La date de début suit également l'année proposée.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -47,6 +54,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

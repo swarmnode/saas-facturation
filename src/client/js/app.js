@@ -2874,8 +2874,9 @@ async function renderExercices(el) {
   async function load() {
     const exercices = await api.get('/api/exercices') ?? [];
     const anneesExistantes = new Set(exercices.map(e => e.annee));
+    const anneeMax = exercices.length ? Math.max(...exercices.map(e => e.annee)) : anneeActuelle - 1;
     const anneesDispos = [];
-    for (let a = anneeActuelle; a >= anneeActuelle - 5; a--) {
+    for (let a = anneeMax + 1; a >= anneeActuelle - 1; a--) {
       if (!anneesExistantes.has(a)) anneesDispos.push(a);
     }
 
@@ -2897,7 +2898,7 @@ async function renderExercices(el) {
           <div class="form-group" style="margin:0">
             <label style="font-size:12px">Début d'exercice</label>
             <input type="date" id="inputDateOuv" class="form-control" style="width:150px"
-              value="${anneeActuelle}-01-01"/>
+              value="${anneesDispos[0] ?? anneeActuelle}-01-01"/>
           </div>
           <button class="btn btn-outline" onclick="ouvrirExercice()">+ Ouvrir cet exercice</button>
         </div>` : ''}

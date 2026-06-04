@@ -97,6 +97,12 @@ quand le curseur était déjà plus bas. Remplacé par moveDown + text
 en flux, toujours sur la même page.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: numéro de facture avec tirets insécables dans la lettre de relance
+
+PDFKit coupait le numéro aux tirets (FAC-TEST → FAC-\nTEST).
+Remplacement par le tiret insécable U+2011 pour éviter la coupure.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -104,6 +110,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { logAudit } from './audit';
 import { FactureService } from '../services/FactureService';
+import { paginateParams, buildPage } from '../utils/paginate';
 import { FecExportService } from '../services/FecExportService';
 import { ScelleService } from '../services/ScelleService';
 import { FacturXService } from '../services/FacturXService';
@@ -32,14 +33,18 @@ router.get('/scellement/verifier', requirePerm('factures:r'), async (_req, res, 
 router.get('/', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
-    res.json(await FactureService.lister(req.user!.entreprise_id, undefined, commercial_id));
+    const { page, limit, all } = paginateParams(req.query);
+    const rows = await FactureService.lister(req.user!.entreprise_id, undefined, commercial_id, all ? undefined : page, all ? undefined : limit);
+    res.json(all ? rows : buildPage(rows, page, limit));
   } catch(e) { next(e); }
 });
 
 router.get('/avoirs/liste', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
-    res.json(await FactureService.listerAvoirs(req.user!.entreprise_id, commercial_id));
+    const { page, limit, all } = paginateParams(req.query);
+    const rows = await FactureService.lister(req.user!.entreprise_id, 'avoir', commercial_id, all ? undefined : page, all ? undefined : limit);
+    res.json(all ? rows : buildPage(rows, page, limit));
   } catch(e) { next(e); }
 });
 

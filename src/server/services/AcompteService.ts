@@ -42,15 +42,22 @@ export class AcompteService {
     return r.rows[0] ?? null;
   }
 
-  static async lister(entreprise_id: number, commercial_id?: number) {
+  static async lister(entreprise_id: number, commercial_id?: number,
+                      page?: number, limit?: number) {
     const commercialFilter = commercial_id
       ? `AND a.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = ${commercial_id} AND entreprise_id = ${entreprise_id})`
       : '';
+    const params: any[] = [entreprise_id];
+    const pagClause = (page && limit)
+      ? `LIMIT $${params.push(limit)} OFFSET $${params.push((page - 1) * limit)}`
+      : '';
     const r = await query(`
-      SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
+      SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             COUNT(*) OVER() AS _total
       FROM acomptes a LEFT JOIN clients c ON a.client_id = c.id
-      WHERE a.entreprise_id = $1 ${commercialFilter} ORDER BY a.created_at DESC
-    `, [entreprise_id]);
+      WHERE a.entreprise_id = $1 ${commercialFilter}
+      ORDER BY a.created_at DESC ${pagClause}
+    `, params);
     return r.rows;
   }
 

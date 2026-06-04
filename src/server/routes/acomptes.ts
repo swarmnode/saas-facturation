@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AcompteService } from '../services/AcompteService';
+import { paginateParams, buildPage } from '../utils/paginate';
 import { FacturXService } from '../services/FacturXService';
 import { query } from '../db/database';
 import { requirePerm } from '../middleware/auth';
@@ -13,7 +14,9 @@ const router = Router();
 router.get('/', requirePerm('acomptes:r'), async (req, res, next) => {
   try {
     const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
-    res.json(await AcompteService.lister(req.user!.entreprise_id, commercial_id));
+    const { page, limit, all } = paginateParams(req.query);
+    const rows = await AcompteService.lister(req.user!.entreprise_id, commercial_id, all ? undefined : page, all ? undefined : limit);
+    res.json(all ? rows : buildPage(rows, page, limit));
   } catch(e) { next(e); }
 });
 

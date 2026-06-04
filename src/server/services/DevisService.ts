@@ -72,15 +72,19 @@ export class DevisService {
     });
   }
 
-  static async lister(entreprise_id: number, commercial_id?: number) {
-    const filter = commercial_id
-      ? 'AND d.created_by = $2'
-      : '';
+  static async lister(entreprise_id: number, commercial_id?: number,
+                      page?: number, limit?: number) {
+    const filter = commercial_id ? 'AND d.created_by = $2' : '';
     const params: any[] = commercial_id ? [entreprise_id, commercial_id] : [entreprise_id];
+    const pagClause = (page && limit)
+      ? `LIMIT $${params.push(limit)} OFFSET $${params.push((page - 1) * limit)}`
+      : '';
     const r = await query(`
-      SELECT d.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
+      SELECT d.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             COUNT(*) OVER() AS _total
       FROM devis d LEFT JOIN clients c ON d.client_id = c.id
-      WHERE d.entreprise_id = $1 ${filter} ORDER BY d.created_at DESC
+      WHERE d.entreprise_id = $1 ${filter}
+      ORDER BY d.created_at DESC ${pagClause}
     `, params);
     return r.rows;
   }

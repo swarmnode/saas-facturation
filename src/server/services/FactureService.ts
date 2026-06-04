@@ -105,7 +105,8 @@ export class FactureService {
     });
   }
 
-  static async lister(entreprise_id: number, type?: string, commercial_id?: number) {
+  static async lister(entreprise_id: number, type?: string, commercial_id?: number,
+                      page?: number, limit?: number) {
     const params: any[] = [entreprise_id];
     const typeFilter = type
       ? `AND f.type_facture = $${params.push(type)}`
@@ -115,14 +116,19 @@ export class FactureService {
       const cidIdx = params.push(commercial_id);
       commercialFilter = `AND f.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = $${cidIdx} AND entreprise_id = $1)`;
     }
+    const pagClause = (page && limit)
+      ? `LIMIT $${params.push(limit)} OFFSET $${params.push((page - 1) * limit)}`
+      : '';
     const r = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
              c.mode_reglement_defaut,
-             fo.numero AS facture_origine_numero
+             fo.numero AS facture_origine_numero,
+             COUNT(*) OVER() AS _total
       FROM factures f
       LEFT JOIN clients c ON f.client_id = c.id
       LEFT JOIN factures fo ON fo.id = f.facture_origine_id
-      WHERE f.entreprise_id = $1 ${typeFilter} ${commercialFilter} ORDER BY f.created_at DESC
+      WHERE f.entreprise_id = $1 ${typeFilter} ${commercialFilter}
+      ORDER BY f.created_at DESC ${pagClause}
     `, params);
     return r.rows;
   }

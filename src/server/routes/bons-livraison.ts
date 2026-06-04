@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { BonLivraisonService } from '../services/BonLivraisonService';
+import { paginateParams, buildPage } from '../utils/paginate';
 import { FacturXService } from '../services/FacturXService';
 import { query } from '../db/database';
 import { requirePerm } from '../middleware/auth';
@@ -11,7 +12,11 @@ import fs from 'fs';
 const router = Router();
 
 router.get('/', requirePerm('bl:r'), async (req, res, next) => {
-  try { res.json(await BonLivraisonService.lister(req.user!.entreprise_id)); } catch(e) { next(e); }
+  try {
+    const { page, limit, all } = paginateParams(req.query);
+    const rows = await BonLivraisonService.lister(req.user!.entreprise_id, all ? undefined : page, all ? undefined : limit);
+    res.json(all ? rows : buildPage(rows, page, limit));
+  } catch(e) { next(e); }
 });
 
 router.get('/:id', requirePerm('bl:r'), async (req, res, next) => {

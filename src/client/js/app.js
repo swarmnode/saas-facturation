@@ -268,18 +268,27 @@ function toggleDevisExpiresFilter() {
   _rebuildFilter('devis');
 }
 
-async function renderDocList(type, el) {
-  const cfg  = DOC_CONFIGS[type];
-  const docs = await api.get(cfg.api);
+const _listPage = {};
+
+async function renderDocList(type, el, page = 1) {
+  const cfg = DOC_CONFIGS[type];
+  const sep = cfg.api.includes('?') ? '&' : '?';
+  const resp = await api.get(`${cfg.api}${sep}page=${page}&limit=50`);
+
+  // Support réponse paginée { data, total, page, pages } ou tableau brut (fallback)
+  const docs  = Array.isArray(resp) ? resp : (resp?.data ?? []);
+  const total = Array.isArray(resp) ? docs.length : (resp?.total ?? docs.length);
+  const pages = Array.isArray(resp) ? 1 : (resp?.pages ?? 1);
+  _listPage[type] = page;
+
   document.getElementById('topbarActions').innerHTML = cfg.topbar();
 
-  if (!docs.length) {
+  if (!docs.length && page === 1) {
     el.innerHTML = `<div class="card"><div class="empty">Aucun document</div></div>`;
     return;
   }
 
   if (!_listSort[type]) _listSort[type] = { col: null, dir: -1 };
-
   const colSpan = cfg.headers.length + 1;
   const keys = cfg.sortKeys || [];
 
@@ -288,7 +297,6 @@ async function renderDocList(type, el) {
     if (!col) return list;
     return [...list].sort((a, b) => {
       const va = (a[col] ?? '') + '', vb = (b[col] ?? '') + '';
-      // Tenter comparaison numérique
       const na = parseFloat(va), nb = parseFloat(vb);
       if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
       return va < vb ? -dir : va > vb ? dir : 0;
@@ -308,11 +316,26 @@ async function renderDocList(type, el) {
         <tr class="data-row" onclick="${cfg.rowOpen(doc)}" style="cursor:pointer">${cells}<td></td></tr>
         <tr class="row-actions"><td colspan="${colSpan}"><div class="btn-row">${actions}</div></td></tr>`;
     }).join('');
-    // Indicateurs de tri
     el.querySelectorAll('.list-th[data-key]').forEach(th => {
       const k = th.dataset.key;
       th.innerHTML = th.dataset.label + (_listSort[type].col === k ? (_listSort[type].dir > 0 ? ' ▲' : ' ▼') : '');
     });
+  }
+
+  function renderPagination() {
+    if (pages <= 1) return '';
+    const btns = [];
+    btns.push(`<button class="btn btn-sm ${page === 1 ? 'btn-outline' : 'btn-outline'}" ${page === 1 ? 'disabled' : `onclick="renderDocList('${type}',document.getElementById('tabPanels').querySelector('.tab-panel.active'),${page-1})"`}>← Préc.</button>`);
+    for (let p = Math.max(1, page-2); p <= Math.min(pages, page+2); p++) {
+      btns.push(`<button class="btn btn-sm ${p === page ? 'btn-primary' : 'btn-outline'}" ${p === page ? 'disabled' : `onclick="renderDocList('${type}',document.getElementById('tabPanels').querySelector('.tab-panel.active'),${p})"`}>${p}</button>`);
+    }
+    btns.push(`<button class="btn btn-sm btn-outline" ${page === pages ? 'disabled' : `onclick="renderDocList('${type}',document.getElementById('tabPanels').querySelector('.tab-panel.active'),${page+1})"`}>Suiv. →</button>`);
+    const start = (page - 1) * 50 + 1;
+    const end   = Math.min(page * 50, total);
+    return `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;padding:12px 0;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--text-muted)">${start}–${end} sur ${total}</span>
+      <div style="display:flex;gap:4px">${btns.join('')}</div>
+    </div>`;
   }
 
   const thHtml = cfg.headers.map((h, i) => {
@@ -325,11 +348,10 @@ async function renderDocList(type, el) {
   el.innerHTML = `<div class="card"><div class="table-wrap"><table>
     <thead><tr>${thHtml}<th></th></tr></thead>
     <tbody></tbody>
-  </table></div></div>`;
+  </table></div>${renderPagination()}</div>`;
 
   renderTbody(docs);
 
-  // Brancher les clics de tri
   el.querySelectorAll('.list-th[data-key]').forEach(th => {
     th.addEventListener('click', () => {
       const k = th.dataset.key;
@@ -1246,11 +1268,11 @@ async function renderStats(el) {
 
 async function renderDashboard(el) {
   const [devisList, facturesList, avoirsList, acomptesList, blList] = await Promise.all([
-    api.get('/api/devis'),
-    api.get('/api/factures'),
-    api.get('/api/factures/avoirs/liste'),
-    api.get('/api/acomptes'),
-    api.get('/api/bons-livraison'),
+    api.get('/api/devis?all=1'),
+    api.get('/api/factures?all=1'),
+    api.get('/api/factures/avoirs/liste?all=1'),
+    api.get('/api/acomptes?all=1'),
+    api.get('/api/bons-livraison?all=1'),
   ]);
 
   const caTotal        = facturesList.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.montant_ttc || 0), 0);

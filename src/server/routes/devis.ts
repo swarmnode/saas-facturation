@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { DevisService } from '../services/DevisService';
+import { paginateParams, buildPage } from '../utils/paginate';
 import { AvenantService } from '../services/AvenantService';
 import { FacturXService } from '../services/FacturXService';
 import { EmailService } from '../services/EmailService';
@@ -15,7 +16,9 @@ const router = Router();
 router.get('/', requirePerm('devis:r'), async (req, res, next) => {
   try {
     const commercial_id = req.user!.role === 'commercial' && !req.user!.voir_tout ? req.user!.id : undefined;
-    res.json(await DevisService.lister(req.user!.entreprise_id, commercial_id));
+    const { page, limit, all } = paginateParams(req.query);
+    const rows = await DevisService.lister(req.user!.entreprise_id, commercial_id, all ? undefined : page, all ? undefined : limit);
+    res.json(all ? rows : buildPage(rows, page, limit));
   } catch(e) { next(e); }
 });
 

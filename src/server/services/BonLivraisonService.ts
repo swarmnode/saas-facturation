@@ -49,12 +49,18 @@ export class BonLivraisonService {
     return this.obtenir(blId);
   }
 
-  static async lister(entreprise_id: number) {
+  static async lister(entreprise_id: number, page?: number, limit?: number) {
+    const params: any[] = [entreprise_id];
+    const pagClause = (page && limit)
+      ? `LIMIT $${params.push(limit)} OFFSET $${params.push((page - 1) * limit)}`
+      : '';
     const r = await query(`
-      SELECT bl.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
+      SELECT bl.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             COUNT(*) OVER() AS _total
       FROM bons_livraison bl LEFT JOIN clients c ON bl.client_id = c.id
-      WHERE bl.entreprise_id = $1 ORDER BY bl.created_at DESC
-    `, [entreprise_id]);
+      WHERE bl.entreprise_id = $1
+      ORDER BY bl.created_at DESC ${pagClause}
+    `, params);
     return r.rows;
   }
 

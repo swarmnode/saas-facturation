@@ -190,23 +190,24 @@ router.get('/:id/relance-courrier', requirePerm('factures:r'), async (req, res, 
 
     // Objet
     doc.moveDown(1);
-    doc.font('Helvetica-Bold').text(`Objet : Relance — Facture ${f.numero}`);
+    doc.font('Helvetica-Bold').text(`Objet : Relance — Facture ${f.numero.replace(/-/g, '‑')}`);
 
     // Corps
     doc.moveDown(1.5).font('Helvetica');
     doc.text(`Madame, Monsieur ${clientNom},`, { lineGap: 4 });
     doc.moveDown(0.5);
 
+    const numSafe = f.numero.replace(/-/g, '‑');
     if (jRetard > 0) {
       doc.text(
-        `Sauf erreur ou omission de notre part, nous constatons que la facture ${f.numero} ` +
+        `Sauf erreur ou omission de notre part, nous constatons que la facture ${numSafe} ` +
         `d'un montant de ${Number(f.montant_ttc).toFixed(2)} € TTC, arrivée à échéance le ${dateEch} ` +
         `(il y a ${jRetard} jour${jRetard > 1 ? 's' : ''}), n'a pas encore été réglée à ce jour.`,
         { lineGap: 4 }
       );
     } else {
       doc.text(
-        `Nous vous rappelons que la facture ${f.numero} d'un montant de ${Number(f.montant_ttc).toFixed(2)} € TTC ` +
+        `Nous vous rappelons que la facture ${numSafe} d'un montant de ${Number(f.montant_ttc).toFixed(2)} € TTC ` +
         `arrive à échéance le ${dateEch}. Nous vous remercions d'en tenir compte.`,
         { lineGap: 4 }
       );

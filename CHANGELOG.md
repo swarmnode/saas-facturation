@@ -84,6 +84,12 @@ bloqué par le rate limiter (::1 / 127.0.0.1). La protection reste
 active pour les connexions réseau extérieures.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: binding #ffCsvInput déplacé dans reload() après injection HTML
+
+L'onchange était bindé avant que el.innerHTML soit défini,
+causant 'Cannot set properties of null'.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -91,6 +97,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

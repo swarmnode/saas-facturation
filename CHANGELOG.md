@@ -109,6 +109,13 @@ U+2011 non supporté par Helvetica PDFKit. Passage à lineBreak:false
 avec largeur pleine page pour que le numéro ne wrppe pas.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: mention légale + CGV sur la même page (plus de page vide intercalée)
+
+drawCGV détecte si le startY dépasse la zone utile de la page et
+ajoute une nouvelle page si nécessaire, évitant que la mention légale
+se retrouve seule sur sa propre page avant les CGV.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -116,6 +123,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -72,6 +72,14 @@ export async function runBackup(destination: string): Promise<string> {
     proc.on('close', code => { if (code !== 0) reject(new Error(`pg_dump code ${code}`)); });
   });
 
+  // Copie des PDFs Factur-X (preuve légale 10 ans)
+  const pdfSrc = path.resolve(process.cwd(), 'storage', 'pdf');
+  if (fs.existsSync(pdfSrc)) {
+    const pdfDest = path.join(destination, `pdfs_${date}`);
+    fs.cpSync(pdfSrc, pdfDest, { recursive: true });
+    console.log(`[backup] PDFs copiés → ${pdfDest}`);
+  }
+
   return filePath;
 }
 

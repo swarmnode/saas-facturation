@@ -149,6 +149,91 @@ router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) =
   } catch(e: any) { next(e); }
 });
 
+// Lettre de relance imprimable — GET /api/factures/:id/relance-courrier
+router.get('/:id/relance-courrier', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const facture = await FactureService.obtenir(Number(req.params.id));
+    if (!facture) return res.status(404).json({ error: 'Introuvable' });
+    const f  = facture as any;
+    const er = await query('SELECT * FROM entreprise WHERE id=$1', [f.entreprise_id]);
+    const cr = await query('SELECT * FROM clients WHERE id=$1', [f.client_id]);
+    const ent = er.rows[0];
+    const cli = cr.rows[0];
+    const PDFDocument = (await import('pdfkit')).default;
+
+    const dateStr = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+    const dateEch = f.date_echeance ? new Date(f.date_echeance).toLocaleDateString('fr-FR') : '—';
+    const jRetard = f.date_echeance
+      ? Math.max(0, Math.floor((Date.now() - new Date(f.date_echeance).getTime()) / 86400000))
+      : 0;
+    const clientNom = cli?.raison_sociale || `${cli?.prenom ?? ''} ${cli?.nom ?? ''}`.trim() || 'Client';
+    const clientAdr = [cli?.adresse, cli?.adresse2, `${cli?.code_postal ?? ''} ${cli?.ville ?? ''}`].filter(Boolean).join('\n');
+
+    const doc = new PDFDocument({ size: 'A4', margin: 60, info: { Title: `Relance ${f.numero}` } });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="relance_${f.numero}.pdf"`);
+    doc.pipe(res);
+
+    // En-tête expéditeur
+    doc.fontSize(10).font('Helvetica-Bold').text(ent.raison_sociale || '', { align: 'left' });
+    doc.font('Helvetica').text([ent.adresse, `${ent.code_postal ?? ''} ${ent.ville ?? ''}`, ent.telephone ?? ''].filter(Boolean).join('\n'));
+    doc.text(ent.email ?? '');
+
+    // Destinataire (aligné à droite)
+    doc.font('Helvetica-Bold').text(clientNom, 350, 60, { width: 185, align: 'left' });
+    doc.font('Helvetica').text(clientAdr, 350, doc.y, { width: 185 });
+
+    // Lieu et date
+    doc.moveDown(3);
+    const ville = ent.ville || '';
+    doc.text(`${ville ? ville + ', le ' : 'Le '}${dateStr}`, { align: 'right' });
+
+    // Objet
+    doc.moveDown(1);
+    doc.font('Helvetica-Bold').text(`Objet : Relance — Facture ${f.numero}`);
+
+    // Corps
+    doc.moveDown(1.5).font('Helvetica');
+    doc.text(`Madame, Monsieur ${clientNom},`, { lineGap: 4 });
+    doc.moveDown(0.5);
+
+    if (jRetard > 0) {
+      doc.text(
+        `Sauf erreur ou omission de notre part, nous constatons que la facture ${f.numero} ` +
+        `d'un montant de ${Number(f.montant_ttc).toFixed(2)} € TTC, arrivée à échéance le ${dateEch} ` +
+        `(il y a ${jRetard} jour${jRetard > 1 ? 's' : ''}), n'a pas encore été réglée à ce jour.`,
+        { lineGap: 4 }
+      );
+    } else {
+      doc.text(
+        `Nous vous rappelons que la facture ${f.numero} d'un montant de ${Number(f.montant_ttc).toFixed(2)} € TTC ` +
+        `arrive à échéance le ${dateEch}. Nous vous remercions d'en tenir compte.`,
+        { lineGap: 4 }
+      );
+    }
+
+    doc.moveDown(0.5);
+    doc.text('Nous vous prions de bien vouloir procéder au règlement dans les meilleurs délais ou de prendre contact avec nous si vous avez la moindre question concernant cette facture.', { lineGap: 4 });
+    doc.moveDown(0.5);
+    doc.text('Dans l\'attente de votre règlement, nous vous adressons nos cordiales salutations.');
+
+    // Signature
+    doc.moveDown(3);
+    doc.font('Helvetica-Bold').text(ent.raison_sociale || '');
+    doc.font('Helvetica').text(ent.email ?? '');
+
+    // Pied de page
+    const foot = [
+      ent.raison_sociale,
+      ent.siret ? `SIRET : ${ent.siret}` : '',
+      ent.tva_intracom ? `TVA : ${ent.tva_intracom}` : '',
+    ].filter(Boolean).join('  |  ');
+    doc.fontSize(8).text(foot, 60, 780, { width: 475, align: 'center', lineBreak: false });
+
+    doc.end();
+  } catch(e) { next(e); }
+});
+
 router.get('/:id/apercu', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const facture = await FactureService.obtenir(Number(req.params.id));

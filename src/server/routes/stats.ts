@@ -539,6 +539,56 @@ router.get('/ca3', requirePerm('factures:r'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+// ── Stats fournisseurs ────────────────────────────────────────────────────────
+router.get('/fournisseurs', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const [totaux, balance, top, mensuel] = await Promise.all([
+      query(`SELECT
+               COALESCE(SUM(montant_ht),0)  AS total_ht,
+               COALESCE(SUM(montant_tva),0) AS total_tva,
+               COALESCE(SUM(montant_ttc),0) AS total_ttc,
+               COUNT(*) AS nb
+             FROM factures_fournisseurs WHERE entreprise_id=$1`, [eid]),
+
+      query(`SELECT
+               COALESCE(SUM(montant_ttc),0) AS a_payer,
+               COUNT(*) AS nb
+             FROM factures_fournisseurs
+             WHERE entreprise_id=$1 AND statut='recue'`, [eid]),
+
+      query(`SELECT fournisseur_nom,
+               SUM(montant_ht) AS total_ht, COUNT(*) AS nb
+             FROM factures_fournisseurs
+             WHERE entreprise_id=$1
+             GROUP BY fournisseur_nom ORDER BY total_ht DESC LIMIT 5`, [eid]),
+
+      query(`SELECT TO_CHAR(date_facture,'YYYY-MM') AS mois,
+               COALESCE(SUM(montant_ht),0)  AS ht,
+               COALESCE(SUM(montant_tva),0) AS tva
+             FROM factures_fournisseurs
+             WHERE entreprise_id=$1
+               AND date_facture >= CURRENT_DATE - INTERVAL '11 months'
+             GROUP BY mois ORDER BY mois`, [eid]),
+    ]);
+
+    res.json({
+      total_ht:   parseFloat(totaux.rows[0].total_ht),
+      total_tva:  parseFloat(totaux.rows[0].total_tva),
+      total_ttc:  parseFloat(totaux.rows[0].total_ttc),
+      nb:         parseInt(totaux.rows[0].nb),
+      a_payer:    parseFloat(balance.rows[0].a_payer),
+      nb_a_payer: parseInt(balance.rows[0].nb),
+      top_fournisseurs: top.rows.map((r: any) => ({
+        nom: r.fournisseur_nom, total_ht: parseFloat(r.total_ht), nb: parseInt(r.nb),
+      })),
+      mensuel: mensuel.rows.map((r: any) => ({
+        mois: r.mois, ht: parseFloat(r.ht), tva: parseFloat(r.tva),
+      })),
+    });
+  } catch(e) { next(e); }
+});
+
 // ── TVA déductible (section B CA3) — saisie manuelle ────────────────────────
 router.get('/tva-deductible', requirePerm('factures:r'), async (req, res, next) => {
   try {

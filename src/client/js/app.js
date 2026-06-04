@@ -162,6 +162,7 @@ const DOC_CONFIGS = {
     actions: f => [
       ['emise','payee'].includes(f.statut) ? `<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Émis</button>` : '',
       (f.statut==='emise' && f.date_echeance && new Date(f.date_echeance) < new Date()) ? btn.warning(`relancerFacture(${f.id})`, '📨 Relancer') : '',
+      (f.statut==='emise' && f.date_echeance && new Date(f.date_echeance) < new Date()) ? btn.outline(`telechargerRelanceCourrier(${f.id},'${f.numero}')`, '✉ Courrier') : '',
       f.statut==='emise'     ? btn.primary(`payerFacture(${f.id})`, '💳 Payer') : '',
       btn.outline(`DocEditor.openFacture(${f.id})`, 'Voir/Modifier'),
       btn.outline(`previewFacture(${f.id})`, '👁 PDF'),
@@ -970,7 +971,7 @@ async function renderStats(el) {
   let periode = 'mois';
 
   async function load() {
-    const [kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions] = await Promise.all([
+    const [kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions, statsFourn] = await Promise.all([
       api.get(`/api/stats/kpis?periode=${periode}`),
       api.get('/api/stats/balance-agee'),
       api.get('/api/stats/evolution'),
@@ -981,8 +982,9 @@ async function renderStats(el) {
       api.get('/api/stats/marge'),
       api.get('/api/stats/comparaison'),
       api.get('/api/stats/repartitions'),
+      api.get('/api/stats/fournisseurs'),
     ]);
-    render(kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions);
+    render(kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions, statsFourn);
   }
 
   function periodeLabel(p) {
@@ -1095,7 +1097,7 @@ async function renderStats(el) {
     </svg>`;
   }
 
-  function render(kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions) {
+  function render(kpis, balance, evolution, pipeline, topClients, treso, topArt, marge, comparaison, repartitions, statsFourn) {
     const tauxConv = kpis.devis_envoyes > 0
       ? Math.round(kpis.devis_acceptes / kpis.devis_envoyes * 100) : 0;
 
@@ -1259,7 +1261,52 @@ async function renderStats(el) {
           const totalTVA = repartitions.tva.reduce((s, r) => s + r.tva, 0);
           return rows + (totalHT ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-weight:700"><span>Total</span><span>${fmt.money(totalHT)} HT — TVA ${fmt.money(totalTVA)}</span></div>` : '');
         })())}
-      </div>`;
+      </div>
+
+      ${statsFourn ? `
+      <h2 style="margin:24px 0 12px;font-size:16px;color:var(--primary)">Achats fournisseurs</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+        ${[
+          ['Total achats HT', fmt.money(statsFourn.total_ht), `${statsFourn.nb} facture${statsFourn.nb>1?'s':''}`],
+          ['TVA déductible', fmt.money(statsFourn.total_tva), 'Section B CA3'],
+          ['À payer', `<span style="color:${statsFourn.a_payer>0?'var(--danger)':'var(--success)'}">` + fmt.money(statsFourn.a_payer) + '</span>', `${statsFourn.nb_a_payer} facture${statsFourn.nb_a_payer>1?'s':''}`],
+        ].map(([title, val, sub]) => `<div class="card" style="padding:16px">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">${title}</div>
+          <div style="font-size:22px;font-weight:700;margin:4px 0">${val}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${sub}</div>
+        </div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        ${card('Top 5 fournisseurs', (() => {
+          if (!statsFourn.top_fournisseurs?.length) return '<p style="color:var(--text-muted);font-size:13px">Aucune facture fournisseur</p>';
+          const maxHT = Math.max(...statsFourn.top_fournisseurs.map(f => f.total_ht), 1);
+          return statsFourn.top_fournisseurs.map((f, i) => `
+            <div style="margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span>${i+1}. <strong>${f.nom}</strong> <span style="color:var(--text-muted)">${f.nb} fact.</span></span>
+                <strong>${fmt.money(f.total_ht)}</strong>
+              </div>
+              <div style="height:5px;border-radius:3px;background:var(--border)">
+                <div style="height:100%;border-radius:3px;width:${Math.round(f.total_ht/maxHT*100)}%;background:#f59e0b"></div>
+              </div>
+            </div>`).join('');
+        })())}
+        ${card('Achats mensuels (12 mois)', (() => {
+          if (!statsFourn.mensuel?.length) return '<p style="color:var(--text-muted);font-size:13px">Aucune donnée</p>';
+          const maxHT = Math.max(...statsFourn.mensuel.map(m => m.ht), 1);
+          const W = 320, H = 120, pad = 8;
+          const n = statsFourn.mensuel.length;
+          const barW = Math.floor((W - pad * 2) / n) - 2;
+          const bars = statsFourn.mensuel.map((m, i) => {
+            const h = Math.round((m.ht / maxHT) * (H - 24));
+            const x = pad + i * ((W - pad*2) / n);
+            return `<rect x="${x}" y="${H - h - 16}" width="${barW}" height="${h}" fill="#f59e0b" rx="2"/>
+              <text x="${x + barW/2}" y="${H - 4}" text-anchor="middle" font-size="8" fill="#999">${m.mois.slice(5)}</text>`;
+          }).join('');
+          return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px">${bars}</svg>`;
+        })())}
+      </div>` : ''}
+      `;
   }
 
   window.statsPeriode = async (p) => { periode = p; await load(); };
@@ -1772,6 +1819,25 @@ ${entreprise?.raison_sociale || ''}`;
       btn.disabled = false; btn.textContent = 'Envoyer';
     }
   };
+}
+
+function telechargerRelanceCourrier(id, numero) {
+  const token = localStorage.getItem('jwt');
+  const a = document.createElement('a');
+  a.href = `/api/factures/${id}/relance-courrier`;
+  a.download = `relance_${numero}.pdf`;
+  a.style.display = 'none';
+  // Passer le token via fetch et créer un blob URL
+  fetch(a.href, { headers: { Authorization: `Bearer ${token}` } })
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
 }
 
 async function envoyerFacture(id) {
@@ -4473,7 +4539,13 @@ async function renderFournisseurs(el) {
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <h2 style="margin:0">Factures fournisseurs</h2>
-        <button class="btn btn-primary" id="btnNouveauFF">+ Nouvelle facture</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="btnNouveauFF">+ Nouvelle facture</button>
+          <label class="btn btn-outline" style="cursor:pointer;margin:0" title="Importer un CSV">
+            ⬆ Import CSV
+            <input type="file" id="ffCsvInput" accept=".csv,text/csv" style="display:none"/>
+          </label>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <button class="btn ${filtreStatut==='all'   ? 'btn-primary' : 'btn-outline'}" onclick="window._ffFiltre('all')">Toutes</button>
@@ -4529,6 +4601,22 @@ async function renderFournisseurs(el) {
         reload();
       };
     });
+  };
+
+  // Import CSV
+  el.querySelector('#ffCsvInput').onchange = async function() {
+    const file = this.files[0]; if (!file) return;
+    const fd = new FormData(); fd.append('csv', file);
+    const token = localStorage.getItem('jwt');
+    const r = await fetch('/api/factures-fournisseurs/import-csv', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+    }).then(r => r.json());
+    this.value = '';
+    if (r.error) { alert('Erreur : ' + r.error); return; }
+    const msg = `Import terminé : ${r.ok} ligne${r.ok > 1 ? 's' : ''} importée${r.ok > 1 ? 's' : ''}.` +
+      (r.errors?.length ? `\n\nErreurs :\n${r.errors.join('\n')}` : '');
+    alert(msg);
+    reload();
   };
 
   window.supprimerFournisseur = async (id) => {

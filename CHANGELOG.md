@@ -5,11 +5,29 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: notifications avant échéance + correction persistance relances auto
+
+- Migration 022 : ajoute notif_echeance_active/jours sur entreprise et
+  notif_echeance_envoyee sur factures (envoi unique garanti)
+- RelanceScheduler : nouvelle fonction envoyerNotifsEcheance() qui envoie
+  un rappel N jours avant l'échéance (défaut 3j), tourne au même cron
+- Route POST /api/entreprise/relances : persiste les 5 champs relance +
+  notif et réinitialise le scheduler immédiatement
+- Correction : les relances auto n'étaient jamais sauvegardées (la route
+  principale ignorait ces champs)
+- Frontend : section Paramètres restructurée en deux fieldsets distincts
+  (après échéance / avant échéance)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ## [2.13.0] — 2026-06-02

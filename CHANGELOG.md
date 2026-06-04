@@ -43,6 +43,27 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Refactoring
+- Refactor: page Paramètres en onglets
+
+Remplace la page monolithique (scroll infini, sections créées avec
+.after() dans le désordre) par 8 onglets distincts avec persistance
+de l'onglet actif (localStorage) :
+
+  Entreprise / Documents / Email / Automatisations / SEPA
+  / Sauvegarde* / Utilisateurs* / Sociétés*  (* = conditionnel)
+
+- Chaque onglet est rendu à la demande (lazy) via une fonction dédiée
+- Les forms CGV et mentions légales utilisent désormais la variable
+  entreprise en mémoire au lieu de lire #entrepriseForm depuis le DOM
+- Correction du bug SEPA : api.put() → api.post() (pas de route PUT)
+- Les mises à jour de l'objet entreprise en mémoire évitent les
+  incohérences entre onglets sans rechargement
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.13.0] — 2026-06-02

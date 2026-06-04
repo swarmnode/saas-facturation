@@ -4571,6 +4571,21 @@ async function renderFournisseurs(el) {
       </div>`;
 
     el.querySelector('#btnNouveauFF').onclick = () => ouvrirFormulaireFF();
+
+    el.querySelector('#ffCsvInput').onchange = async function() {
+      const file = this.files[0]; if (!file) return;
+      const fd = new FormData(); fd.append('csv', file);
+      const token = localStorage.getItem('jwt');
+      const r = await fetch('/api/factures-fournisseurs/import-csv', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      }).then(res => res.json());
+      this.value = '';
+      if (r.error) { alert('Erreur : ' + r.error); return; }
+      const msg = `Import terminé : ${r.ok} ligne${r.ok > 1 ? 's' : ''} importée${r.ok > 1 ? 's' : ''}.` +
+        (r.errors?.length ? `\n\nErreurs :\n${r.errors.join('\n')}` : '');
+      alert(msg);
+      reload();
+    };
   }
 
   window._ffFiltre = (s) => { filtreStatut = s; reload(); };
@@ -4601,22 +4616,6 @@ async function renderFournisseurs(el) {
         reload();
       };
     });
-  };
-
-  // Import CSV
-  el.querySelector('#ffCsvInput').onchange = async function() {
-    const file = this.files[0]; if (!file) return;
-    const fd = new FormData(); fd.append('csv', file);
-    const token = localStorage.getItem('jwt');
-    const r = await fetch('/api/factures-fournisseurs/import-csv', {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
-    }).then(r => r.json());
-    this.value = '';
-    if (r.error) { alert('Erreur : ' + r.error); return; }
-    const msg = `Import terminé : ${r.ok} ligne${r.ok > 1 ? 's' : ''} importée${r.ok > 1 ? 's' : ''}.` +
-      (r.errors?.length ? `\n\nErreurs :\n${r.errors.join('\n')}` : '');
-    alert(msg);
-    reload();
   };
 
   window.supprimerFournisseur = async (id) => {

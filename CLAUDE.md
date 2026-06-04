@@ -31,7 +31,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–016 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–021 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
 - 008: `clients.mode_reglement_defaut`
@@ -41,6 +41,12 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - 014: `clients.conditions_paiement`
 - 015: `devis.created_by` (FK → `utilisateurs`)
 - 016: `user_entreprises.voir_tout` (commercial visibility flag)
+- 017: `archive_documents.entreprise_id` (multi-tenant isolation; existing NULL rows remain visible to super_admin only)
+- 018: creates `exercices` table (fiscal year management, loi anti-fraude TVA)
+- 019: legal notice fields on `factures` (`numero_commande`, `escompte_taux`, `penalites_taux`, `indemnite_recouvrement`, `chorus_pro_id`, `chorus_pro_statut`) and matching defaults on `entreprise`
+- 020: creates `tva_deductible` table (section B of CA3 VAT return, keyed by `(entreprise_id, periode)`)
+- 021: auto-dunning fields on `entreprise` (`relance_auto_active`, `relance_auto_jours`, `relance_auto_heure`); tracking fields on `factures` (`derniere_relance`, `nb_relances`); e-signature fields on `devis` (`signature_token`, `signature_ip`, `signature_date`, `signature_nom`)
+- 022: pre-due notification fields on `entreprise` (`notif_echeance_active`, `notif_echeance_jours`); `factures.notif_echeance_envoyee` (timestamp, prevents double-sending)
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -62,12 +68,17 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `EmailService` — Nodemailer; uses SMTP config from `entreprise` table if present, otherwise falls back to Ethereal test account auto-created at runtime.
 - `ArchiveService` — stores immutable JSON snapshots of documents in `archive_documents` (SHA-256 hash, 10-year retention). `archiver()` is idempotent (`ON CONFLICT DO NOTHING` on `type_document + document_id_original`). Must be called when a document reaches a terminal status.
 - `AvenantService` — creates amendments to signed devis. An avenant can only be created when the parent `devis.statut = 'signe'`; it allocates its own number via `NumerotationService` and seals via `ScelleService`.
+- `ExerciceService` — fiscal year lifecycle (`ouvrir`, `cloturer`). Closing an exercice hashes all `fec_ecritures` for that year and persists the hash in `exercices.hash_cloture`. A closed exercice cannot be re-opened.
+- `ChorusProService` — submits Factur-X PDFs to the Chorus Pro public procurement portal via PISTE OAuth2. Requires `CHORUS_PRO_CLIENT_ID`, `CHORUS_PRO_CLIENT_SECRET`, and `CHORUS_PRO_LOGIN` env vars. Persists the CPP document ID on `factures.chorus_pro_id`. Only acts on factures with `statut = 'emise'` and an existing PDF.
+- `RelanceScheduler` — `node-cron` job running two functions daily at the configured hour: `envoyerRelancesAuto()` sends dunning emails for overdue factures (controlled by `relance_auto_active/jours`); `envoyerNotifsEcheance()` sends a reminder N days *before* the due date (controlled by `notif_echeance_active/jours`, default 3 days). The pre-due notification is sent at most once per facture (`notif_echeance_envoyee` timestamp guards against duplicates).
 
 **Additional routes** not listed above:
 - `sepa` — generates SEPA direct debit XML (pain.008) for a batch of factures. POST `/api/sepa/generer` with `{ facture_ids, date_execution, sequence }`.
 - `lettrage` — GET `/api/lettrage` lists compte-411 FEC entries; POST `/api/lettrage/lettrer` for manual matching.
 - `stats` — GET `/api/stats/kpis?periode=mois|trimestre|annee` returns financial KPIs (CA, factures emises/payees, impayés, etc.).
 - `audit` — GET `/api/audit` reads `audit_log`. The exported `logAudit()` helper is used by other routes to record sensitive actions.
+- `exercices` — GET `/api/exercices` lists fiscal years; POST `/api/exercices` opens one; POST `/api/exercices/:annee/cloturer` closes it (hashes FEC entries, returns a bilan PDF).
+- `chorus-pro` (on `factures` router) — POST `/api/factures/:id/chorus-pro` deposits the facture on Chorus Pro; GET `/api/factures/:id/chorus-pro/statut` refreshes its status.
 
 **Email endpoints on factures** (`src/server/routes/factures.ts`):
 - `POST /:id/envoyer` — auto-sends to the client's email from DB.

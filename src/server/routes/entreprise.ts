@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { query } from '../db/database';
 import { requirePerm } from '../middleware/auth';
+import { initRelanceScheduler } from '../services/RelanceScheduler';
 
 const router = Router();
 
@@ -115,6 +116,32 @@ router.post('/smtp', requirePerm('settings:w'), async (req, res, next) => {
         req.body.smtp_secure ? 1 : 0, req.body.smtp_user ?? null,
         req.body.smtp_pass ?? null, req.body.smtp_from ?? null,
         req.body.email_mode ?? 'mapi', req.user!.entreprise_id]);
+    const r2 = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
+    res.json(r2.rows[0]);
+  } catch(e) { next(e); }
+});
+
+router.post('/relances', requirePerm('settings:w'), async (req, res, next) => {
+  try {
+    const b = req.body;
+    await query(`
+      UPDATE entreprise SET
+        relance_auto_active  = $1,
+        relance_auto_jours   = $2,
+        relance_auto_heure   = $3,
+        notif_echeance_active = $4,
+        notif_echeance_jours  = $5,
+        updated_at = NOW()
+      WHERE id = $6
+    `, [
+      b.relance_auto_active ? 1 : 0,
+      Number(b.relance_auto_jours) || 15,
+      b.relance_auto_heure || '08:00',
+      b.notif_echeance_active ? 1 : 0,
+      Number(b.notif_echeance_jours) || 3,
+      req.user!.entreprise_id,
+    ]);
+    await initRelanceScheduler();
     const r2 = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     res.json(r2.rows[0]);
   } catch(e) { next(e); }

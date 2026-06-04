@@ -5,7 +5,6 @@ import { query } from '../db/database';
 let relanceTask: ScheduledTask | null = null;
 
 async function envoyerRelancesAuto(): Promise<void> {
-  // Pour chaque entreprise avec relance_auto_active=1
   const entreprises = await query(`
     SELECT id, relance_auto_jours, relance_auto_heure
     FROM entreprise WHERE relance_auto_active = 1
@@ -13,8 +12,6 @@ async function envoyerRelancesAuto(): Promise<void> {
 
   for (const ent of entreprises.rows) {
     const jours = ent.relance_auto_jours ?? 15;
-    // Factures émises, échéance dépassée de plus de 0 jours,
-    // et pas de relance dans les `jours` derniers jours
     const factures = await query(`
       SELECT f.id, f.numero, f.montant_ttc, f.date_echeance,
              c.email AS client_email,
@@ -51,7 +48,6 @@ async function envoyerRelancesAuto(): Promise<void> {
           entreprise_id: ent.id,
         });
 
-        // Mettre à jour le compteur de relances
         await query(`
           UPDATE factures
           SET derniere_relance = NOW(),
@@ -65,10 +61,65 @@ async function envoyerRelancesAuto(): Promise<void> {
   }
 }
 
+async function envoyerNotifsEcheance(): Promise<void> {
+  const entreprises = await query(`
+    SELECT id
+    FROM entreprise WHERE notif_echeance_active = 1
+  `);
+
+  for (const ent of entreprises.rows) {
+    const config = await query(`
+      SELECT notif_echeance_jours FROM entreprise WHERE id = $1
+    `, [ent.id]);
+    const jours = config.rows[0]?.notif_echeance_jours ?? 3;
+
+    const factures = await query(`
+      SELECT f.id, f.numero, f.montant_ttc, f.date_echeance,
+             c.email AS client_email,
+             COALESCE(c.raison_sociale, c.prenom || ' ' || c.nom) AS client_nom
+      FROM factures f
+      JOIN clients c ON c.id = f.client_id
+      WHERE f.entreprise_id = $1
+        AND f.statut = 'emise'
+        AND f.date_echeance IS NOT NULL
+        AND f.date_echeance::date = CURRENT_DATE + ($2 * INTERVAL '1 day')
+        AND f.notif_echeance_envoyee IS NULL
+    `, [ent.id, jours]);
+
+    for (const f of factures.rows) {
+      if (!f.client_email) continue;
+      try {
+        const { EmailService } = await import('./EmailService');
+        const dateEch = new Date(f.date_echeance).toLocaleDateString('fr-FR');
+        await EmailService.envoyerEmail({
+          to: f.client_email,
+          subject: `Rappel — Facture ${f.numero} arrive à échéance le ${dateEch}`,
+          text: [
+            `Bonjour${f.client_nom ? ' ' + f.client_nom : ''},`,
+            '',
+            `Nous vous rappelons que la facture ${f.numero} d'un montant de ${Number(f.montant_ttc).toFixed(2)} €`,
+            `arrive à échéance dans ${jours} jour${jours > 1 ? 's' : ''}, le ${dateEch}.`,
+            '',
+            'Si vous avez déjà procédé au règlement, veuillez ne pas tenir compte de ce message.',
+            '',
+            'Cordialement'
+          ].join('\n'),
+          entreprise_id: ent.id,
+        });
+
+        await query(`
+          UPDATE factures SET notif_echeance_envoyee = NOW() WHERE id = $1
+        `, [f.id]);
+      } catch (err) {
+        console.error(`[notif-echeance] Erreur facture ${f.id}:`, err);
+      }
+    }
+  }
+}
+
 export async function initRelanceScheduler(): Promise<void> {
   if (relanceTask) { relanceTask.stop(); relanceTask = null; }
 
-  // Récupère l'heure configurée (utilise la première entreprise avec relance active)
   const r = await query(`SELECT relance_auto_heure FROM entreprise WHERE relance_auto_active=1 LIMIT 1`);
   const heure = r.rows[0]?.relance_auto_heure ?? '08:00';
   const [hh, mm] = heure.split(':').map(Number);
@@ -77,6 +128,7 @@ export async function initRelanceScheduler(): Promise<void> {
 
   relanceTask = cron.schedule(`${m} ${h} * * *`, () => {
     envoyerRelancesAuto().catch(e => console.error('[relance] Erreur scheduler:', e));
+    envoyerNotifsEcheance().catch(e => console.error('[notif-echeance] Erreur scheduler:', e));
   });
 
   console.log(`[relance] Planifié : ${m} ${h} * * *`);

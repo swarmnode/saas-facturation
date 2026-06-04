@@ -4824,43 +4824,64 @@ async function renderParametres(el) {
     setTimeout(() => { mentSection.querySelector('#mentAlert').innerHTML = ''; }, 2000);
   };
 
-  // ── Section Relances automatiques ─────────────────────────────────────────
+  // ── Section Relances et notifications ────────────────────────────────────
   const relSection = document.createElement('div');
   relSection.className = 'card';
   relSection.style.marginTop = '24px';
   relSection.innerHTML = `
-    <h3 style="margin-bottom:8px;color:var(--primary)">Relances automatiques</h3>
+    <h3 style="margin-bottom:8px;color:var(--primary)">Relances et notifications automatiques</h3>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
-      Envoie un email de relance automatiquement aux clients dont la facture est en retard.
+      Envois automatiques par email pour les factures en retard et les échéances à venir.
     </p>
     <form id="relanceForm">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
-          <input type="checkbox" name="relance_auto_active" id="relanceActif" ${entreprise.relance_auto_active ? 'checked' : ''}/>
-          Activer les relances automatiques
-        </label>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Relancer après (jours de retard)</label>
-          <input name="relance_auto_jours" type="number" min="1" max="365" value="${entreprise.relance_auto_jours??15}" style="width:100px"/>
+      <fieldset style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <legend style="font-weight:600;padding:0 6px;font-size:13px">Relances après échéance</legend>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" name="relance_auto_active" id="relanceActif" ${entreprise.relance_auto_active ? 'checked' : ''}/>
+            Activer les relances automatiques
+          </label>
         </div>
-        <div class="form-group">
-          <label>Heure d'envoi</label>
-          <input name="relance_auto_heure" type="time" value="${entreprise.relance_auto_heure||'08:00'}" style="width:120px"/>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Relancer après (jours de retard)</label>
+            <input name="relance_auto_jours" type="number" min="1" max="365" value="${entreprise.relance_auto_jours ?? 15}" style="width:100px"/>
+          </div>
+          <div class="form-group">
+            <label>Heure d'envoi quotidien</label>
+            <input name="relance_auto_heure" type="time" value="${entreprise.relance_auto_heure || '08:00'}" style="width:120px"/>
+          </div>
         </div>
-      </div>
+      </fieldset>
+      <fieldset style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <legend style="font-weight:600;padding:0 6px;font-size:13px">Rappels avant échéance</legend>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" name="notif_echeance_active" id="notifEcheanceActif" ${entreprise.notif_echeance_active ? 'checked' : ''}/>
+            Envoyer un rappel avant la date d'échéance
+          </label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Rappeler (jours avant échéance)</label>
+            <input name="notif_echeance_jours" type="number" min="1" max="30" value="${entreprise.notif_echeance_jours ?? 3}" style="width:100px"/>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">
+          Le rappel est envoyé une seule fois par facture, à l'heure d'envoi configurée ci-dessus.
+        </p>
+      </fieldset>
       <div id="relanceAlert"></div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
     </form>`;
   mentSection.after(relSection);
   relSection.querySelector('#relanceForm').onsubmit = async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const data = Object.fromEntries(fd);
-    data.relance_auto_active = el.querySelector('#relanceActif')?.checked ? 1 : 0;
-    const base = Object.fromEntries(new FormData(el.querySelector('#entrepriseForm')));
-    await api.post('/api/entreprise', { ...base, ...data, is_EI: el.querySelector('[name=is_EI]')?.checked });
+    data.relance_auto_active    = relSection.querySelector('#relanceActif')?.checked ? 1 : 0;
+    data.notif_echeance_active  = relSection.querySelector('#notifEcheanceActif')?.checked ? 1 : 0;
+    await api.post('/api/entreprise/relances', data);
     relSection.querySelector('#relanceAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">Enregistré.</div>';
     setTimeout(() => { relSection.querySelector('#relanceAlert').innerHTML = ''; }, 2000);
   };

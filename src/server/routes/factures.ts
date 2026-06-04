@@ -222,13 +222,13 @@ router.get('/:id/relance-courrier', requirePerm('factures:r'), async (req, res, 
     doc.font('Helvetica-Bold').text(ent.raison_sociale || '');
     doc.font('Helvetica').text(ent.email ?? '');
 
-    // Pied de page
+    // Pied de page (sur la même page, après la signature)
     const foot = [
       ent.raison_sociale,
       ent.siret ? `SIRET : ${ent.siret}` : '',
       ent.tva_intracom ? `TVA : ${ent.tva_intracom}` : '',
     ].filter(Boolean).join('  |  ');
-    doc.fontSize(8).text(foot, 60, 780, { width: 475, align: 'center', lineBreak: false });
+    doc.moveDown(3).fontSize(8).fillColor('#888').text(foot, { align: 'center' });
 
     doc.end();
   } catch(e) { next(e); }

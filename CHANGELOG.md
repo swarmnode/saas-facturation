@@ -75,6 +75,19 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Security: helmet + rate limiting sur /api/auth/login
+
+- Helmet : headers HTTP de sécurité (X-Frame-Options, HSTS, XSS
+  protection…). CSP désactivé car SPA avec scripts inline.
+- express-rate-limit : 10 tentatives / 15 min par IP sur /api/auth/login
+  — bloque le bruteforce sur les mots de passe.
+- JWT expiresIn '8h' était déjà en place (pas de changement nécessaire).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Refactoring

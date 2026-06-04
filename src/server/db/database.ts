@@ -4,9 +4,10 @@ import path from 'path';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Retourne les TIMESTAMPTZ sous forme de chaînes ISO
+// Retourne les TIMESTAMPTZ et DATE sous forme de chaînes ISO
 types.setTypeParser(1184, (val: string) => new Date(val).toISOString());
 types.setTypeParser(1114, (val: string) => new Date(val + 'Z').toISOString());
+types.setTypeParser(1082, (val: string) => val); // DATE → string YYYY-MM-DD
 
 const SCHEMA_PATH     = path.resolve(__dirname, 'schema.sql');
 const MIGRATION_PATH  = path.resolve(__dirname, 'migration_001_auth.sql');

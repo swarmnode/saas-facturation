@@ -21,8 +21,13 @@ export interface FactureFournisseur {
   updated_at: string;
 }
 
-function toDateStr(iso: string): string {
-  return iso.replace(/-/g, '').slice(0, 8);
+function toISODate(d: string | Date): string {
+  if (typeof d === 'string') return d.slice(0, 10);
+  return d.toISOString().slice(0, 10);
+}
+
+function toDateStr(iso: string | Date): string {
+  return toISODate(iso).replace(/-/g, '');
 }
 
 async function enregistrerFEC(ff: FactureFournisseur, txClient?: any): Promise<void> {
@@ -135,7 +140,7 @@ export class FournisseurService {
       const ff: FactureFournisseur = r.rows[0];
       await enregistrerFEC(ff, client);
 
-      const periode = ff.date_facture.slice(0, 7);
+      const periode = toISODate(ff.date_facture).slice(0, 7);
       await syncTvaDeductible(entreprise_id, periode);
 
       return ff;
@@ -175,7 +180,7 @@ export class FournisseurService {
     if (!ff) throw new Error('Facture fournisseur introuvable');
     if (ff.statut === 'payee') throw new Error('Impossible de supprimer une facture payée');
 
-    const periode = ff.date_facture.slice(0, 7);
+    const periode = toISODate(ff.date_facture).slice(0, 7);
     await query(`DELETE FROM fec_ecritures WHERE facture_fournisseur_id = $1`, [id]);
     await query(`DELETE FROM factures_fournisseurs WHERE id = $1 AND entreprise_id = $2`, [id, entreprise_id]);
     await syncTvaDeductible(entreprise_id, periode);

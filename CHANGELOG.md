@@ -61,6 +61,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
   les cas où le parser n'est pas encore actif
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: exempter localhost du rate limiter login
+
+L'utilisateur accédant depuis sa propre machine ne doit pas être
+bloqué par le rate limiter (::1 / 127.0.0.1). La protection reste
+active pour les connexions réseau extérieures.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -68,6 +75,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

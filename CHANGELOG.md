@@ -53,6 +53,14 @@ L'entrée nav-item manquait dans index.html — la page était
 accessible via le tab strip mais pas depuis la barre latérale.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: colonnes DATE PostgreSQL toujours retournées en string
+
+- database.ts : ajoute types.setTypeParser(1082) pour DATE -> string
+  YYYY-MM-DD (évite les objets Date JS qui cassent .slice/.replace)
+- FournisseurService : helper toISODate() robuste string|Date pour
+  les cas où le parser n'est pas encore actif
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -60,6 +68,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

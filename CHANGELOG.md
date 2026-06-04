@@ -90,6 +90,13 @@ L'onchange était bindé avant que el.innerHTML soit défini,
 causant 'Cannot set properties of null'.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: pied de page relance courrier en flux (évite la page 2)
+
+Le footer était positionné à y=780 fixe ce qui créait une 2e page
+quand le curseur était déjà plus bas. Remplacé par moveDown + text
+en flux, toujours sur la même page.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -97,6 +104,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

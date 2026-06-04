@@ -2911,8 +2911,8 @@ async function renderExercices(el) {
           ${exercices.map(e => `
             <tr>
               <td><strong>${e.annee}</strong></td>
-              <td>${e.date_ouverture ?? '-'}</td>
-              <td>${e.date_cloture ?? '-'}</td>
+              <td>${e.date_ouverture ? new Date(e.date_ouverture).toLocaleDateString('fr-FR') : '-'}</td>
+              <td>${e.date_cloture  ? new Date(e.date_cloture).toLocaleDateString('fr-FR')  : '-'}</td>
               <td>${e.nb_ecritures ?? '-'}</td>
               <td>
                 <span style="padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;

@@ -3,189 +3,55 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [2.14.0] — 2026-06-05
 
 ### Ajouté
-- Feat: notifications avant échéance + correction persistance relances auto
 
-- Migration 022 : ajoute notif_echeance_active/jours sur entreprise et
-  notif_echeance_envoyee sur factures (envoi unique garanti)
-- RelanceScheduler : nouvelle fonction envoyerNotifsEcheance() qui envoie
-  un rappel N jours avant l'échéance (défaut 3j), tourne au même cron
-- Route POST /api/entreprise/relances : persiste les 5 champs relance +
-  notif et réinitialise le scheduler immédiatement
-- Correction : les relances auto n'étaient jamais sauvegardées (la route
-  principale ignorait ces champs)
-- Frontend : section Paramètres restructurée en deux fieldsets distincts
-  (après échéance / avant échéance)
+- **Factures fournisseurs** — migration 023, table `factures_fournisseurs` + `FournisseurService` :
+  création, paiement, suppression avec écritures FEC atomiques (journal AC : 401/6xx/44566).
+  Mise à jour automatique de `tva_deductible` par période (CA3 section B).
+  Route `/api/factures-fournisseurs` (CRUD + paiement + import CSV).
+  Page dédiée dans la sidebar avec filtres Toutes/À payer/Payées, totaux, bouton Import CSV.
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: import factures fournisseurs (FEC compte 401 + CA3 auto)
+- **Notifications avant échéance** — migration 022 (`notif_echeance_active/jours` sur `entreprise`,
+  `notif_echeance_envoyee` sur `factures`). `RelanceScheduler.envoyerNotifsEcheance()` envoie
+  un rappel N jours avant l'échéance (défaut 3j, envoi unique garanti).
 
-- Migration 023 : table factures_fournisseurs + FK facture_fournisseur_id
-  sur fec_ecritures
-- FournisseurService : creer/payer/supprimer avec écritures FEC atomiques
-  (journal AC : 401/crédit + 6xx/débit + 44566/débit) et mise à jour
-  automatique de tva_deductible par période (CA3 section B)
-- Route /api/factures-fournisseurs : CRUD + POST /:id/payer
-- FecExportService : filtre multi-tenant étendu aux écritures fournisseurs
-  (EXISTS sur factures_fournisseurs en plus de factures)
-- Frontend : nouvelle page "Factures fournisseurs" avec liste filtrée,
-  formulaire de saisie avec calcul TVA automatique, et workflow paiement
+- **Lettre de relance courrier** — `GET /api/factures/:id/relance-courrier` génère un PDF A4
+  (PDFKit) avec en-tête entreprise, adresse client, corps circonstancié (jours de retard
+  ou rappel avant échéance), pied SIRET/TVA. Bouton ✉ Courrier sur les factures en retard.
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: sauvegarde PDFs + import CSV fournisseurs + stats fournisseurs + relance courrier
+- **Sauvegarde des PDFs** — `BackupScheduler.runBackup()` copie `storage/pdf/` dans la
+  destination de backup (preuve légale Factur-X, rétention 10 ans).
 
-- BackupScheduler : copie storage/pdf/ dans la destination de backup
-  (preuve légale Factur-X, rétention 10 ans)
-- Route POST /api/factures-fournisseurs/import-csv : import en masse
-  depuis CSV (colonnes : date_facture, fournisseur_nom, numero,
-  montant_ht, taux_tva, compte_charge, date_echeance...)
-- Route GET /api/stats/fournisseurs : KPIs achats (total HT/TVA,
-  balance à payer, top 5 fournisseurs, mensuel 12 mois)
-- Route GET /api/factures/:id/relance-courrier : lettre de relance PDF
-  (PDFKit) imprimable avec en-tête entreprise et adresse client
-- Frontend : bouton ✉ Courrier sur les factures en retard, bouton
-  ⬆ Import CSV sur la page Fournisseurs, section Achats fournisseurs
-  dans Statistiques (KPIs + top 5 + graphe mensuel)
+- **Stats fournisseurs** — `GET /api/stats/fournisseurs` : KPIs achats (total HT/TVA,
+  balance à payer, top 5, graphe mensuel 12 mois). Section dédiée dans Statistiques.
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- **Pagination serveur** sur toutes les listes — `utils/paginate.ts`, 50 docs/page,
+  réponse `{ data, total, page, pages, limit }`. `?all=1` pour dashboard et exports.
+  Barre de navigation « X–Y sur N » avec boutons préc./numéros/suiv.
 
+### Sécurité
+
+- **Helmet.js** — X-Frame-Options: SAMEORIGIN, HSTS, X-Content-Type-Options.
+- **Rate limiting** — `express-rate-limit` : 10 tentatives / 15 min par IP sur `/api/auth/login`.
+  Exemption localhost (::1 / 127.0.0.1).
+- **npm audit** — 0 vulnérabilités.
 
 ### Corrigé
-- Fix: dates exercices comptables en format JJ/MM/AAAA
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: exercices — proposer l'année suivant le dernier exercice existant
-
-Au lieu de descendre depuis l'année courante-5 (ce qui affichait 2024
-alors que 2027 existe déjà), on part du max des exercices existants +1.
-La date de début suit également l'année proposée.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: ajouter Fournisseurs dans le menu sidebar
-
-L'entrée nav-item manquait dans index.html — la page était
-accessible via le tab strip mais pas depuis la barre latérale.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: colonnes DATE PostgreSQL toujours retournées en string
-
-- database.ts : ajoute types.setTypeParser(1082) pour DATE -> string
-  YYYY-MM-DD (évite les objets Date JS qui cassent .slice/.replace)
-- FournisseurService : helper toISODate() robuste string|Date pour
-  les cas où le parser n'est pas encore actif
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: exempter localhost du rate limiter login
-
-L'utilisateur accédant depuis sa propre machine ne doit pas être
-bloqué par le rate limiter (::1 / 127.0.0.1). La protection reste
-active pour les connexions réseau extérieures.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: binding #ffCsvInput déplacé dans reload() après injection HTML
-
-L'onchange était bindé avant que el.innerHTML soit défini,
-causant 'Cannot set properties of null'.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: pied de page relance courrier en flux (évite la page 2)
-
-Le footer était positionné à y=780 fixe ce qui créait une 2e page
-quand le curseur était déjà plus bas. Remplacé par moveDown + text
-en flux, toujours sur la même page.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: numéro de facture avec tirets insécables dans la lettre de relance
-
-PDFKit coupait le numéro aux tirets (FAC-TEST → FAC-\nTEST).
-Remplacement par le tiret insécable U+2011 pour éviter la coupure.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: objet lettre relance sur une seule ligne (lineBreak: false, width: 475)
-
-U+2011 non supporté par Helvetica PDFKit. Passage à lineBreak:false
-avec largeur pleine page pour que le numéro ne wrppe pas.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Fix: mention légale + CGV sur la même page (plus de page vide intercalée)
-
-drawCGV détecte si le startY dépasse la zone utile de la page et
-ajoute une nouvelle page si nécessaire, évitant que la mention légale
-se retrouve seule sur sa propre page avant les CGV.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-### Documentation
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: version manuel utilisateur → v2.13.0
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-- Docs: update CHANGELOG.md [skip ci]
-
-
-### Modifications
-- Security: helmet + rate limiting sur /api/auth/login
-
-- Helmet : headers HTTP de sécurité (X-Frame-Options, HSTS, XSS
-  protection…). CSP désactivé car SPA avec scripts inline.
-- express-rate-limit : 10 tentatives / 15 min par IP sur /api/auth/login
-  — bloque le bruteforce sur les mots de passe.
-- JWT expiresIn '8h' était déjà en place (pas de changement nécessaire).
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-### Performance
-- Perf: pagination serveur sur toutes les listes (50 docs/page)
-
-- utils/paginate.ts : helper paginateParams + buildPage (COUNT(*) OVER())
-- FactureService, DevisService, AcompteService, BonLivraisonService :
-  paramètres page/limit optionnels sur lister()
-- Routes factures, devis, acomptes, bons-livraison : réponse paginée
-  { data, total, page, pages, limit } — ?all=1 retourne tout (dashboard)
-- Frontend renderDocList : détecte la réponse paginée, affiche barre de
-  navigation (préc./n°/suiv. + compteur "X–Y sur N")
-- Dashboard : passe ?all=1 pour conserver les KPIs et la liste complète
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
+- PDF factures : mention légale + CGV sur la même page — `drawCGV()` ajoute une page si dépassement.
+- Lettre de relance : objet sur une seule ligne (`lineBreak:false, width:475`). Pied de page en flux.
+- Exercices : dates en JJ/MM/AAAA. Dropdown propose l'année suivant le dernier exercice.
+- Fournisseurs : entrée manquante dans le menu sidebar (`index.html`).
+- Colonnes `DATE` PostgreSQL → string `YYYY-MM-DD` (type parser 1082 dans `database.ts`).
+- Paramètres SEPA : `api.put()` → `api.post()`.
+- Relances auto : n'étaient jamais sauvegardées. Nouvel endpoint `POST /api/entreprise/relances`.
 
 ### Refactoring
-- Refactor: page Paramètres en onglets
 
-Remplace la page monolithique (scroll infini, sections créées avec
-.after() dans le désordre) par 8 onglets distincts avec persistance
-de l'onglet actif (localStorage) :
-
-  Entreprise / Documents / Email / Automatisations / SEPA
-  / Sauvegarde* / Utilisateurs* / Sociétés*  (* = conditionnel)
-
-- Chaque onglet est rendu à la demande (lazy) via une fonction dédiée
-- Les forms CGV et mentions légales utilisent désormais la variable
-  entreprise en mémoire au lieu de lire #entrepriseForm depuis le DOM
-- Correction du bug SEPA : api.put() → api.post() (pas de route PUT)
-- Les mises à jour de l'objet entreprise en mémoire évitent les
-  incohérences entre onglets sans rechargement
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- **Page Paramètres** — 8 onglets persistants (localStorage) :
+  Entreprise / Documents / Email / Automatisations / SEPA / Sauvegarde / Utilisateurs / Sociétés.
 
 
 ## [2.13.0] — 2026-06-02
@@ -1498,6 +1364,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.14.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.14.0
 [2.13.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.13.0
 [2.12.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.12.0
 [2.11.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.11.0

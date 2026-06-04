@@ -34,6 +34,22 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
   formulaire de saisie avec calcul TVA automatique, et workflow paiement
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: sauvegarde PDFs + import CSV fournisseurs + stats fournisseurs + relance courrier
+
+- BackupScheduler : copie storage/pdf/ dans la destination de backup
+  (preuve légale Factur-X, rétention 10 ans)
+- Route POST /api/factures-fournisseurs/import-csv : import en masse
+  depuis CSV (colonnes : date_facture, fournisseur_nom, numero,
+  montant_ht, taux_tva, compte_charge, date_echeance...)
+- Route GET /api/stats/fournisseurs : KPIs achats (total HT/TVA,
+  balance à payer, top 5 fournisseurs, mensuel 12 mois)
+- Route GET /api/factures/:id/relance-courrier : lettre de relance PDF
+  (PDFKit) imprimable avec en-tête entreprise et adresse client
+- Frontend : bouton ✉ Courrier sur les factures en retard, bouton
+  ⬆ Import CSV sur la page Fournisseurs, section Achats fournisseurs
+  dans Statistiques (KPIs + top 5 + graphe mensuel)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -75,6 +91,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

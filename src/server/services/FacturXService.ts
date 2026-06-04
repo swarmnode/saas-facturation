@@ -202,6 +202,12 @@ function drawCGV(doc: any, entreprise: any, startY = 762): void {
   const cgv = (entreprise.cgv_texte || '').trim();
   const mention = (entreprise.mention_legale || '').trim();
   if (!cgv && !mention) return;
+  // Si le startY dépasse la zone utile, ouvrir une nouvelle page
+  const pageBottom = doc.page.height - (doc.page.margins?.bottom ?? 72);
+  if (startY > pageBottom - 15) {
+    doc.addPage();
+    startY = 50;
+  }
   doc.moveTo(50, startY - 4).lineTo(545, startY - 4).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
   doc.lineWidth(1);
   let cur = startY;

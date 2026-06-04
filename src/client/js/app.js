@@ -4790,8 +4790,71 @@ async function renderArchives(el) {
 // ── Paramètres ────────────────────────────────────────────────────────────
 async function renderParametres(el) {
   const entreprise = await api.get('/api/entreprise') ?? {};
+
+  const TABS = [
+    { id: 'entreprise', label: 'Entreprise' },
+    { id: 'documents',  label: 'Documents' },
+    { id: 'email',      label: 'Email' },
+    { id: 'auto',       label: 'Automatisations' },
+    { id: 'sepa',       label: 'SEPA' },
+    ...(currentUser?.is_super_admin ? [{ id: 'backup', label: 'Sauvegarde' }] : []),
+    ...(can('users:r')              ? [{ id: 'users',   label: 'Utilisateurs' }] : []),
+    ...(currentUser?.is_super_admin ? [{ id: 'societes', label: 'Sociétés' }] : []),
+  ];
+
+  let activeTab = localStorage.getItem('params_tab') ?? 'entreprise';
+  if (!TABS.find(t => t.id === activeTab)) activeTab = 'entreprise';
+
   el.innerHTML = `
-    <div class="card" style="max-width:680px">
+    <div style="display:flex;gap:0;flex-wrap:wrap;border-bottom:2px solid var(--border);margin-bottom:24px" id="paramsTabBar"></div>
+    <div id="paramsContent"></div>`;
+
+  function renderTabBar() {
+    el.querySelector('#paramsTabBar').innerHTML = TABS.map(t => `
+      <button data-tab="${t.id}" style="
+        padding:9px 18px;border:none;background:none;cursor:pointer;font-size:14px;
+        border-bottom:2px solid ${t.id === activeTab ? 'var(--primary)' : 'transparent'};
+        margin-bottom:-2px;font-weight:${t.id === activeTab ? '600' : 'normal'};
+        color:${t.id === activeTab ? 'var(--primary)' : 'var(--text-muted)'}">
+        ${t.label}
+      </button>`).join('');
+  }
+
+  function switchTab(id) {
+    activeTab = id;
+    localStorage.setItem('params_tab', id);
+    renderTabBar();
+    renderContent();
+  }
+
+  el.querySelector('#paramsTabBar').addEventListener('click', e => {
+    const btn = e.target.closest('[data-tab]');
+    if (btn) switchTab(btn.dataset.tab);
+  });
+
+  function save(extra = {}) {
+    const base = {
+      raison_sociale: entreprise.raison_sociale, forme_juridique: entreprise.forme_juridique,
+      is_EI: entreprise.is_EI, siret: entreprise.siret, tva_intracom: entreprise.tva_intracom,
+      adresse: entreprise.adresse, adresse2: entreprise.adresse2, code_postal: entreprise.code_postal,
+      ville: entreprise.ville, pays: entreprise.pays, telephone: entreprise.telephone,
+      email: entreprise.email, site_web: entreprise.site_web, regime_tva: entreprise.regime_tva,
+      capital_social: entreprise.capital_social, rcs_ville: entreprise.rcs_ville,
+      iban: entreprise.iban, bic: entreprise.bic, ics: entreprise.ics,
+      cgv_texte: entreprise.cgv_texte, mention_legale: entreprise.mention_legale,
+    };
+    return api.post('/api/entreprise', { ...base, ...extra });
+  }
+
+  function alert2(el, msg, type = 'success') {
+    el.innerHTML = `<div class="alert alert-${type}" style="margin-top:8px">${msg}</div>`;
+    setTimeout(() => { el.innerHTML = ''; }, 2500);
+  }
+
+  // ── Onglet Entreprise ──────────────────────────────────────────────────
+  function renderTabEntreprise(c) {
+    c.innerHTML = `
+      <div class="card" style="max-width:680px">
       <h2 style="margin-bottom:20px;color:var(--primary)">Mon entreprise</h2>
       <form id="entrepriseForm">
         <div class="form-row">
@@ -4811,12 +4874,8 @@ async function renderParametres(el) {
           <label for="isEI" style="text-transform:none;margin:0">Entrepreneur individuel (mention "EI" automatique)</label>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>SIRET *</label>
-            <input name="siret" value="${entreprise.siret || ''}" required/>
-          </div>
-          <div class="form-group"><label>N° TVA Intracom</label>
-            <input name="tva_intracom" value="${entreprise.tva_intracom || ''}"/>
-          </div>
+          <div class="form-group"><label>SIRET *</label><input name="siret" value="${entreprise.siret || ''}" required/></div>
+          <div class="form-group"><label>N° TVA Intracom</label><input name="tva_intracom" value="${entreprise.tva_intracom || ''}"/></div>
         </div>
         <div class="form-group"><label>Adresse *</label><input name="adresse" value="${entreprise.adresse || ''}" required/></div>
         <div class="form-group"><label>Complément d'adresse</label><input name="adresse2" value="${entreprise.adresse2 || ''}"/></div>
@@ -4842,13 +4901,11 @@ async function renderParametres(el) {
           <div class="form-group"><label>Capital social (€)</label><input name="capital_social" type="number" value="${entreprise.capital_social || ''}"/></div>
           <div class="form-group"><label>RCS Ville</label><input name="rcs_ville" value="${entreprise.rcs_ville || ''}"/></div>
         </div>
-        <div id="saveAlert"></div>
+        <div id="entAlert"></div>
         <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
       </form>
-
       <hr style="border:none;border-top:1px solid var(--border);margin:24px 0"/>
-
-      <h3 style="margin-bottom:16px;color:var(--primary);font-size:15px">Logo</h3>
+      <h3 style="margin-bottom:12px;color:var(--primary);font-size:15px">Logo</h3>
       <div id="logoPreview" style="margin-bottom:12px">
         ${entreprise.logo_path
           ? `<img src="${entreprise.logo_path}?t=${Date.now()}" style="max-height:80px;max-width:220px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:8px;background:#fff"/>`
@@ -4860,86 +4917,251 @@ async function renderParametres(el) {
         ${entreprise.logo_path ? `<button type="button" class="btn-trash" id="logoDelBtn" title="Supprimer le logo">🗑️</button>` : ''}
         <span style="font-size:11px;color:var(--text-muted)">PNG, JPG, SVG — max 2 Mo</span>
       </div>
-    </div>
+    </div>`;
 
-    <div class="card" style="max-width:680px;margin-top:20px">
-      <h2 style="margin-bottom:4px;color:var(--primary)">Configuration email</h2>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Choisissez comment les devis sont envoyés par email.</p>
-      <form id="smtpForm">
-        <div class="form-group">
-          <label>Mode d'envoi</label>
-          <select name="email_mode" id="emailModeSelect">
-            <option value="mapi"   ${(entreprise.email_mode || 'mapi') === 'mapi'   ? 'selected' : ''}>MAPI — Ouvrir le client mail (Outlook, Thunderbird…)</option>
-            <option value="mailto" ${entreprise.email_mode === 'mailto' ? 'selected' : ''}>mailto: — Application mail (mobile, Gmail…)</option>
-            <option value="smtp"   ${entreprise.email_mode === 'smtp'   ? 'selected' : ''}>SMTP — Envoi automatique via serveur mail</option>
-          </select>
-        </div>
-        <div id="smtpFields" style="${(entreprise.email_mode || 'mapi') === 'smtp' ? '' : 'display:none'}">
-        <div class="form-row">
-          <div class="form-group"><label>Serveur SMTP</label>
-            <input name="smtp_host" value="${entreprise.smtp_host || ''}" placeholder="smtp.gmail.com"/>
-          </div>
-          <div class="form-group"><label>Port</label>
-            <input name="smtp_port" type="number" value="${entreprise.smtp_port || 587}" placeholder="587"/>
-          </div>
-        </div>
-        <div class="form-group" style="display:flex;align-items:center;gap:8px">
-          <input type="checkbox" name="smtp_secure" id="smtpSecure" style="width:auto" ${entreprise.smtp_secure ? 'checked' : ''}/>
-          <label for="smtpSecure" style="text-transform:none;margin:0">SSL/TLS (port 465)</label>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Identifiant</label>
-            <input name="smtp_user" value="${entreprise.smtp_user || ''}" placeholder="votre@email.com"/>
-          </div>
-          <div class="form-group"><label>Mot de passe</label>
-            <input name="smtp_pass" type="password" value="${entreprise.smtp_pass || ''}" placeholder="••••••••"/>
-          </div>
-        </div>
-        <div class="form-group"><label>Adresse expéditeur (From)</label>
-          <input name="smtp_from" value="${entreprise.smtp_from || ''}" placeholder="Société <contact@societe.fr>"/>
-        </div>
-        </div><!-- /smtpFields -->
-        <div id="smtpAlert"></div>
-        <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
-      </form>
-    </div>
+    const entForm = c.querySelector('#entrepriseForm');
+    attachSireneAutocomplete(entForm.querySelector('[name="raison_sociale"]'), entForm);
+    attachNominatimAutocomplete(entForm.querySelector('[name="adresse"]'), entForm);
+    entForm.onsubmit = async e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd);
+      data.is_EI = fd.has('is_EI');
+      const updated = await api.post('/api/entreprise', data);
+      if (updated) Object.assign(entreprise, updated);
+      alert2(c.querySelector('#entAlert'), 'Paramètres enregistrés.');
+    };
 
-    <div class="card" style="margin-top:24px">
-      <h2 class="section-title">🏦 Prélèvement SEPA</h2>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
-        Informations de votre société en tant que créancier SEPA. L'ICS vous est fourni par votre banque.
-      </p>
-      <form id="sepaEntrepriseForm">
-        <div class="form-row">
-          <div class="form-group"><label>IBAN de votre société</label>
-            <input name="iban" value="${entreprise.iban || ''}" placeholder="FR76 0000 0000 0000 0000 0000 000" style="font-family:monospace"/>
-          </div>
-          <div class="form-group"><label>BIC de votre banque</label>
-            <input name="bic" value="${entreprise.bic || ''}" placeholder="BNPAFRPPXXX"/>
-          </div>
-        </div>
-        <div class="form-group"><label>ICS — Identifiant Créancier SEPA</label>
-          <input name="ics" value="${entreprise.ics || ''}" placeholder="FR12ZZZ123456" style="font-family:monospace"/>
-          <small style="color:var(--text-muted)">Fourni par votre banque. Format : 2 lettres pays + 2 chiffres + 3 lettres + 6 chiffres</small>
-        </div>
-        <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
-      </form>
-    </div>
+    c.querySelector('#logoBtn').onclick = () => c.querySelector('#logoInput').click();
+    c.querySelector('#logoInput').onchange = async () => {
+      const file = c.querySelector('#logoInput').files[0];
+      if (!file) return;
+      const fd = new FormData(); fd.append('logo', file);
+      const data = await api.upload('/api/entreprise/logo', fd);
+      if (data.logo_path) {
+        entreprise.logo_path = data.logo_path;
+        c.querySelector('#logoPreview').innerHTML =
+          `<img src="${data.logo_path}?t=${Date.now()}" style="max-height:80px;max-width:220px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:8px;background:#fff"/>`;
+        updateSidebarLogo(data.logo_path);
+      }
+    };
+    const delBtn = c.querySelector('#logoDelBtn');
+    if (delBtn) delBtn.onclick = async () => {
+      await api.delete('/api/entreprise/logo');
+      entreprise.logo_path = null;
+      c.querySelector('#logoPreview').innerHTML = '<span style="color:var(--text-muted);font-size:13px">Aucun logo configuré</span>';
+      delBtn.remove();
+      updateSidebarLogo(null);
+    };
+  }
 
-    ${currentUser?.is_super_admin ? `
-    <div class="card" style="margin-top:24px">
-      <h2 class="section-title">Sauvegarde &amp; Restauration</h2>
-      <div style="margin-bottom:20px">
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
-          Télécharge une sauvegarde complète de la base de données (toutes sociétés) au format SQL compressé (.sql.gz).
+  // ── Onglet Documents ──────────────────────────────────────────────────
+  function renderTabDocuments(c) {
+    c.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3 style="margin-bottom:8px;color:var(--primary)">CGV et mentions légales</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Ces textes apparaissent en bas de chaque devis et facture.</p>
+        <form id="cgvForm">
+          <div class="form-group"><label>Mention légale (ligne de titre)</label>
+            <input name="mention_legale" value="${(entreprise.mention_legale||'').replace(/"/g,'&quot;')}" placeholder="Ex : Membre de la Chambre des Métiers — RCS Toulon B 000 000 000"/>
+          </div>
+          <div class="form-group"><label>CGV — Conditions Générales de Vente</label>
+            <textarea name="cgv_texte" rows="6" placeholder="Article 1 — Sauf accord particulier…">${entreprise.cgv_texte||''}</textarea>
+          </div>
+          <div id="cgvAlert"></div>
+          <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+        </form>
+      </div>
+      <div class="card" style="max-width:680px;margin-top:20px">
+        <h3 style="margin-bottom:8px;color:var(--primary)">Mentions légales obligatoires (art. L441-9 et L441-10 CCom)</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Pré-remplies sur chaque nouvelle facture.</p>
+        <form id="mentForm">
+          <div class="form-row">
+            <div class="form-group"><label>Pénalités de retard par défaut</label>
+              <input name="penalites_defaut" value="${(entreprise.penalites_defaut||'Taux directeur BCE majoré de 10 points').replace(/"/g,'&quot;')}"/>
+            </div>
+            <div class="form-group"><label>Indemnité forfaitaire recouvrement (€)</label>
+              <input name="indemnite_defaut" type="number" min="0" step="1" value="${entreprise.indemnite_defaut??40}" style="width:120px"/>
+            </div>
+          </div>
+          <div class="form-group"><label>Escompte par défaut (%)</label>
+            <input name="escompte_defaut" type="number" min="0" max="100" step="0.1" value="${entreprise.escompte_defaut??0}" style="width:120px"/>
+            <span style="font-size:12px;color:var(--text-muted);margin-left:8px">0 = "Pas d'escompte pour paiement anticipé"</span>
+          </div>
+          <div id="mentAlert"></div>
+          <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+        </form>
+      </div>`;
+    c.querySelector('#cgvForm').onsubmit = async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const updated = await save(data);
+      if (updated) Object.assign(entreprise, updated);
+      alert2(c.querySelector('#cgvAlert'), 'CGV enregistrées.');
+    };
+    c.querySelector('#mentForm').onsubmit = async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const updated = await save(data);
+      if (updated) Object.assign(entreprise, updated);
+      alert2(c.querySelector('#mentAlert'), 'Enregistré.');
+    };
+  }
+
+  // ── Onglet Email ──────────────────────────────────────────────────────
+  function renderTabEmail(c) {
+    const mode = entreprise.email_mode || 'mapi';
+    c.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3 style="margin-bottom:4px;color:var(--primary)">Configuration email</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Choisissez comment les emails sont envoyés.</p>
+        <form id="smtpForm">
+          <div class="form-group"><label>Mode d'envoi</label>
+            <select name="email_mode" id="emailModeSelect">
+              <option value="mapi"   ${mode === 'mapi'   ? 'selected' : ''}>MAPI — Ouvrir le client mail (Outlook, Thunderbird…)</option>
+              <option value="mailto" ${mode === 'mailto' ? 'selected' : ''}>mailto: — Application mail (mobile, Gmail…)</option>
+              <option value="smtp"   ${mode === 'smtp'   ? 'selected' : ''}>SMTP — Envoi automatique via serveur mail</option>
+            </select>
+          </div>
+          <div id="smtpFields" style="${mode === 'smtp' ? '' : 'display:none'}">
+            <div class="form-row">
+              <div class="form-group"><label>Serveur SMTP</label>
+                <input name="smtp_host" value="${entreprise.smtp_host || ''}" placeholder="smtp.gmail.com"/>
+              </div>
+              <div class="form-group"><label>Port</label>
+                <input name="smtp_port" type="number" value="${entreprise.smtp_port || 587}"/>
+              </div>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" name="smtp_secure" id="smtpSecure" style="width:auto" ${entreprise.smtp_secure ? 'checked' : ''}/>
+              <label for="smtpSecure" style="text-transform:none;margin:0">SSL/TLS (port 465)</label>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Identifiant</label>
+                <input name="smtp_user" value="${entreprise.smtp_user || ''}" placeholder="votre@email.com"/>
+              </div>
+              <div class="form-group"><label>Mot de passe</label>
+                <input name="smtp_pass" type="password" value="${entreprise.smtp_pass || ''}" placeholder="••••••••"/>
+              </div>
+            </div>
+            <div class="form-group"><label>Adresse expéditeur (From)</label>
+              <input name="smtp_from" value="${entreprise.smtp_from || ''}" placeholder="Société <contact@societe.fr>"/>
+            </div>
+          </div>
+          <div id="smtpAlert"></div>
+          <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+        </form>
+      </div>`;
+    c.querySelector('#emailModeSelect').onchange = function() {
+      c.querySelector('#smtpFields').style.display = this.value === 'smtp' ? '' : 'none';
+    };
+    c.querySelector('#smtpForm').onsubmit = async e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd);
+      data.smtp_secure = fd.has('smtp_secure') ? 1 : 0;
+      await api.post('/api/entreprise/smtp', data);
+      alert2(c.querySelector('#smtpAlert'), 'Configuration enregistrée.');
+    };
+  }
+
+  // ── Onglet Automatisations ────────────────────────────────────────────
+  function renderTabAuto(c) {
+    c.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3 style="margin-bottom:8px;color:var(--primary)">Relances et notifications automatiques</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Envois automatiques par email liés aux échéances de factures.</p>
+        <form id="relanceForm">
+          <fieldset style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+            <legend style="font-weight:600;padding:0 6px;font-size:13px">Relances après échéance</legend>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px">
+              <input type="checkbox" name="relance_auto_active" id="relanceActif" ${entreprise.relance_auto_active ? 'checked' : ''}/>
+              Activer les relances automatiques
+            </label>
+            <div class="form-row">
+              <div class="form-group"><label>Relancer après (jours de retard)</label>
+                <input name="relance_auto_jours" type="number" min="1" max="365" value="${entreprise.relance_auto_jours ?? 15}" style="width:100px"/>
+              </div>
+              <div class="form-group"><label>Heure d'envoi quotidien</label>
+                <input name="relance_auto_heure" type="time" value="${entreprise.relance_auto_heure || '08:00'}" style="width:120px"/>
+              </div>
+            </div>
+          </fieldset>
+          <fieldset style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+            <legend style="font-weight:600;padding:0 6px;font-size:13px">Rappels avant échéance</legend>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px">
+              <input type="checkbox" name="notif_echeance_active" id="notifEcheanceActif" ${entreprise.notif_echeance_active ? 'checked' : ''}/>
+              Envoyer un rappel avant la date d'échéance
+            </label>
+            <div class="form-row">
+              <div class="form-group"><label>Rappeler (jours avant échéance)</label>
+                <input name="notif_echeance_jours" type="number" min="1" max="30" value="${entreprise.notif_echeance_jours ?? 3}" style="width:100px"/>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">Le rappel est envoyé une seule fois par facture, à l'heure configurée ci-dessus.</p>
+          </fieldset>
+          <div id="relanceAlert"></div>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </form>
+      </div>`;
+    c.querySelector('#relanceForm').onsubmit = async e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd);
+      data.relance_auto_active   = c.querySelector('#relanceActif')?.checked ? 1 : 0;
+      data.notif_echeance_active = c.querySelector('#notifEcheanceActif')?.checked ? 1 : 0;
+      await api.post('/api/entreprise/relances', data);
+      alert2(c.querySelector('#relanceAlert'), 'Enregistré.');
+    };
+  }
+
+  // ── Onglet SEPA ───────────────────────────────────────────────────────
+  function renderTabSepa(c) {
+    c.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3 style="margin-bottom:8px;color:var(--primary)">Prélèvement SEPA</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+          Informations de votre société en tant que créancier SEPA. L'ICS vous est fourni par votre banque.
+        </p>
+        <form id="sepaForm">
+          <div class="form-row">
+            <div class="form-group"><label>IBAN de votre société</label>
+              <input name="iban" value="${entreprise.iban || ''}" placeholder="FR76 0000 0000 0000 0000 0000 000" style="font-family:monospace"/>
+            </div>
+            <div class="form-group"><label>BIC de votre banque</label>
+              <input name="bic" value="${entreprise.bic || ''}" placeholder="BNPAFRPPXXX"/>
+            </div>
+          </div>
+          <div class="form-group"><label>ICS — Identifiant Créancier SEPA</label>
+            <input name="ics" value="${entreprise.ics || ''}" placeholder="FR12ZZZ123456" style="font-family:monospace"/>
+            <small style="color:var(--text-muted)">Fourni par votre banque. Format : 2 lettres pays + 2 chiffres + 3 lettres + 6 chiffres</small>
+          </div>
+          <div id="sepaAlert"></div>
+          <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
+        </form>
+      </div>`;
+    c.querySelector('#sepaForm').onsubmit = async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const updated = await save(data);
+      if (updated) Object.assign(entreprise, updated);
+      alert2(c.querySelector('#sepaAlert'), 'Informations SEPA enregistrées.');
+    };
+  }
+
+  // ── Onglet Sauvegarde ─────────────────────────────────────────────────
+  function renderTabBackup(c) {
+    c.innerHTML = `
+      <div class="card" style="max-width:680px">
+        <h3 style="margin-bottom:8px;color:var(--primary)">Sauvegarde &amp; Restauration</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+          Sauvegarde complète de la base de données (toutes sociétés) au format SQL compressé (.sql.gz).
         </p>
         <button id="backupBtn" class="btn btn-secondary">⬇ Télécharger la sauvegarde</button>
-      </div>
-      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
-      <div>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:4px">
-          Restaurer à partir d'un fichier de sauvegarde (.sql ou .sql.gz).<br/>
-          <strong style="color:#c0392b">⚠ Attention : toutes les données actuelles seront remplacées.</strong>
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0"/>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
+          Restaurer à partir d'un fichier (.sql ou .sql.gz).<br/>
+          <strong style="color:#c0392b">⚠ Toutes les données actuelles seront remplacées.</strong>
         </p>
         <label class="btn btn-secondary" style="margin-top:8px;cursor:pointer">
           ⬆ Restaurer une sauvegarde
@@ -4947,256 +5169,54 @@ async function renderParametres(el) {
         </label>
         <div id="restoreAlert"></div>
       </div>
-    </div>
-    <div class="card" style="margin-top:24px" id="backupAutoSection"></div>
-    ` : ''}
-
-    ${can('users:r') ? `<div class="card" style="margin-top:24px" id="usersSection"></div>` : ''}
-    ${currentUser?.is_super_admin ? `<div class="card" style="margin-top:24px" id="societesSection"></div>` : ''}`;
-
-  const entForm = el.querySelector('#entrepriseForm');
-  attachSireneAutocomplete(entForm.querySelector('[name="raison_sociale"]'), entForm);
-  attachNominatimAutocomplete(entForm.querySelector('[name="adresse"]'), entForm);
-
-  el.querySelector('#entrepriseForm').onsubmit = async e => {
-    e.preventDefault();
-    const fd   = new FormData(e.target);
-    const data = Object.fromEntries(fd);
-    data.is_EI = fd.has('is_EI');
-    await api.post('/api/entreprise', data);
-    el.querySelector('#saveAlert').innerHTML =
-      '<div class="alert alert-success" style="margin-top:12px">Paramètres enregistrés.</div>';
-    setTimeout(() => { el.querySelector('#saveAlert').innerHTML = ''; }, 3000);
-  };
-
-  // ── Section CGV / Mentions légales ────────────────────────────────────────
-  const cgvSection = document.createElement('div');
-  cgvSection.className = 'card';
-  cgvSection.style.marginTop = '24px';
-  cgvSection.innerHTML = `
-    <h3 style="margin-bottom:16px;color:var(--primary)">CGV et mentions légales</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Ces textes apparaissent en bas de chaque devis et facture (en petites lettres, avant impression).</p>
-    <form id="cgvForm">
-      <div class="form-group"><label>Mention légale (ligne de titre)</label>
-        <input name="mention_legale" value="${(entreprise.mention_legale||'').replace(/"/g,'&quot;')}" placeholder="Ex : Membre de la Chambre des Métiers du Var — RCS Toulon B 000 000 000"/>
-      </div>
-      <div class="form-group"><label>CGV — Conditions Générales de Vente</label>
-        <textarea name="cgv_texte" rows="6" placeholder="Article 1 — Sauf accord particulier…">${entreprise.cgv_texte||''}</textarea>
-      </div>
-      <div id="cgvAlert"></div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer CGV</button>
-    </form>`;
-  el.querySelector('#entrepriseForm').closest('.card').after(cgvSection);
-
-  // ── Section Mentions légales obligatoires sur factures ────────────────────
-  const mentSection = document.createElement('div');
-  mentSection.className = 'card';
-  mentSection.style.marginTop = '24px';
-  mentSection.innerHTML = `
-    <h3 style="margin-bottom:8px;color:var(--primary)">Mentions légales obligatoires (art. L441-9 et L441-10 CCom)</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
-      Ces valeurs sont pré-remplies sur chaque nouvelle facture et apparaissent dans le PDF.
-    </p>
-    <form id="mentForm">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Taux pénalités de retard par défaut</label>
-          <input name="penalites_defaut" value="${(entreprise.penalites_defaut||'Taux directeur BCE majoré de 10 points').replace(/"/g,'&quot;')}"
-            placeholder="Taux directeur BCE majoré de 10 points"/>
-        </div>
-        <div class="form-group">
-          <label>Indemnité forfaitaire recouvrement (€)</label>
-          <input name="indemnite_defaut" type="number" min="0" step="1" value="${entreprise.indemnite_defaut??40}" style="width:120px"/>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Escompte par défaut (%)</label>
-        <input name="escompte_defaut" type="number" min="0" max="100" step="0.1" value="${entreprise.escompte_defaut??0}" style="width:120px"/>
-        <span style="font-size:12px;color:var(--text-muted);margin-left:8px">0 = "Pas d'escompte pour paiement anticipé"</span>
-      </div>
-      <div id="mentAlert"></div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px">Enregistrer</button>
-    </form>`;
-  cgvSection.after(mentSection);
-  mentSection.querySelector('#mentForm').onsubmit = async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const base = Object.fromEntries(new FormData(el.querySelector('#entrepriseForm')));
-    await api.post('/api/entreprise', { ...base, ...Object.fromEntries(fd), is_EI: el.querySelector('[name=is_EI]')?.checked });
-    mentSection.querySelector('#mentAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">Enregistré.</div>';
-    setTimeout(() => { mentSection.querySelector('#mentAlert').innerHTML = ''; }, 2000);
-  };
-
-  // ── Section Relances et notifications ────────────────────────────────────
-  const relSection = document.createElement('div');
-  relSection.className = 'card';
-  relSection.style.marginTop = '24px';
-  relSection.innerHTML = `
-    <h3 style="margin-bottom:8px;color:var(--primary)">Relances et notifications automatiques</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
-      Envois automatiques par email pour les factures en retard et les échéances à venir.
-    </p>
-    <form id="relanceForm">
-      <fieldset style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:16px">
-        <legend style="font-weight:600;padding:0 6px;font-size:13px">Relances après échéance</legend>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" name="relance_auto_active" id="relanceActif" ${entreprise.relance_auto_active ? 'checked' : ''}/>
-            Activer les relances automatiques
-          </label>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Relancer après (jours de retard)</label>
-            <input name="relance_auto_jours" type="number" min="1" max="365" value="${entreprise.relance_auto_jours ?? 15}" style="width:100px"/>
-          </div>
-          <div class="form-group">
-            <label>Heure d'envoi quotidien</label>
-            <input name="relance_auto_heure" type="time" value="${entreprise.relance_auto_heure || '08:00'}" style="width:120px"/>
-          </div>
-        </div>
-      </fieldset>
-      <fieldset style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:16px">
-        <legend style="font-weight:600;padding:0 6px;font-size:13px">Rappels avant échéance</legend>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" name="notif_echeance_active" id="notifEcheanceActif" ${entreprise.notif_echeance_active ? 'checked' : ''}/>
-            Envoyer un rappel avant la date d'échéance
-          </label>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Rappeler (jours avant échéance)</label>
-            <input name="notif_echeance_jours" type="number" min="1" max="30" value="${entreprise.notif_echeance_jours ?? 3}" style="width:100px"/>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">
-          Le rappel est envoyé une seule fois par facture, à l'heure d'envoi configurée ci-dessus.
-        </p>
-      </fieldset>
-      <div id="relanceAlert"></div>
-      <button type="submit" class="btn btn-primary">Enregistrer</button>
-    </form>`;
-  mentSection.after(relSection);
-  relSection.querySelector('#relanceForm').onsubmit = async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const data = Object.fromEntries(fd);
-    data.relance_auto_active    = relSection.querySelector('#relanceActif')?.checked ? 1 : 0;
-    data.notif_echeance_active  = relSection.querySelector('#notifEcheanceActif')?.checked ? 1 : 0;
-    await api.post('/api/entreprise/relances', data);
-    relSection.querySelector('#relanceAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">Enregistré.</div>';
-    setTimeout(() => { relSection.querySelector('#relanceAlert').innerHTML = ''; }, 2000);
-  };
-  cgvSection.querySelector('#cgvForm').onsubmit = async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    await api.post('/api/entreprise', { ...Object.fromEntries(new FormData(el.querySelector('#entrepriseForm'))), ...Object.fromEntries(fd), is_EI: el.querySelector('[name=is_EI]')?.checked });
-    cgvSection.querySelector('#cgvAlert').innerHTML = '<div class="alert alert-success" style="margin-top:8px">CGV enregistrées.</div>';
-    setTimeout(() => { cgvSection.querySelector('#cgvAlert').innerHTML = ''; }, 2000);
-  };
-
-  el.querySelector('#logoBtn').onclick = () => el.querySelector('#logoInput').click();
-
-  el.querySelector('#logoInput').onchange = async () => {
-    const file = el.querySelector('#logoInput').files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('logo', file);
-    const data = await api.upload('/api/entreprise/logo', fd);
-    if (data.logo_path) {
-      const src = `${data.logo_path}?t=${Date.now()}`;
-      el.querySelector('#logoPreview').innerHTML =
-        `<img src="${src}" style="max-height:80px;max-width:220px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:8px;background:#fff"/>`;
-      updateSidebarLogo(data.logo_path);
-    }
-  };
-
-  const delBtn = el.querySelector('#logoDelBtn');
-  if (delBtn) {
-    delBtn.onclick = async () => {
-      await api.delete('/api/entreprise/logo');
-      el.querySelector('#logoPreview').innerHTML =
-        '<span style="color:var(--text-muted);font-size:13px">Aucun logo configuré</span>';
-      delBtn.remove();
-      updateSidebarLogo(null);
+      <div id="backupAutoSection" style="margin-top:20px"></div>`;
+    c.querySelector('#backupBtn').onclick = async () => {
+      const token = localStorage.getItem('jwt');
+      const r = await fetch('/api/backup/telecharger', { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) { alert('Erreur lors du téléchargement'); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `sauvegarde_${new Date().toISOString().slice(0,10)}.sql.gz`;
+      a.click(); URL.revokeObjectURL(url);
     };
+    c.querySelector('#restoreInput').onchange = async function() {
+      const file = this.files[0]; if (!file) return;
+      const alertEl = c.querySelector('#restoreAlert');
+      if (!confirm(`Restaurer "${file.name}" ?\n\nToutes les données actuelles seront écrasées.`)) { this.value = ''; return; }
+      alertEl.innerHTML = '<div class="alert" style="margin-top:8px">Restauration en cours…</div>';
+      try {
+        const fd = new FormData(); fd.append('backup', file);
+        const data = await api.upload('/api/backup/restaurer', fd);
+        if (data.ok) {
+          alertEl.innerHTML = '<div class="alert alert-success" style="margin-top:8px">Restauration réussie. Rechargement…</div>';
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur : ${data.error}</div>`;
+        }
+      } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur réseau.</div>`; }
+      this.value = '';
+    };
+    renderBackupAuto(c.querySelector('#backupAutoSection'));
   }
 
-  el.querySelector('#emailModeSelect').onchange = function() {
-    el.querySelector('#smtpFields').style.display = this.value === 'smtp' ? '' : 'none';
-  };
-
-  el.querySelector('#smtpForm').onsubmit = async e => {
-    e.preventDefault();
-    const fd   = new FormData(e.target);
-    const data = Object.fromEntries(fd);
-    data.smtp_secure = fd.has('smtp_secure') ? 1 : 0;
-    await api.post('/api/entreprise/smtp', data);
-    el.querySelector('#smtpAlert').innerHTML =
-      '<div class="alert alert-success" style="margin-top:12px">Configuration enregistrée.</div>';
-    setTimeout(() => { el.querySelector('#smtpAlert').innerHTML = ''; }, 3000);
-  };
-
-  // ── SEPA entreprise ──
-  el.querySelector('#sepaEntrepriseForm')?.addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    await api.put('/api/entreprise', data);
-    alert('Informations SEPA enregistrées.');
-  });
-
-  // ── Sauvegarde (super_admin uniquement) ──
-  if (!currentUser?.is_super_admin) return; // les sections suivantes sont SA only
-
-  el.querySelector('#backupBtn').onclick = async () => {
-    const token = localStorage.getItem('jwt');
-    const r = await fetch('/api/backup/telecharger', { headers: { Authorization: `Bearer ${token}` } });
-    if (!r.ok) { alert('Erreur lors du téléchargement'); return; }
-    const blob = await r.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = `sauvegarde_${new Date().toISOString().slice(0,10)}.sql.gz`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  el.querySelector('#restoreInput').onchange = async function() {
-    const file = this.files[0];
-    if (!file) return;
-    const alertEl = el.querySelector('#restoreAlert');
-    if (!confirm(`Restaurer la sauvegarde "${file.name}" ?\n\nToutes les données actuelles seront écrasées.`)) {
-      this.value = '';
-      return;
+  // ── Dispatch ──────────────────────────────────────────────────────────
+  function renderContent() {
+    const c = el.querySelector('#paramsContent');
+    switch(activeTab) {
+      case 'entreprise': renderTabEntreprise(c); break;
+      case 'documents':  renderTabDocuments(c);  break;
+      case 'email':      renderTabEmail(c);       break;
+      case 'auto':       renderTabAuto(c);        break;
+      case 'sepa':       renderTabSepa(c);        break;
+      case 'backup':     renderTabBackup(c);      break;
+      case 'users':      renderUtilisateurs(c);   break;
+      case 'societes':   renderSocietes(c);       break;
     }
-    alertEl.innerHTML = '<div class="alert" style="margin-top:8px">Restauration en cours…</div>';
-    try {
-      const fd = new FormData();
-      fd.append('backup', file);
-      const data = await api.upload('/api/backup/restaurer', fd);
-      if (data.ok) {
-        alertEl.innerHTML = '<div class="alert alert-success" style="margin-top:8px">Restauration réussie. Rechargement…</div>';
-        setTimeout(() => location.reload(), 1500);
-      } else {
-        alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur : ${data.error}</div>`;
-      }
-    } catch (e) {
-      alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur réseau.</div>`;
-    }
-    this.value = '';
-  };
+  }
 
-  // Charger la section utilisateurs si accessible
-  const usersSection = el.querySelector('#usersSection');
-  if (usersSection) renderUtilisateurs(usersSection);
-
-  // Charger les sections super_admin
-  const backupAutoSection = el.querySelector('#backupAutoSection');
-  if (backupAutoSection) renderBackupAuto(backupAutoSection);
-
-  const societesSection = el.querySelector('#societesSection');
-  if (societesSection) renderSocietes(societesSection);
+  renderTabBar();
+  renderContent();
 }
 
 // ── Gestion des sociétés (super_admin) ───────────────────────────────────

@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import dotenv from 'dotenv';
 import { initDb } from './db/database';
@@ -32,14 +34,24 @@ dotenv.config();
 const app  = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.use(helmet({ contentSecurityPolicy: false })); // CSP désactivé : SPA inline scripts
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' },
+});
 
 app.use(express.static(path.resolve(__dirname, '../client')));
 app.use('/storage', express.static(path.resolve(process.cwd(), 'storage')));
 
 // Routes publiques (pas de JWT requis)
+app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRouter);
 
 // Route publique signature devis — doit être montée avant le middleware JWT

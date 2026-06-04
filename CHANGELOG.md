@@ -47,6 +47,12 @@ alors que 2027 existe déjà), on part du max des exercices existants +1.
 La date de début suit également l'année proposée.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: ajouter Fournisseurs dans le menu sidebar
+
+L'entrée nav-item manquait dans index.html — la page était
+accessible via le tab strip mais pas depuis la barre latérale.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -54,6 +60,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: version manuel utilisateur → v2.13.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

@@ -6,11 +6,35 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [2.17.0] — 2026-06-05
 
 ### Ajouté
-- Restauration société en mode **cross-instance** (`?mode=remap`) : tous les IDs (PK + FK) sont réattribués au-dessus du `MAX(id)` existant dans chaque table pour éviter toute collision avec les sociétés déjà présentes sur l'instance cible. Remapping complet incluant les références polymorphiques de `journal_scellement.document_id` et `archive_documents.document_id_original`.
-- Deux boutons dans l'onglet Sauvegarde : « Restaurer (même instance) » (mode `skip`, comportement précédent) et « Importer (cross-instance) » (mode `remap`).
+- Feat: restauration société cross-instance avec remapping d'IDs (v2.17.0)
+
+En mode `?mode=remap`, tous les IDs (PK + FK) sont réattribués au-dessus
+du MAX(id) existant dans chaque table cible, éliminant toute collision
+multi-tenant lors d'un import d'une autre instance.
+
+- buildIdMap() : calcule old_id→new_id pour chaque table avant insertion
+- remapRow()   : applique PK, FK standards et références polymorphiques
+                 (journal_scellement.document_id, archive_documents.document_id_original)
+- Route POST /api/backup/societe/restaurer?mode=remap|skip
+- UI : deux boutons distincts (même instance / cross-instance)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
 
 ### Corrigé
-- Fix: restauration société — recaler les séquences SERIAL après INSERT (intégré à 2.17.0)
+- Fix: restauration société — recaler les séquences SERIAL après INSERT
+
+Sans setval(), le prochain INSERT sans id explicite appelait nextval() qui
+retournait une valeur déjà occupée par les données restaurées → violation PK.
+pg_get_serial_sequence() + MAX(id) sur toute la table (multi-tenant safe).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+
 
 ## [2.16.0] — 2026-06-05
 
@@ -1546,6 +1570,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.17.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.17.0
 [2.16.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.16.0
 [2.15.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.15.0
 [2.14.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.14.0

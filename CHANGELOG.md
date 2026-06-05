@@ -29,9 +29,19 @@ retournait une valeur déjà occupée par les données restaurées → violation
 pg_get_serial_sequence() + MAX(id) sur toute la table (multi-tenant safe).
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: build.ps1 -- BITS Transfer + validation taille pour pg17-installer
+
+Invoke-WebRequest echoue silencieusement sur les gros fichiers (300 Mo).
+Passage a Start-BitsTransfer (concu pour les gros telechargements Windows).
+Ajout d'une verification de taille minimale (200 Mo) : les fichiers
+corrompus sont detectes et re-telecharges automatiquement.
+Message d'erreur explicite si le telechargement echoue definitivement.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

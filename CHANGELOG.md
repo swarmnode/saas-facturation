@@ -3,6 +3,22 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Corrigé
+- Fix: restauration société — recaler les séquences SERIAL après INSERT
+
+Sans setval(), le prochain INSERT sans id explicite appelait nextval() qui
+retournait une valeur déjà occupée par les données restaurées → violation PK.
+pg_get_serial_sequence() + MAX(id) sur toute la table (multi-tenant safe).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
 ## [2.16.0] — 2026-06-05
 
 ### Ajouté

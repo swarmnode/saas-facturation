@@ -2,6 +2,7 @@ import { query, withTransaction } from '../db/database';
 import { NumerotationService } from './NumerotationService';
 
 export interface BLLigneInput {
+  type?: 'ligne' | 'commentaire';
   designation: string;
   description?: string;
   quantite: number;
@@ -37,11 +38,12 @@ export class BonLivraisonService {
 
       const blId = ins.rows[0].id;
       for (const [i, l] of input.lignes.entries()) {
+        const isComment = l.type === 'commentaire';
         await client.query(`
-          INSERT INTO bons_livraison_lignes (bl_id, position, designation, description, quantite, unite, article_id, numero_serie)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        `, [blId, i + 1, l.designation, l.description ?? null,
-            l.quantite, l.unite ?? null, l.article_id ?? null, l.numero_serie ?? null]);
+          INSERT INTO bons_livraison_lignes (bl_id, position, type, designation, description, quantite, unite, article_id, numero_serie)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        `, [blId, i + 1, l.type ?? 'ligne', l.designation, l.description ?? null,
+            isComment ? 0 : l.quantite, l.unite ?? null, l.article_id ?? null, l.numero_serie ?? null]);
       }
 
       return blId;
@@ -95,11 +97,12 @@ export class BonLivraisonService {
       if (input.lignes && input.lignes.length > 0) {
         await client.query('DELETE FROM bons_livraison_lignes WHERE bl_id = $1', [id]);
         for (const [i, l] of input.lignes.entries()) {
+          const isComment = l.type === 'commentaire';
           await client.query(`
-            INSERT INTO bons_livraison_lignes (bl_id, position, designation, description, quantite, unite, article_id)
-            VALUES ($1,$2,$3,$4,$5,$6,$7)
-          `, [id, i + 1, l.designation, l.description ?? null,
-              l.quantite, l.unite ?? null, l.article_id ?? null]);
+            INSERT INTO bons_livraison_lignes (bl_id, position, type, designation, description, quantite, unite, article_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          `, [id, i + 1, l.type ?? 'ligne', l.designation, l.description ?? null,
+              isComment ? 0 : l.quantite, l.unite ?? null, l.article_id ?? null]);
         }
       }
     });

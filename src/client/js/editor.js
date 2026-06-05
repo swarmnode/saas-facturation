@@ -96,6 +96,10 @@ const DocEditor = (() => {
     const lignes = [];
     page.querySelectorAll('.e-ligne-row').forEach(row => {
       const d = row.querySelector('.e-desig')?.value.trim(); if (!d) return;
+      if (row.dataset.type === 'commentaire') {
+        lignes.push({ type: 'commentaire', designation: d });
+        return;
+      }
       lignes.push(isBL ? {
         designation: d,
         description: row.querySelector('.e-description-inp')?.innerText.trim() || '',
@@ -330,6 +334,7 @@ const DocEditor = (() => {
   function calcTotaux(page) {
     const tvaMap = {}; let totalHT = 0;
     page.querySelectorAll('.e-ligne-row').forEach(row => {
+      if (row.dataset.type === 'commentaire') return;
       const qty=parseFloat(row.querySelector('.e-qty').value)||0, pu=parseFloat(row.querySelector('.e-pu').value)||0, r=parseFloat(row.querySelector('.e-remise').value)||0;
       const tvaId=row.querySelector('.e-tva-sel')?.value, taux=(tvaOptions.find(t=>t.id==tvaId)||{taux:0}).taux;
       const ht=qty*pu*(1-r/100); totalHT+=ht; tvaMap[taux]=(tvaMap[taux]||0)+ht*taux/100;
@@ -395,6 +400,25 @@ const DocEditor = (() => {
     const desig=tr.querySelector('.e-desig');
     attachArticleAutocomplete(desig,null,null,tr.querySelector('.e-unite'));
     desig.addEventListener('article-selected',e=>{const art=e.detail;if(art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}});
+    return tr;
+  }
+
+  function makeCommentRow(l={}, page, isBL=false) {
+    const span = isBL ? 3 : 6;
+    const tr = document.createElement('tr');
+    tr.className = 'e-ligne-row e-comment-row';
+    tr.dataset.type = 'commentaire';
+    tr.innerHTML = `
+      <td colspan="${span}" class="e-td-comment">
+        <input class="e-cell e-desig e-comment-inp" value="${(l.designation||'').replace(/"/g,'&quot;')}" placeholder="Texte du commentaire…">
+      </td>
+      <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
+    tr.querySelector('.e-del-btn').onclick = () => {
+      tr.remove();
+      if (!isBL) calcTotaux(page);
+      const edEl = page.closest('.e-editor-panel');
+      if (edEl) requestAnimationFrame(() => refreshPageBreaks(edEl, page.dataset.docType));
+    };
     return tr;
   }
 
@@ -561,12 +585,20 @@ const DocEditor = (() => {
           <tbody class="e-lignes-body"></tbody>
         </table>
         <button class="e-add-btn">+ Ajouter une ligne</button>
+        <button class="e-add-comment-btn">+ Commentaire</button>
         ${footer}
         <div class="e-doc-bottom">
           <div class="e-doc-bottom-left">${bottomLeft}</div>
           <div class="e-doc-bottom-right">${bottomRight}</div>
         </div>
 
+      </div>
+    </div>
+    <div class="e-statusbar">
+      <div class="e-zoom-ctrl">
+        <button class="e-zoom-out" title="Zoom arrière (Ctrl+−)">−</button>
+        <span class="e-zoom-level">100%</span>
+        <button class="e-zoom-in" title="Zoom avant (Ctrl++)">+</button>
       </div>
     </div>`;
   }
@@ -644,8 +676,71 @@ const DocEditor = (() => {
     page.dataset.docType = type;
     if (id) page.dataset.docId = String(id);
 
+    // ── Zoom ──────────────────────────────────────────────────────────────────
+    const ZOOM_KEY  = 'editor_zoom';
+    const ZOOM_STEP = 0.1;
+    const ZOOM_MIN  = 0.4;
+    const ZOOM_MAX  = 2.0;
 
+    // Injecter la statusbar (toujours recrée pour fiabilité)
+    el.querySelectorAll('.e-statusbar').forEach(n => n.remove());
+    const sb = document.createElement('div');
+    sb.className = 'e-statusbar';
+    sb.style.cssText = 'position:absolute;bottom:0;left:0;right:0;height:28px;' +
+      'display:flex;align-items:center;justify-content:flex-end;padding:0 16px;' +
+      'background:#f8fafc;border-top:1px solid #e2e8f0;z-index:10;box-sizing:border-box;';
+    const zc = document.createElement('div');
+    zc.style.cssText = 'display:flex;align-items:center;gap:2px;';
+    const mkZBtn = (text, cls, title) => {
+      const b = document.createElement('button');
+      b.className = cls; b.title = title; b.textContent = text;
+      b.style.cssText = 'background:none;border:none;cursor:pointer;font-size:15px;' +
+        'color:#64748b;padding:0 6px;line-height:1;border-radius:4px;';
+      b.onmouseenter = () => { b.style.background = '#e2e8f0'; b.style.color = '#1e293b'; };
+      b.onmouseleave = () => { b.style.background = 'none';    b.style.color = '#64748b'; };
+      return b;
+    };
+    const btnOut = mkZBtn('−', 'e-zoom-out', 'Zoom arrière (Ctrl+−)');
+    const lvl    = document.createElement('span');
+    lvl.className = 'e-zoom-level';
+    lvl.style.cssText = 'font-size:12px;font-weight:600;color:#64748b;min-width:40px;text-align:center;user-select:none;';
+    lvl.textContent = '100%';
+    const btnIn  = mkZBtn('+', 'e-zoom-in', 'Zoom avant (Ctrl++)');
+    zc.append(btnOut, lvl, btnIn);
+    sb.appendChild(zc);
+    el.appendChild(sb);
 
+    const zoomLevel  = lvl;
+    const zoomIn     = btnIn;
+    const zoomOut    = btnOut;
+
+    let zoom = parseFloat(localStorage.getItem(ZOOM_KEY) ?? '1') || 1;
+    zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+
+    function applyZoom(z) {
+      zoom = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) * 100) / 100;
+      page.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
+      // Compenser la place occupée par le scaling (transform ne modifie pas le flux)
+      const natural = page.offsetHeight || 1100;
+      page.style.marginBottom = zoom < 1 ? `${(zoom - 1) * natural}px` : '';
+      zoomLevel.textContent = `${Math.round(zoom * 100)}%`;
+      zoomOut.disabled = zoom <= ZOOM_MIN;
+      zoomIn.disabled  = zoom >= ZOOM_MAX;
+      localStorage.setItem(ZOOM_KEY, String(zoom));
+    }
+
+    zoomIn.onclick  = () => applyZoom(zoom + ZOOM_STEP);
+    zoomOut.onclick = () => applyZoom(zoom - ZOOM_STEP);
+
+    // Ctrl+Molette souris sur le canvas
+    el.querySelector('.e-canvas').addEventListener('wheel', e => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      applyZoom(zoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+    }, { passive: false });
+
+    applyZoom(zoom);
+    // ──────────────────────────────────────────────────────────────────────────
 
 
 
@@ -667,11 +762,14 @@ const DocEditor = (() => {
     // Lignes
     const readonly = !!(doc?.locked);
     const lignes   = doc?.lignes?.length ? doc.lignes : (readonly ? [] : [{}]);
-    const makeRow  = isBL ? l => makeBLRow(l, page) : l => makeLigneRow(l, page, { showSerie: type==='facture'||type==='avoir' });
+    const makeRow  = l => {
+      if (l.type === 'commentaire') return makeCommentRow(l, page, isBL);
+      return isBL ? makeBLRow(l, page) : makeLigneRow(l, page, { showSerie: type==='facture'||type==='avoir' });
+    };
     lignes.forEach(l => {
       const row = makeRow(l);
       tbody.appendChild(row);
-      if (!isBL) calcLigne(row);
+      if (!isBL && l.type !== 'commentaire') calcLigne(row);
     });
     if (!isBL) calcTotaux(page);
     requestAnimationFrame(() => refreshPageBreaks(el, type));
@@ -716,6 +814,7 @@ const DocEditor = (() => {
       page.querySelectorAll('.e-del-btn').forEach(b=>{b.onclick=null;b.disabled=true;});
       page.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));
       el.querySelector('.e-add-btn').style.display='none';
+      el.querySelector('.e-add-comment-btn').style.display='none';
       el.querySelector('.e-save-btn').style.display='none';
       buildReadonlyToolbar(type, id, doc, el);
     } else {
@@ -723,7 +822,14 @@ const DocEditor = (() => {
       el.querySelector('.e-add-btn').onclick = () => {
         const row = makeRow({});
         tbody.appendChild(row);
-        calcLigne(row); calcTotaux(page);
+        if (!isBL) { calcLigne(row); calcTotaux(page); }
+        row.querySelector('.e-desig').focus();
+        requestAnimationFrame(() => refreshPageBreaks(el, type));
+      };
+
+      el.querySelector('.e-add-comment-btn').onclick = () => {
+        const row = makeCommentRow({}, page, isBL);
+        tbody.appendChild(row);
         row.querySelector('.e-desig').focus();
         requestAnimationFrame(() => refreshPageBreaks(el, type));
       };
@@ -744,6 +850,18 @@ const DocEditor = (() => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
           e.preventDefault();
           imprimerDocEditor(el);
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=' || e.key === 'NumpadAdd')) {
+          e.preventDefault();
+          applyZoom(zoom + ZOOM_STEP);
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === 'NumpadSubtract')) {
+          e.preventDefault();
+          applyZoom(zoom - ZOOM_STEP);
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+          e.preventDefault();
+          applyZoom(1);
         }
       };
       document.addEventListener('keydown', _kbHandler);

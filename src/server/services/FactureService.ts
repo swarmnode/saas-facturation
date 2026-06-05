@@ -23,6 +23,7 @@ export interface FactureInput {
   penalites_taux?: string;
   indemnite_recouvrement?: number;
   lignes: Array<{
+    type?: 'ligne' | 'commentaire';
     designation: string;
     description?: string;
     quantite: number;
@@ -40,6 +41,7 @@ export class FactureService {
       const lr = await query('SELECT * FROM devis_lignes WHERE devis_id = $1 ORDER BY position', [input.devis_id]);
       const dr = await query('SELECT client_id FROM devis WHERE id = $1', [input.devis_id]);
       input.lignes = lr.rows.map((l: any) => ({
+        type: l.type ?? 'ligne',
         designation: l.designation, description: l.description,
         quantite: l.quantite, unite: l.unite,
         prix_unitaire_ht: l.prix_unitaire_ht, taux_tva_id: l.taux_tva_id, remise_pct: l.remise_pct,
@@ -51,6 +53,10 @@ export class FactureService {
     const tvaMap = new Map<number, number>(tvaRes.rows.map((r: any) => [r.id, r.taux]));
 
     const lignesCalculees = (input.lignes ?? []).map((l, i) => {
+      if (l.type === 'commentaire') {
+        return { ...l, position: i + 1, taux_tva_valeur: 0,
+                 montant_ht: 0, montant_tva: 0, montant_ttc: 0 };
+      }
       const taux   = tvaMap.get(l.taux_tva_id) ?? 0;
       const remise = l.remise_pct ?? 0;
       const mHT    = Math.round(l.quantite * l.prix_unitaire_ht * (1 - remise / 100) * 100) / 100;
@@ -89,13 +95,16 @@ export class FactureService {
 
       const factureId = ins.rows[0].id;
       for (const l of lignesCalculees) {
+        const isComment = l.type === 'commentaire';
         await client.query(`
-          INSERT INTO factures_lignes (facture_id, position, designation, description,
+          INSERT INTO factures_lignes (facture_id, position, type, designation, description,
             quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
             montant_ht, montant_tva, montant_ttc, numero_serie)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-        `, [factureId, l.position, l.designation, l.description ?? null,
-            l.quantite, l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, l.taux_tva_valeur,
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        `, [factureId, l.position, l.type ?? 'ligne', l.designation, l.description ?? null,
+            isComment ? 0 : l.quantite, l.unite ?? null,
+            isComment ? 0 : l.prix_unitaire_ht,
+            isComment ? 1 : l.taux_tva_id, l.taux_tva_valeur,
             l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
             l.numero_serie ?? null]);
       }
@@ -147,6 +156,10 @@ export class FactureService {
 
     const lignes = input.lignes ?? (cur as any).lignes ?? [];
     const lignesCalculees = lignes.map((l: any, i: number) => {
+      if (l.type === 'commentaire') {
+        return { ...l, position: i + 1, taux_tva_valeur: 0,
+                 montant_ht: 0, montant_tva: 0, montant_ttc: 0 };
+      }
       const taux   = tvaMap.get(l.taux_tva_id) ?? l.taux_tva_valeur ?? 0;
       const remise = l.remise_pct ?? 0;
       const mHT    = Math.round(l.quantite * l.prix_unitaire_ht * (1 - remise / 100) * 100) / 100;
@@ -190,13 +203,16 @@ export class FactureService {
 
       await client.query('DELETE FROM factures_lignes WHERE facture_id = $1', [id]);
       for (const l of lignesCalculees) {
+        const isComment = l.type === 'commentaire';
         await client.query(`
-          INSERT INTO factures_lignes (facture_id, position, designation, description,
+          INSERT INTO factures_lignes (facture_id, position, type, designation, description,
             quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
             montant_ht, montant_tva, montant_ttc, numero_serie)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-        `, [id, l.position, l.designation, l.description ?? null,
-            l.quantite, l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, l.taux_tva_valeur,
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        `, [id, l.position, l.type ?? 'ligne', l.designation, l.description ?? null,
+            isComment ? 0 : l.quantite, l.unite ?? null,
+            isComment ? 0 : l.prix_unitaire_ht,
+            isComment ? 1 : l.taux_tva_id, l.taux_tva_valeur,
             l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
             l.numero_serie ?? null]);
       }

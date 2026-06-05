@@ -4,6 +4,7 @@ import { ScelleService } from './ScelleService';
 import { ArchiveService } from './ArchiveService';
 
 export interface LigneInput {
+  type?: 'ligne' | 'commentaire';
   designation: string;
   description?: string;
   quantite: number;
@@ -30,6 +31,10 @@ export class DevisService {
     const tvaMap = new Map<number, number>(tvaRes.rows.map((r: any) => [r.id, r.taux]));
 
     const lignesCalculees = input.lignes.map((l, i) => {
+      if (l.type === 'commentaire') {
+        return { ...l, position: i + 1, taux_tva_valeur: 0,
+                 montant_ht: 0, montant_tva: 0, montant_ttc: 0 };
+      }
       const taux   = tvaMap.get(l.taux_tva_id) ?? 0;
       const remise = l.remise_pct ?? 0;
       const mHT    = Math.round(l.quantite * l.prix_unitaire_ht * (1 - remise / 100) * 100) / 100;
@@ -58,12 +63,15 @@ export class DevisService {
       const devisId = ins.rows[0].id;
       for (const l of lignesCalculees) {
         await client.query(`
-          INSERT INTO devis_lignes (devis_id, position, designation, description, quantite,
+          INSERT INTO devis_lignes (devis_id, position, type, designation, description, quantite,
             unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
             montant_ht, montant_tva, montant_ttc)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-        `, [devisId, l.position, l.designation, l.description ?? null, l.quantite,
-            l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, l.taux_tva_valeur,
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        `, [devisId, l.position, l.type ?? 'ligne', l.designation, l.description ?? null,
+            l.type === 'commentaire' ? 0 : l.quantite,
+            l.unite ?? null,
+            l.type === 'commentaire' ? 0 : l.prix_unitaire_ht,
+            l.type === 'commentaire' ? 1 : l.taux_tva_id, l.taux_tva_valeur,
             l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc]);
       }
 
@@ -125,17 +133,21 @@ export class DevisService {
         await client.query('DELETE FROM devis_lignes WHERE devis_id = $1', [id]);
         let totHT = 0, totTVA = 0;
         for (const [i, l] of input.lignes.entries()) {
-          const taux = tvaMap.get(l.taux_tva_id) ?? 0;
-          const mHT  = Math.round(l.quantite * l.prix_unitaire_ht * (1 - (l.remise_pct ?? 0) / 100) * 100) / 100;
-          const mTVA = Math.round(mHT * taux) / 100;
+          const isComment = l.type === 'commentaire';
+          const taux = isComment ? 0 : (tvaMap.get(l.taux_tva_id) ?? 0);
+          const mHT  = isComment ? 0 : Math.round(l.quantite * l.prix_unitaire_ht * (1 - (l.remise_pct ?? 0) / 100) * 100) / 100;
+          const mTVA = isComment ? 0 : Math.round(mHT * taux) / 100;
           totHT += mHT; totTVA += mTVA;
           await client.query(`
-            INSERT INTO devis_lignes (devis_id, position, designation, description, quantite,
+            INSERT INTO devis_lignes (devis_id, position, type, designation, description, quantite,
               unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
               montant_ht, montant_tva, montant_ttc)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-          `, [id, i + 1, l.designation, l.description ?? null, l.quantite,
-              l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, taux, l.remise_pct ?? 0,
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          `, [id, i + 1, l.type ?? 'ligne', l.designation, l.description ?? null,
+              isComment ? 0 : l.quantite,
+              l.unite ?? null,
+              isComment ? 0 : l.prix_unitaire_ht,
+              isComment ? 1 : l.taux_tva_id, taux, l.remise_pct ?? 0,
               mHT, mTVA, mHT + mTVA]);
         }
         await client.query('UPDATE devis SET montant_ht=$1, montant_tva=$2, montant_ttc=$3 WHERE id=$4',

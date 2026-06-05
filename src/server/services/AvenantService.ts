@@ -5,7 +5,7 @@ import { ArchiveService } from './ArchiveService';
 
 export class AvenantService {
   static async creer(devisInitialId: number, motif: string, lignes: Array<{
-    type_ligne: string;
+    type_ligne: 'ajout' | 'suppression' | 'modification' | 'commentaire';
     designation: string;
     description?: string;
     quantite: number;
@@ -23,6 +23,10 @@ export class AvenantService {
     const tvaMap = new Map<number, number>(tvaRes.rows.map((r: any) => [r.id, r.taux]));
 
     const lignesCalculees = lignes.map((l, i) => {
+      if (l.type_ligne === 'commentaire') {
+        return { ...l, position: i + 1, taux_tva_valeur: 0,
+                 montant_ht: 0, montant_tva: 0, montant_ttc: 0 };
+      }
       const taux   = tvaMap.get(l.taux_tva_id) ?? 0;
       const remise = l.remise_pct ?? 0;
       const mHT    = Math.round(l.quantite * l.prix_unitaire_ht * (1 - remise / 100) * 100) / 100;
@@ -32,6 +36,7 @@ export class AvenantService {
     });
 
     const delta = lignesCalculees.reduce((acc, l) => {
+      if (l.type_ligne === 'commentaire') return acc;
       const signe = l.type_ligne === 'suppression' ? -1 : 1;
       return { ht: acc.ht + signe * l.montant_ht, tva: acc.tva + signe * l.montant_tva, ttc: acc.ttc + signe * l.montant_ttc };
     }, { ht: 0, tva: 0, ttc: 0 });
@@ -50,13 +55,17 @@ export class AvenantService {
 
       const avenantId = ins.rows[0].id;
       for (const l of lignesCalculees) {
+        const isComment = l.type_ligne === 'commentaire';
         await client.query(`
-          INSERT INTO avenants_lignes (avenant_id, position, type_ligne, designation,
+          INSERT INTO avenants_lignes (avenant_id, position, type_ligne, type, designation,
             description, quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur,
             remise_pct, montant_ht, montant_tva, montant_ttc)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-        `, [avenantId, l.position, l.type_ligne, l.designation, l.description ?? null,
-            l.quantite, l.unite ?? null, l.prix_unitaire_ht, l.taux_tva_id, l.taux_tva_valeur,
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        `, [avenantId, l.position, l.type_ligne, isComment ? 'commentaire' : 'ligne',
+            l.designation, l.description ?? null,
+            isComment ? 0 : l.quantite, l.unite ?? null,
+            isComment ? 0 : l.prix_unitaire_ht,
+            isComment ? 1 : l.taux_tva_id, l.taux_tva_valeur,
             l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc]);
       }
 

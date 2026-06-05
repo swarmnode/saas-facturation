@@ -409,15 +409,25 @@ tr.row-actions:hover td { background: transparent; }
 
 /* Toolbar */
 .e-toolbar { display:flex; align-items:center; justify-content:space-between; padding:10px 20px; background:var(--card); border-bottom:1px solid var(--border); flex-shrink:0; gap:12px; z-index:10; }
-.e-tb-left  { display:flex; align-items:center; gap:12px; }
-.e-tb-right { display:flex; align-items:center; gap:8px; }
+.e-tb-left  { display:flex; align-items:center; gap:12px; flex:1; }
+.e-tb-right { display:flex; align-items:center; gap:8px; flex:1; justify-content:flex-end; }
 .e-tb-title { font-weight:600; font-size:15px; color:var(--text); }
 
 /* Canvas */
-.e-canvas { flex:1; min-height:0; overflow-y:auto; background:#D1D5DB; padding:40px 24px; display:flex; justify-content:center; align-items:flex-start; }
+.e-canvas { flex:1; min-height:0; overflow-y:auto; background:#D1D5DB; padding:40px 24px 68px; display:flex; justify-content:center; align-items:flex-start; }
 
 /* A4 paper */
-.a4-page { width:794px; min-height:1100px; background:#fff; box-shadow:0 4px 32px rgba(0,0,0,.22); padding:50px 50px 190px; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:10pt; color:#1a1a1a; position:relative; }
+.a4-page { width:794px; min-height:1100px; background:#fff; box-shadow:0 4px 32px rgba(0,0,0,.22); padding:50px 50px 190px; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:10pt; color:#1a1a1a; position:relative; transform-origin:top center; }
+
+/* Status bar */
+.e-statusbar { position:absolute; bottom:0; left:0; right:0; height:28px; display:flex; align-items:center; justify-content:flex-end; padding:0 16px; background:var(--card); border-top:1px solid var(--border); z-index:5; }
+
+/* Zoom controls */
+.e-zoom-ctrl { display:flex; align-items:center; gap:2px; }
+.e-zoom-ctrl button { background:none; border:none; cursor:pointer; font-size:15px; color:var(--text-muted); padding:0 6px; line-height:1; border-radius:4px; }
+.e-zoom-ctrl button:hover:not(:disabled) { background:var(--border); color:var(--text); }
+.e-zoom-ctrl button:disabled { opacity:.35; cursor:default; }
+.e-zoom-level { font-size:12px; font-weight:600; color:var(--text-muted); min-width:40px; text-align:center; user-select:none; cursor:default; }
 
 /* Page break indicator (WYSIWYG) */
 .e-page-break td { padding:0 !important; background:transparent !important; border:none !important; }
@@ -495,6 +505,10 @@ select.e-cell { cursor:pointer; }
 
 .e-add-btn { display:inline-block; margin-top:8px; padding:4px 12px; border:1.5px dashed #ccc; border-radius:4px; background:transparent; color:#888; font-size:8.5pt; cursor:pointer; font-family:inherit; }
 .e-add-btn:hover { border-color:var(--primary); color:var(--primary); background:#f0f4ff; }
+.e-add-comment-btn { display:inline-block; margin-top:8px; margin-left:6px; padding:4px 12px; border:1.5px dashed #ccc; border-radius:4px; background:transparent; color:#aaa; font-size:8.5pt; cursor:pointer; font-family:inherit; }
+.e-add-comment-btn:hover { border-color:#b0820a; color:#b0820a; background:#fffde7; }
+.e-comment-row td { background:#fffde7 !important; }
+.e-comment-inp { font-style:italic; color:#5a4400; background:transparent; width:100%; border:none; outline:none; }
 
 /* Totals */
 .e-totaux       { display:flex; justify-content:flex-end; margin-top:16px; }
@@ -640,7 +654,7 @@ select.e-cell { cursor:pointer; }
 @media print {
   /* ── Masquer toute l'interface ─────────────────────────────────────────── */
   .sidebar, .topbar, .tab-bar, .tab-strip, .tab-scroll-btn,
-  .e-toolbar, .e-add-btn, .e-del-btn, .e-td-del, .btn, .btn-trash,
+  .e-toolbar, .e-statusbar, .e-add-btn, .e-add-comment-btn, .e-del-btn, .e-td-del, .btn, .btn-trash,
   .drag-handle, .e-page-break, .e-stock-badge, .e-avoir-cumul-info,
   .e-meta-row-check, .e-avoir-reglement, .ss-dropdown,
   #topbarActions, #sidebarOverlay, #hamburger { display: none !important; }
@@ -659,6 +673,7 @@ select.e-cell { cursor:pointer; }
     width: 100% !important; min-height: auto !important;
     box-shadow: none !important; padding: 12mm 14mm !important;
     font-size: 10pt !important; background-image: none !important;
+    transform: none !important; margin-bottom: 0 !important;
   }
 
   /* ── Inputs : valeur en texte brut ─────────────────────────────────────── */

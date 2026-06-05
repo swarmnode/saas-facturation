@@ -360,6 +360,15 @@ export class FacturXService {
       drawFacHeader();
 
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
+        if (l.type === 'commentaire') {
+          if (y + ROW_H_F > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
+          doc.rect(50, y - 2, W, ROW_H_F).fill('#FFFDE7');
+          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: false });
+          doc.font('Helvetica').fillColor('#000000');
+          y += ROW_H_F;
+          return;
+        }
         const rowH = l.description ? ROW_H_F + DESC_H_F : ROW_H_F;
         if (y + rowH > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
         if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
@@ -514,6 +523,15 @@ export class FacturXService {
       drawTableHeader();
 
       (devis.lignes ?? []).forEach((l: any, idx: number) => {
+        if (l.type === 'commentaire') {
+          if (y + ROW_H > PAGE_SAFE_BOT) { doc.addPage(); y = CONT_TOP; drawTableHeader(); }
+          doc.rect(50, y - 2, W, ROW_H).fill('#FFFDE7');
+          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: false });
+          doc.font('Helvetica').fillColor('#000000');
+          y += ROW_H;
+          return;
+        }
         const rowH = l.description ? ROW_H + DESC_H : ROW_H;
         // Saut de page si plus assez de place
         if (y + rowH > PAGE_SAFE_BOT) {
@@ -663,6 +681,15 @@ export class FacturXService {
       drawBLHeader();
 
       (bl.lignes ?? []).forEach((l: any, idx: number) => {
+        if (l.type === 'commentaire') {
+          if (y + ROW_H_BL > PAGE_SAFE_BOT_BL) { doc.addPage(); y = CONT_TOP_BL; drawBLHeader(); }
+          doc.rect(50, y - 2, W, ROW_H_BL).fill('#FFFDE7');
+          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: false });
+          doc.font('Helvetica').fillColor('#000000');
+          y += ROW_H_BL;
+          return;
+        }
         if (y + ROW_H_BL > PAGE_SAFE_BOT_BL) { doc.addPage(); y = CONT_TOP_BL; drawBLHeader(); }
         if (idx % 2 === 0) doc.rect(50, y - 2, W, ROW_H_BL).fill(brandColorLight);
         doc.fillColor('#000000');

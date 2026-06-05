@@ -5261,52 +5261,121 @@ async function renderParametres(el) {
 
   // ── Onglet Sauvegarde ─────────────────────────────────────────────────
   function renderTabBackup(c) {
+    const isSA = currentUser?.is_super_admin;
     c.innerHTML = `
-      <div class="card" style="max-width:680px">
-        <h3 style="margin-bottom:8px;color:var(--primary)">Sauvegarde &amp; Restauration</h3>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
-          Sauvegarde complète de la base de données (toutes sociétés) au format SQL compressé (.sql.gz).
-        </p>
-        <button id="backupBtn" class="btn btn-secondary">⬇ Télécharger la sauvegarde</button>
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0"/>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
-          Restaurer à partir d'un fichier (.sql ou .sql.gz).<br/>
-          <strong style="color:#c0392b">⚠ Toutes les données actuelles seront remplacées.</strong>
-        </p>
-        <label class="btn btn-secondary" style="margin-top:8px;cursor:pointer">
-          ⬆ Restaurer une sauvegarde
-          <input type="file" id="restoreInput" accept=".sql,.sql.gz,.gz" style="display:none"/>
-        </label>
-        <div id="restoreAlert"></div>
+      <div style="display:flex;flex-direction:column;gap:20px;max-width:680px">
+
+        <!-- Sauvegarde par société -->
+        <div class="card">
+          <h3 style="margin-bottom:8px;color:var(--primary)">Sauvegarde de ma société</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+            Exporte uniquement les données de votre société (clients, devis, factures, articles,
+            écritures FEC, journal de scellement…) au format JSON compressé.
+          </p>
+          <button id="backupSocieteBtn" class="btn btn-primary">⬇ Télécharger la sauvegarde société</button>
+          ${isSA ? `
+          <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
+            Restaurer une société depuis un fichier <code>.json.gz</code> exporté par FacturPro.<br/>
+            <strong style="color:#c0392b">⚠ Les lignes déjà présentes (même ID) ne seront pas écrasées.</strong>
+            Idéal pour une restauration sur installation vierge ou après perte de données.
+          </p>
+          <label class="btn btn-secondary" style="margin-top:8px;cursor:pointer">
+            ⬆ Restaurer une société
+            <input type="file" id="restoreSocieteInput" accept=".json.gz,.gz" style="display:none"/>
+          </label>
+          <div id="restoreSocieteAlert"></div>` : ''}
+        </div>
+
+        <!-- Sauvegarde complète (super_admin) -->
+        ${isSA ? `
+        <div class="card">
+          <h3 style="margin-bottom:8px;color:var(--primary)">Sauvegarde complète</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+            Sauvegarde intégrale de la base de données (toutes sociétés) au format SQL compressé (.sql.gz).
+          </p>
+          <button id="backupBtn" class="btn btn-secondary">⬇ Télécharger la sauvegarde complète</button>
+          <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
+            Restaurer à partir d'un fichier (.sql ou .sql.gz).<br/>
+            <strong style="color:#c0392b">⚠ Toutes les données actuelles seront remplacées.</strong>
+          </p>
+          <label class="btn btn-secondary" style="margin-top:8px;cursor:pointer">
+            ⬆ Restaurer une sauvegarde complète
+            <input type="file" id="restoreInput" accept=".sql,.sql.gz,.gz" style="display:none"/>
+          </label>
+          <div id="restoreAlert"></div>
+        </div>` : ''}
+
       </div>
       <div id="backupAutoSection" style="margin-top:20px"></div>`;
-    c.querySelector('#backupBtn').onclick = async () => {
+
+    // ── Sauvegarde société ──
+    c.querySelector('#backupSocieteBtn').onclick = async () => {
       const token = localStorage.getItem('jwt');
-      const r = await fetch('/api/backup/telecharger', { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch('/api/backup/societe/telecharger', { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) { alert('Erreur lors du téléchargement'); return; }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `sauvegarde_${new Date().toISOString().slice(0,10)}.sql.gz`;
+      a.href = url; a.download = `societe_${new Date().toISOString().slice(0,10)}.json.gz`;
       a.click(); URL.revokeObjectURL(url);
     };
-    c.querySelector('#restoreInput').onchange = async function() {
-      const file = this.files[0]; if (!file) return;
-      const alertEl = c.querySelector('#restoreAlert');
-      if (!confirm(`Restaurer "${file.name}" ?\n\nToutes les données actuelles seront écrasées.`)) { this.value = ''; return; }
-      alertEl.innerHTML = '<div class="alert" style="margin-top:8px">Restauration en cours…</div>';
-      try {
-        const fd = new FormData(); fd.append('backup', file);
-        const data = await api.upload('/api/backup/restaurer', fd);
-        if (data.ok) {
-          alertEl.innerHTML = '<div class="alert alert-success" style="margin-top:8px">Restauration réussie. Rechargement…</div>';
-          setTimeout(() => location.reload(), 1500);
-        } else {
-          alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur : ${data.error}</div>`;
-        }
-      } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur réseau.</div>`; }
-      this.value = '';
-    };
+
+    // ── Restauration société (super_admin) ──
+    if (isSA) {
+      c.querySelector('#restoreSocieteInput').onchange = async function() {
+        const file = this.files[0]; if (!file) return;
+        const alertEl = c.querySelector('#restoreSocieteAlert');
+        if (!confirm(`Restaurer la société depuis "${file.name}" ?\n\nLes données déjà présentes (même ID) seront conservées.\nLes données manquantes seront insérées.`)) { this.value = ''; return; }
+        alertEl.innerHTML = '<div class="alert" style="margin-top:8px">Restauration en cours…</div>';
+        try {
+          const fd = new FormData(); fd.append('backup', file);
+          const data = await api.upload('/api/backup/societe/restaurer', fd);
+          if (data.ok) {
+            alertEl.innerHTML = `<div class="alert alert-success" style="margin-top:8px">
+              Restauration réussie — <strong>${data.raison_sociale}</strong><br/>
+              ${data.inserted} lignes insérées, ${data.skipped} ignorées (déjà présentes).
+            </div>`;
+          } else {
+            alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur : ${data.error}</div>`;
+          }
+        } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur réseau.</div>`; }
+        this.value = '';
+      };
+
+      // ── Sauvegarde complète ──
+      c.querySelector('#backupBtn').onclick = async () => {
+        const token = localStorage.getItem('jwt');
+        const r = await fetch('/api/backup/telecharger', { headers: { Authorization: `Bearer ${token}` } });
+        if (!r.ok) { alert('Erreur lors du téléchargement'); return; }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `sauvegarde_${new Date().toISOString().slice(0,10)}.sql.gz`;
+        a.click(); URL.revokeObjectURL(url);
+      };
+
+      // ── Restauration complète ──
+      c.querySelector('#restoreInput').onchange = async function() {
+        const file = this.files[0]; if (!file) return;
+        const alertEl = c.querySelector('#restoreAlert');
+        if (!confirm(`Restaurer "${file.name}" ?\n\nToutes les données actuelles seront écrasées.`)) { this.value = ''; return; }
+        alertEl.innerHTML = '<div class="alert" style="margin-top:8px">Restauration en cours…</div>';
+        try {
+          const fd = new FormData(); fd.append('backup', file);
+          const data = await api.upload('/api/backup/restaurer', fd);
+          if (data.ok) {
+            alertEl.innerHTML = '<div class="alert alert-success" style="margin-top:8px">Restauration réussie. Rechargement…</div>';
+            setTimeout(() => location.reload(), 1500);
+          } else {
+            alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur : ${data.error}</div>`;
+          }
+        } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur réseau.</div>`; }
+        this.value = '';
+      };
+    }
+
     renderBackupAuto(c.querySelector('#backupAutoSection'));
   }
 

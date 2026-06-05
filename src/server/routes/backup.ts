@@ -5,12 +5,12 @@ import multer from 'multer';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { requireSuperAdmin } from '../middleware/auth';
+import { authenticate, requireSuperAdmin, requirePerm } from '../middleware/auth';
 import { query } from '../db/database';
 import { runBackup, listBackups, loadAndSchedule } from '../services/BackupScheduler';
+import { exporterSociete, restaurerSociete } from '../services/SocieteBackupService';
 
 const router = Router();
-router.use(requireSuperAdmin);
 
 function pgConn() {
   const url = new URL(process.env.DATABASE_URL ?? 'postgresql://facturation:facturation@localhost:5432/facturation');
@@ -29,7 +29,7 @@ function pgBin() {
 }
 
 // Téléchargement manuel (stream)
-router.get('/telecharger', (_req, res, next) => {
+router.get('/telecharger', requireSuperAdmin, (_req, res, next) => {
   const { user, pass, host, port, db } = pgConn();
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader('Content-Type', 'application/gzip');
@@ -49,7 +49,7 @@ router.get('/telecharger', (_req, res, next) => {
 
 // Restauration (.sql ou .sql.gz)
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 200 * 1024 * 1024 } });
-router.post('/restaurer', upload.single('backup'), async (req, res, next) => {
+router.post('/restaurer', requireSuperAdmin, upload.single('backup'), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
   const tmpPath = req.file.path;
   const isGz = req.file.originalname?.endsWith('.gz') || req.file.mimetype === 'application/gzip';
@@ -82,7 +82,7 @@ router.post('/restaurer', upload.single('backup'), async (req, res, next) => {
 });
 
 // Lire la config de sauvegarde automatique
-router.get('/config', async (_req, res, next) => {
+router.get('/config', requireSuperAdmin, async (_req, res, next) => {
   try {
     const r = await query('SELECT * FROM backup_config WHERE id=1');
     res.json(r.rows[0] ?? {});
@@ -90,7 +90,7 @@ router.get('/config', async (_req, res, next) => {
 });
 
 // Enregistrer la config et replanifier
-router.post('/config', async (req, res, next) => {
+router.post('/config', requireSuperAdmin, async (req, res, next) => {
   try {
     const { actif, destination, periodicite, heure, jour_semaine, jour_mois, taille_max_mo } = req.body;
     await query(`
@@ -105,7 +105,7 @@ router.post('/config', async (req, res, next) => {
 });
 
 // Liste des fichiers dans le dossier destination
-router.get('/liste', async (req, res, next) => {
+router.get('/liste', requireSuperAdmin, async (req, res, next) => {
   try {
     const r = await query('SELECT destination, taille_max_mo FROM backup_config WHERE id=1');
     const cfg = r.rows[0];
@@ -116,7 +116,7 @@ router.get('/liste', async (req, res, next) => {
 });
 
 // Déclencher une sauvegarde manuelle vers le dossier configuré
-router.post('/lancer', async (_req, res, next) => {
+router.post('/lancer', requireSuperAdmin, async (_req, res, next) => {
   try {
     const r = await query('SELECT destination, taille_max_mo FROM backup_config WHERE id=1');
     const cfg = r.rows[0];
@@ -134,13 +134,46 @@ router.post('/lancer', async (_req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── Sauvegarde / Restauration par société ─────────────────────────────────────
+
+const uploadSociete = multer({ dest: os.tmpdir(), limits: { fileSize: 500 * 1024 * 1024 } });
+
+// Télécharger la sauvegarde de SA société (admin de la société)
+router.get('/societe/telecharger', requirePerm('settings:r'), async (req, res, next) => {
+  try {
+    const eid = req.user!.entreprise_id;
+    const buf = await exporterSociete(eid);
+    const date = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', `attachment; filename="societe_${eid}_${date}.json.gz"`);
+    res.send(buf);
+  } catch (e) { next(e); }
+});
+
+// Restaurer une société depuis un fichier .json.gz (super_admin uniquement)
+router.post('/societe/restaurer', requireSuperAdmin, uploadSociete.single('backup'), async (req, res, next) => {
+  if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
+  const tmpPath = req.file.path;
+  try {
+    const buf = fs.readFileSync(tmpPath);
+    const result = await restaurerSociete(buf);
+    const total = result.tables.reduce((s, t) => s + t.inserted, 0);
+    const skipped = result.tables.reduce((s, t) => s + t.skipped, 0);
+    res.json({ ok: true, entreprise_id: result.entreprise_id, raison_sociale: result.raison_sociale, inserted: total, skipped });
+  } catch (e: any) {
+    next(e);
+  } finally {
+    try { fs.unlinkSync(tmpPath); } catch {}
+  }
+});
+
 // Supprimer un fichier de sauvegarde
-router.delete('/fichier/:nom', async (req, res, next) => {
+router.delete('/fichier/:nom', requireSuperAdmin, async (req, res, next) => {
   try {
     const r = await query('SELECT destination FROM backup_config WHERE id=1');
     const destination = r.rows[0]?.destination;
     if (!destination) return res.status(400).json({ error: 'Destination non configurée' });
-    const nom = path.basename(req.params.nom); // sécurité : interdit les traversées
+    const nom = path.basename(req.params.nom as string); // sécurité : interdit les traversées
     if (!nom.startsWith('sauvegarde_') || !(nom.endsWith('.sql.gz') || nom.endsWith('.sql')))
       return res.status(400).json({ error: 'Nom de fichier invalide' });
     const fp = path.join(destination, nom);

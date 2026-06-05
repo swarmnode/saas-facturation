@@ -3,6 +3,27 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [2.16.0] — 2026-06-05
+
+### Ajouté
+
+- **Sauvegarde par société** — `GET /api/backup/societe/telecharger` exporte uniquement les données
+  d'une société (clients, articles, devis, factures, acomptes, BL, fournisseurs, FEC, journal
+  de scellement, archives, audit, TVA déductible, exercices) au format JSON gzippé.
+  Accessible à tout admin de la société (pas seulement super_admin).
+
+- **Restauration par société** — `POST /api/backup/societe/restaurer` réinsère les données manquantes
+  depuis un fichier `.json.gz` exporté par FacturPro. Stratégie `INSERT ON CONFLICT DO NOTHING` :
+  les lignes déjà présentes (même ID) sont conservées — idéal pour une installation vierge
+  ou une récupération partielle. Réservé au super_admin.
+
+- **UI Sauvegarde restructurée** : deux cartes distinctes — « Sauvegarde de ma société » (visible
+  par tous les admins) et « Sauvegarde complète » (super_admin uniquement).
+
+- **Compatibilité multi-versions** : si le fichier de backup contient des colonnes absentes de la
+  DB cible (version plus récente exportée vers une plus ancienne), les colonnes inconnues sont
+  silencieusement ignorées.
+
 ## [2.15.0] — 2026-06-05
 
 ### Corrigé

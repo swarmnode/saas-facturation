@@ -3,21 +3,14 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [2.17.0] — 2026-06-05
+
+### Ajouté
+- Restauration société en mode **cross-instance** (`?mode=remap`) : tous les IDs (PK + FK) sont réattribués au-dessus du `MAX(id)` existant dans chaque table pour éviter toute collision avec les sociétés déjà présentes sur l'instance cible. Remapping complet incluant les références polymorphiques de `journal_scellement.document_id` et `archive_documents.document_id_original`.
+- Deux boutons dans l'onglet Sauvegarde : « Restaurer (même instance) » (mode `skip`, comportement précédent) et « Importer (cross-instance) » (mode `remap`).
 
 ### Corrigé
-- Fix: restauration société — recaler les séquences SERIAL après INSERT
-
-Sans setval(), le prochain INSERT sans id explicite appelait nextval() qui
-retournait une valeur déjà occupée par les données restaurées → violation PK.
-pg_get_serial_sequence() + MAX(id) sur toute la table (multi-tenant safe).
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-### Documentation
-- Docs: update CHANGELOG.md [skip ci]
-
+- Fix: restauration société — recaler les séquences SERIAL après INSERT (intégré à 2.17.0)
 
 ## [2.16.0] — 2026-06-05
 

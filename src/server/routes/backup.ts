@@ -8,7 +8,7 @@ import fs from 'fs';
 import { authenticate, requireSuperAdmin, requirePerm } from '../middleware/auth';
 import { query } from '../db/database';
 import { runBackup, listBackups, loadAndSchedule } from '../services/BackupScheduler';
-import { exporterSociete, restaurerSociete } from '../services/SocieteBackupService';
+import { exporterSociete, restaurerSociete, RestoreMode } from '../services/SocieteBackupService';
 
 const router = Router();
 
@@ -156,10 +156,13 @@ router.post('/societe/restaurer', requireSuperAdmin, uploadSociete.single('backu
   const tmpPath = req.file.path;
   try {
     const buf = fs.readFileSync(tmpPath);
-    const result = await restaurerSociete(buf);
+    // mode=remap : réassigne de nouveaux IDs (import cross-instance)
+    // mode=skip  : INSERT ON CONFLICT DO NOTHING (même instance, défaut)
+    const mode: RestoreMode = req.query.mode === 'remap' ? 'remap' : 'skip';
+    const result = await restaurerSociete(buf, mode);
     const total = result.tables.reduce((s, t) => s + t.inserted, 0);
     const skipped = result.tables.reduce((s, t) => s + t.skipped, 0);
-    res.json({ ok: true, entreprise_id: result.entreprise_id, raison_sociale: result.raison_sociale, inserted: total, skipped });
+    res.json({ ok: true, mode, entreprise_id: result.entreprise_id, raison_sociale: result.raison_sociale, inserted: total, skipped });
   } catch (e: any) {
     next(e);
   } finally {

@@ -5276,13 +5276,21 @@ async function renderParametres(el) {
           ${isSA ? `
           <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
-            Restaurer une société depuis un fichier <code>.json.gz</code> exporté par FacturPro.<br/>
-            <strong style="color:#c0392b">⚠ Les lignes déjà présentes (même ID) ne seront pas écrasées.</strong>
-            Idéal pour une restauration sur installation vierge ou après perte de données.
+            <strong>Restaurer sur la même instance</strong> — Les lignes déjà présentes (même ID) sont conservées,
+            les données manquantes sont insérées. Idéal après perte partielle de données.
           </p>
-          <label class="btn btn-secondary" style="margin-top:8px;cursor:pointer">
-            ⬆ Restaurer une société
-            <input type="file" id="restoreSocieteInput" accept=".json.gz,.gz" style="display:none"/>
+          <label class="btn btn-secondary" style="margin-top:6px;cursor:pointer">
+            ⬆ Restaurer (même instance)
+            <input type="file" id="restoreSocieteInput" accept=".json.gz,.gz" style="display:none" data-mode="skip"/>
+          </label>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:12px;margin-bottom:4px">
+            <strong>Importer depuis une autre instance</strong> — Tous les IDs sont réattribués pour
+            éviter toute collision avec les sociétés existantes. Utiliser pour migrer une société
+            d'un autre serveur FacturPro.
+          </p>
+          <label class="btn btn-secondary" style="margin-top:6px;cursor:pointer">
+            ⬆ Importer (cross-instance)
+            <input type="file" id="restoreSocieteRemapInput" accept=".json.gz,.gz" style="display:none" data-mode="remap"/>
           </label>
           <div id="restoreSocieteAlert"></div>` : ''}
         </div>
@@ -5324,25 +5332,31 @@ async function renderParametres(el) {
 
     // ── Restauration société (super_admin) ──
     if (isSA) {
-      c.querySelector('#restoreSocieteInput').onchange = async function() {
-        const file = this.files[0]; if (!file) return;
+      const doRestoreSociete = async function(inputEl, mode) {
+        const file = inputEl.files[0]; if (!file) return;
         const alertEl = c.querySelector('#restoreSocieteAlert');
-        if (!confirm(`Restaurer la société depuis "${file.name}" ?\n\nLes données déjà présentes (même ID) seront conservées.\nLes données manquantes seront insérées.`)) { this.value = ''; return; }
+        const modeLabel = mode === 'remap'
+          ? 'Importer depuis une autre instance : tous les IDs seront réassignés.\nLes données de votre instance ne seront pas écrasées.'
+          : 'Restaurer sur la même instance : les données déjà présentes (même ID) seront conservées.\nLes données manquantes seront insérées.';
+        if (!confirm(`${modeLabel}\n\nFichier : "${file.name}"\n\nContinuer ?`)) { inputEl.value = ''; return; }
         alertEl.innerHTML = '<div class="alert" style="margin-top:8px">Restauration en cours…</div>';
         try {
           const fd = new FormData(); fd.append('backup', file);
-          const data = await api.upload('/api/backup/societe/restaurer', fd);
+          const data = await api.upload(`/api/backup/societe/restaurer?mode=${mode}`, fd);
           if (data.ok) {
+            const modeInfo = data.mode === 'remap' ? ' (IDs réattribués)' : '';
             alertEl.innerHTML = `<div class="alert alert-success" style="margin-top:8px">
-              Restauration réussie — <strong>${data.raison_sociale}</strong><br/>
+              Restauration réussie${modeInfo} — <strong>${data.raison_sociale}</strong><br/>
               ${data.inserted} lignes insérées, ${data.skipped} ignorées (déjà présentes).
             </div>`;
           } else {
             alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur : ${data.error}</div>`;
           }
         } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">Erreur réseau.</div>`; }
-        this.value = '';
+        inputEl.value = '';
       };
+      c.querySelector('#restoreSocieteInput').onchange = function() { doRestoreSociete(this, 'skip'); };
+      c.querySelector('#restoreSocieteRemapInput').onchange = function() { doRestoreSociete(this, 'remap'); };
 
       // ── Sauvegarde complète ──
       c.querySelector('#backupBtn').onclick = async () => {

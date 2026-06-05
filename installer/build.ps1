@@ -85,14 +85,41 @@ if (Test-Path "$NodeDir\node.exe") {
 # -- 5. PostgreSQL installer (bundle) -------------------------------------------
 Step 5 "PostgreSQL $PgVersion installer (bundle dans l'installateur)"
 $PgInstallerDest = "$Tools\pg17-installer.exe"
+$PgMinSize = 200MB
+$pgNeedsDownload = $true
 if (Test-Path $PgInstallerDest) {
-    OK "Deja present : $PgInstallerDest"
-} else {
+    $pgSize = (Get-Item $PgInstallerDest).Length
+    if ($pgSize -ge $PgMinSize) {
+        OK "Deja present : $PgInstallerDest"
+        $pgNeedsDownload = $false
+    } else {
+        Write-Host "  Fichier corrompu ($([math]::Round($pgSize/1MB))Mo), re-telechargement..."
+        Remove-Item $PgInstallerDest -Force
+    }
+}
+if ($pgNeedsDownload) {
     $PgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-windows-x64.exe"
     Write-Host "  Telechargement de PostgreSQL $PgVersion (~300 Mo)..."
     Write-Host "  URL : $PgUrl"
-    Invoke-WebRequest -Uri $PgUrl -OutFile $PgInstallerDest -UseBasicParsing
-    OK "PostgreSQL installer : $PgInstallerDest"
+    try {
+        Import-Module BitsTransfer -ErrorAction Stop
+        Start-BitsTransfer -Source $PgUrl -Destination $PgInstallerDest -DisplayName "PostgreSQL $PgVersion"
+    } catch {
+        # Fallback Invoke-WebRequest si BITS indisponible
+        Invoke-WebRequest -Uri $PgUrl -OutFile $PgInstallerDest -UseBasicParsing
+    }
+    $pgSizeFinal = (Get-Item $PgInstallerDest -ErrorAction SilentlyContinue).Length
+    if ($null -eq $pgSizeFinal -or $pgSizeFinal -lt $PgMinSize) {
+        if (Test-Path $PgInstallerDest) { Remove-Item $PgInstallerDest -Force }
+        Write-Host ""
+        Write-Host "ERREUR : telechargement de PostgreSQL echoue ou incomplet." -ForegroundColor Red
+        Write-Host "Placez manuellement postgresql-$PgVersion-windows-x64.exe dans :" -ForegroundColor Yellow
+        Write-Host "  $PgInstallerDest" -ForegroundColor Cyan
+        Write-Host "Telechargez depuis : $PgUrl" -ForegroundColor Cyan
+        Write-Host "puis relancez build.ps1" -ForegroundColor Yellow
+        exit 1
+    }
+    OK "PostgreSQL installer : $PgInstallerDest ($([math]::Round($pgSizeFinal/1MB))Mo)"
 }
 
 # -- 6. NSSM --------------------------------------------------------------------

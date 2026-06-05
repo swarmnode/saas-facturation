@@ -3,6 +3,16 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [2.18.0] — 2026-06-05
+
+### Ajouté
+- Lignes de commentaire dans tous les éditeurs WYSIWYG (devis, factures, BL, avenants)
+
+Bouton `+ Commentaire` dans l'éditeur insère une ligne pleine largeur (italic,
+fond jaune pâle) sans colonnes de prix ni TVA. Migration 024 ajoute la colonne
+`type VARCHAR(20) DEFAULT 'ligne'` sur les 4 tables de lignes. Rendu PDF :
+texte italic fond #FFFDE7 sur toute la largeur du tableau.
+
 ## [2.17.0] — 2026-06-05
 
 ### Ajouté

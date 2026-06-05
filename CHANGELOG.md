@@ -6,23 +6,21 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [2.16.0] — 2026-06-05
 
 ### Ajouté
+- Feat: sauvegarde et restauration par société (JSON gzippé, INSERT ON CONFLICT DO NOTHING)
 
-- **Sauvegarde par société** — `GET /api/backup/societe/telecharger` exporte uniquement les données
-  d'une société (clients, articles, devis, factures, acomptes, BL, fournisseurs, FEC, journal
-  de scellement, archives, audit, TVA déductible, exercices) au format JSON gzippé.
-  Accessible à tout admin de la société (pas seulement super_admin).
+- SocieteBackupService : exporte 22 tables filtrées par entreprise_id en JSON.gz
+- GET /api/backup/societe/telecharger (requirePerm settings:r) — accessible aux admins
+- POST /api/backup/societe/restaurer (super_admin) — réinsère les données manquantes
+- Restauration tolérante aux colonnes inconnues (compatibilité inter-versions)
+- UI restructurée : carte société + carte complète séparées
+- Permissions backup.ts migrées de router.use vers par-route (évite le blocage du endpoint société)
 
-- **Restauration par société** — `POST /api/backup/societe/restaurer` réinsère les données manquantes
-  depuis un fichier `.json.gz` exporté par FacturPro. Stratégie `INSERT ON CONFLICT DO NOTHING` :
-  les lignes déjà présentes (même ID) sont conservées — idéal pour une installation vierge
-  ou une récupération partielle. Réservé au super_admin.
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
-- **UI Sauvegarde restructurée** : deux cartes distinctes — « Sauvegarde de ma société » (visible
-  par tous les admins) et « Sauvegarde complète » (super_admin uniquement).
 
-- **Compatibilité multi-versions** : si le fichier de backup contient des colonnes absentes de la
-  DB cible (version plus récente exportée vers une plus ancienne), les colonnes inconnues sont
-  silencieusement ignorées.
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
 
 ## [2.15.0] — 2026-06-05
 
@@ -1539,6 +1537,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.16.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.16.0
 [2.15.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.15.0
 [2.14.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.14.0
 [2.13.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.13.0

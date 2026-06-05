@@ -6,18 +6,18 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [2.15.0] — 2026-06-05
 
 ### Corrigé
+- Fix: installeur — PostgreSQL bundlé (suppression winget, EDB silent install)
 
-- **Installateur — PostgreSQL non installé** : `winget` est inaccessible dans le contexte
-  élevé d'Inno Setup. L'installateur EDB PostgreSQL 17 est désormais bundlé dans le package
-  (`installer/tools/pg17-installer.exe`, téléchargé par `build.ps1`) et exécuté silencieusement
-  avec `--mode unattended --superpassword`. Quoting PS 5.1 corrigé (chaîne unique au lieu
-  d'un array). Validation ajoutée dans le wizard : les mots de passe ne peuvent pas contenir
-  de guillemets `"`.
+winget est inaccessible dans le contexte élevé Inno Setup. L'installateur EDB PostgreSQL 17
+est désormais téléchargé par build.ps1 et bundlé dans le package ; Configure.ps1 l'exécute
+silencieusement (--mode unattended). Quoting PS 5.1 corrigé. Validation guillemets dans wizard.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 
-- **CLAUDE.md** : plage migrations corrigée (010–023), BackupScheduler (copie PDFs),
-  route `relance-courrier`, `import-csv` fournisseurs, `stats/fournisseurs`.
 
 ## [2.14.0] — 2026-06-04
 
@@ -1518,6 +1518,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.15.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.15.0
 [2.14.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.14.0
 [2.13.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.13.0
 [2.12.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.12.0

@@ -236,6 +236,27 @@ export async function restaurerSociete(buffer: Buffer): Promise<RestoreResult> {
 
       result.tables.push({ name: def.name, inserted, skipped });
     }
+
+    // ── Recaler les séquences SERIAL après les INSERTs avec IDs explicites ──
+    // Sans ça, le prochain INSERT sans id explicite appellerait nextval() qui
+    // retournerait une valeur déjà utilisée → violation de contrainte PK.
+    // On utilise pg_get_serial_sequence() qui retrouve le nom de la séquence
+    // associée à la colonne 'id', et on la recale sur MAX(id) de toute la table
+    // (pas seulement les lignes restaurées, car d'autres sociétés peuvent exister).
+    for (const def of TABLES) {
+      try {
+        await client.query(
+          `SELECT setval(
+             pg_get_serial_sequence($1, 'id'),
+             COALESCE((SELECT MAX(id) FROM ${def.name}), 1),
+             true
+           )`,
+          [def.name]
+        );
+      } catch {
+        // Certaines tables n'ont pas de séquence sur 'id' → ignorer silencieusement
+      }
+    }
   });
 
   return result;

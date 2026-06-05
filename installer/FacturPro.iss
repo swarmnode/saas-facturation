@@ -5,7 +5,7 @@
 ; ============================================================
 
 #define AppName    "FacturPro"
-#define AppVersion "2.13.0"
+#define AppVersion "2.15.0"
 #define AppURL     "http://localhost:3000"
 
 [Setup]
@@ -49,6 +49,9 @@ Source: "tools\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsu
 
 ; NSSM
 Source: "tools\nssm.exe"; DestDir: "{app}\tools"; Flags: ignoreversion
+
+; Installateur PostgreSQL 17 (EDB one-click, exécuté silencieusement par Configure.ps1)
+Source: "tools\pg17-installer.exe"; DestDir: "{app}\tools"; Flags: ignoreversion
 
 ; Script de configuration (exécuté après l'extraction)
 Source: "scripts\Configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -145,6 +148,11 @@ begin
     if Trim(PagePostgres.Values[0]) = '' then begin
       MsgBox('Veuillez entrer le mot de passe PostgreSQL.', mbError, MB_OK);
       Result := False;
+      Exit;
+    end;
+    if Pos('"', PagePostgres.Values[0]) > 0 then begin
+      MsgBox('Le mot de passe PostgreSQL ne peut pas contenir de guillemets (").', mbError, MB_OK);
+      Result := False;
     end;
   end;
 
@@ -156,6 +164,11 @@ begin
     end;
     if Length(PageAdmin.Values[1]) < 8 then begin
       MsgBox('Le mot de passe doit contenir au moins 8 caractères.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+    if Pos('"', PageAdmin.Values[1]) > 0 then begin
+      MsgBox('Le mot de passe admin ne peut pas contenir de guillemets (").', mbError, MB_OK);
       Result := False;
     end;
   end;

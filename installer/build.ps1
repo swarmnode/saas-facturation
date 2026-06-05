@@ -2,11 +2,12 @@
 .SYNOPSIS
     Prepare le payload de l'installateur FacturPro.
     A executer depuis le repertoire racine du projet, avant de compiler le .iss avec Inno Setup.
-    Necessite : Node.js (pour compiler), acces Internet (pour telecharger Node.js portable + NSSM).
+    Necessite : Node.js (pour compiler), acces Internet (telecharge Node.js portable, NSSM, PostgreSQL 17).
 #>
 param(
     [string]$NodeVersion = "20.19.1",
-    [string]$NssmVersion = "2.24"
+    [string]$NssmVersion = "2.24",
+    [string]$PgVersion   = "17.5-2"    # format EDB : postgresql-{PgVersion}-windows-x64.exe
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,7 +16,7 @@ $Installer = $PSScriptRoot
 $Payload   = "$Installer\payload"
 $Tools     = "$Installer\tools"
 
-function Step($n, $msg) { Write-Host "[$n/6] $msg" -ForegroundColor Cyan }
+function Step($n, $msg) { Write-Host "[$n/7] $msg" -ForegroundColor Cyan }
 function OK  ($msg)      { Write-Host "  OK : $msg"  -ForegroundColor Green }
 function Fail($msg)      { Write-Host "  ERREUR : $msg" -ForegroundColor Red; exit 1 }
 
@@ -81,8 +82,21 @@ if (Test-Path "$NodeDir\node.exe") {
     OK "Node.js portable : $NodeDir"
 }
 
-# -- 5. NSSM --------------------------------------------------------------------
-Step 5 "NSSM (gestionnaire de service Windows) v$NssmVersion"
+# -- 5. PostgreSQL installer (bundle) -------------------------------------------
+Step 5 "PostgreSQL $PgVersion installer (bundle dans l'installateur)"
+$PgInstallerDest = "$Tools\pg17-installer.exe"
+if (Test-Path $PgInstallerDest) {
+    OK "Deja present : $PgInstallerDest"
+} else {
+    $PgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-windows-x64.exe"
+    Write-Host "  Telechargement de PostgreSQL $PgVersion (~300 Mo)..."
+    Write-Host "  URL : $PgUrl"
+    Invoke-WebRequest -Uri $PgUrl -OutFile $PgInstallerDest -UseBasicParsing
+    OK "PostgreSQL installer : $PgInstallerDest"
+}
+
+# -- 6. NSSM --------------------------------------------------------------------
+Step 6 "NSSM (gestionnaire de service Windows) v$NssmVersion"
 $NssmExe = "$Tools\nssm.exe"
 if (Test-Path $NssmExe) {
     OK "Deja present : $NssmExe"
@@ -122,12 +136,13 @@ if (Test-Path $NssmExe) {
     OK "NSSM : $NssmExe"
 }
 
-# -- 6. Resume ------------------------------------------------------------------
-Step 6 "Resume"
+# -- 7. Resume ------------------------------------------------------------------
+Step 7 "Resume"
 Write-Host ""
-Write-Host "  Payload : $Payload" -ForegroundColor White
-Write-Host "  Node    : $NodeDir" -ForegroundColor White
-Write-Host "  NSSM    : $NssmExe" -ForegroundColor White
+Write-Host "  Payload    : $Payload"         -ForegroundColor White
+Write-Host "  Node       : $NodeDir"          -ForegroundColor White
+Write-Host "  NSSM       : $NssmExe"          -ForegroundColor White
+Write-Host "  PostgreSQL : $PgInstallerDest"  -ForegroundColor White
 Write-Host ""
 Write-Host "Prochaine etape :" -ForegroundColor Yellow
 Write-Host "  Compilez installer/FacturPro.iss avec Inno Setup (ISCC.exe ou IDE Inno Setup)"

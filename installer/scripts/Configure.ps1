@@ -53,13 +53,23 @@ function Find-PgBin {
 $pgBin = Find-PgBin
 
 if (-not $pgBin) {
-    Log "PostgreSQL absent - installation via winget..."
-    $result = Start-Process "winget" -ArgumentList "install -e --id PostgreSQL.PostgreSQL.17 --silent --accept-package-agreements --accept-source-agreements" -Wait -PassThru
-    # 0 = succes, -1978335189 (0x8A150021) = deja installe
-    if ($result.ExitCode -notin @(0, -1978335189)) {
+    Log "PostgreSQL absent - installation depuis le bundle..."
+    $pgInstaller = "$InstallDir\tools\pg17-installer.exe"
+    if (-not (Test-Path $pgInstaller)) {
+        LogError "Installateur PostgreSQL introuvable ($pgInstaller). Le fichier de setup semble corrompu — reinstallez FacturPro."
+    }
+
+    Log "Installation silencieuse de PostgreSQL (EDB one-click)..."
+    # PS 5.1 : Start-Process joint les elements d'un array sans re-quoting.
+    # Construire une chaine unique avec les guillemets explicites autour du mot de passe.
+    $safePgPass = $PgPass -replace '"', '\"'
+    $pgArgs = "--mode unattended --unattendedmodeui none --superpassword `"$safePgPass`" --serverport 5432"
+    $result = Start-Process $pgInstaller -ArgumentList $pgArgs -Wait -PassThru
+    if ($result.ExitCode -ne 0) {
         LogError "L'installation de PostgreSQL a echoue (code $($result.ExitCode)). Installez-le manuellement depuis https://www.postgresql.org/download/windows/ puis relancez l'installateur."
     }
-    Start-Sleep -Seconds 10
+
+    Start-Sleep -Seconds 15  # laisser le service postgresql-17 demarrer
     $pgBin = Find-PgBin
     if (-not $pgBin) { LogError "psql.exe introuvable apres installation PostgreSQL. Verifiez l'installation et relancez." }
 }

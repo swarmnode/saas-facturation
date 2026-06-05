@@ -31,7 +31,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–021 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–023 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
 - 008: `clients.mode_reglement_defaut`
@@ -65,7 +65,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `FacturXService` — PDFKit PDF generation + EN 16931 XML. Generates devis, factures, acomptes, bons-livraison as streams (`generer*Stream`) or to disk (`genererFacture`). Logo color is extracted at runtime with `sharp`.
 - `FecExportService` — writes accounting entries to `fec_ecritures` when a facture is emitted; exports them as tab-separated text (DGFiP FEC format). **Do not alter column names or order.**
 - `LettreService` — lettrage (account matching) of `fec_ecritures` compte 411 lines. `getNextLettre()` uses `sequence_numerotation` with type `LETTRAGE`; `lettrerPaiement()` is called automatically when marking a facture `payee`.
-- `BackupScheduler` — `node-cron` job calling `pg_dump.exe` (path from `PG_BIN` env var). Config stored in `backup_config` table; reloaded via `loadAndSchedule()`.
+- `BackupScheduler` — `node-cron` job calling `pg_dump.exe` (path from `PG_BIN` env var) and copying `storage/pdf/` to a `pdfs_<date>/` subfolder inside the backup destination. Config stored in `backup_config` table; reloaded via `loadAndSchedule()`.
 - `EmailService` — Nodemailer; uses SMTP config from `entreprise` table if present, otherwise falls back to Ethereal test account auto-created at runtime.
 - `ArchiveService` — stores immutable JSON snapshots of documents in `archive_documents` (SHA-256 hash, 10-year retention). `archiver()` is idempotent (`ON CONFLICT DO NOTHING` on `type_document + document_id_original`). Must be called when a document reaches a terminal status.
 - `AvenantService` — creates amendments to signed devis. An avenant can only be created when the parent `devis.statut = 'signe'`; it allocates its own number via `NumerotationService` and seals via `ScelleService`.
@@ -77,11 +77,11 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 **Additional routes** not listed above:
 - `sepa` — generates SEPA direct debit XML (pain.008) for a batch of factures. POST `/api/sepa/generer` with `{ facture_ids, date_execution, sequence }`.
 - `lettrage` — GET `/api/lettrage` lists compte-411 FEC entries; POST `/api/lettrage/lettrer` for manual matching.
-- `stats` — GET `/api/stats/kpis?periode=mois|trimestre|annee` returns financial KPIs (CA, factures emises/payees, impayés, etc.).
+- `stats` — GET `/api/stats/kpis?periode=mois|trimestre|annee` returns financial KPIs (CA, factures emises/payees, impayés, etc.); GET `/api/stats/fournisseurs` returns supplier totals (HT, à payer, en retard, top 5 fournisseurs).
 - `audit` — GET `/api/audit` reads `audit_log`. The exported `logAudit()` helper is used by other routes to record sensitive actions.
 - `exercices` — GET `/api/exercices` lists fiscal years; POST `/api/exercices` opens one; POST `/api/exercices/:annee/cloturer` closes it (hashes FEC entries, returns a bilan PDF).
 - `chorus-pro` (on `factures` router) — POST `/api/factures/:id/chorus-pro` deposits the facture on Chorus Pro; GET `/api/factures/:id/chorus-pro/statut` refreshes its status.
-- `factures-fournisseurs` — GET `/api/factures-fournisseurs[?statut=recue|payee]` lists supplier invoices; POST `/` creates; POST `/:id/payer` marks paid; DELETE `/:id` removes (only `recue`).
+- `factures-fournisseurs` — GET `/api/factures-fournisseurs[?statut=recue|payee]` lists supplier invoices; POST `/` creates; POST `/:id/payer` marks paid; DELETE `/:id` removes (only `recue`); POST `/import-csv` imports a CSV file (multipart `csv` field) — parses FEC-style rows from compte 401.
 
 **FEC multi-tenant filter**: `FecExportService.exporterCSV()` filters by `entreprise_id` via EXISTS subqueries on both `factures` and `factures_fournisseurs` — entries without either FK are excluded.
 
@@ -91,6 +91,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `POST /:id/relancer` — dunning email with a custom subject/body and PDF attachment.
 - `GET /:id/eml` — returns a pre-composed RFC 822 `.eml` file for download.
 - `POST /:id/mapi` — Windows-only: spawns `powershell.exe` to invoke `MAPISendMail`, opening the user's local mail client. Uses temp files in `os.tmpdir()` and cleans them up automatically.
+- `GET /:id/relance-courrier` — generates a printable dunning letter PDF (PDFKit, streamed inline) with the full formal letter layout (objet, coordonnées, corps récapitulatif, pied de page).
 
 **Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing.
 

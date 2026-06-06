@@ -3,6 +3,21 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Chore: supprimer job installer du CI (trop lent, mange le stockage GitHub)
+
+Seul le job patch zip est conserve. L'installeur complet se fait
+manuellement avec installer/build.ps1 + Inno Setup si besoin.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ## [2.20.7] — 2026-06-06
 
 ### Documentation

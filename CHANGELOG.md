@@ -3,6 +3,23 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Corrigé
+- Fix: utiliser spawn detache au lieu de schtasks pour le patch leger
+
+Remplace schtasks /create /sc ONCE /st HH:MM:SS par un processus
+PowerShell detache (spawn + unref). Le service NSSM tournant en SYSTEM,
+le fils herite des droits sans avoir besoin de /ru SYSTEM. Elimine le
+probleme de format HH:MM:SS non supporte par certains Windows.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
 ## [2.20.2] — 2026-06-06
 
 ### Corrigé

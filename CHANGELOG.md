@@ -3,18 +3,24 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
-
 ## [2.20.0] — 2026-06-06
 
 ### Ajouté
-- Catalogue de commentaires prédéfinis par entreprise (`commentaires_predefinis`) : sauvegarder et réutiliser des commentaires depuis l'éditeur (bouton 💾, select de sélection)
+- Feat: v2.20.0 - commentaires catalogue, PDF hauteur dynamique, CSV multi-lignes
 
-### Modifié
-- PDF devis/facture : libellé, description et commentaires en hauteur dynamique (`heightOfString`) — plus de troncature
-- PDF : commentaires fond blanc et texte `#1A1A1A` (cohérent avec l'éditeur)
-- Éditeur : ligne commentaire convertie en `<textarea>` (supporte les retours à la ligne)
-- `parseCSV` : réécriture en parser caractère par caractère — gère les champs multi-lignes entre guillemets et les `"` isolés au milieu d'un champ
+- migration 025 : table commentaires_predefinis par entreprise
+- route GET/POST/DELETE /api/commentaires
+- editeur : ligne commentaire en textarea (retours a la ligne) + select modeles + bouton sauvegarde
+- PDF devis/facture : libelle, description, commentaires en hauteur dynamique via heightOfString
+- PDF : commentaires fond blanc + texte #1A1A1A (coherent editeur)
+- parseCSV : parser caractere par caractere - champs multi-lignes et guillemets isoles
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
 
 ## [2.19.0] — 2026-06-06
 
@@ -1682,6 +1688,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.20.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.0
 [2.19.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.19.0
 [2.18.4]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.4
 [2.18.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.1

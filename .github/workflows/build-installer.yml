@@ -49,7 +49,7 @@ jobs:
       - name: Build patch zip
         run: |
           npm run build
-          Compress-Archive -Path "dist\client", "dist\server", "package.json" -DestinationPath "FacturPro-Patch.zip" -Force
+          Compress-Archive -Path "dist", "package.json" -DestinationPath "FacturPro-Patch.zip" -Force
         shell: powershell
 
       - name: Attach to GitHub release

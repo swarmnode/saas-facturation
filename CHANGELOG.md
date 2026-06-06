@@ -5,6 +5,17 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: patch léger, logos dans sauvegarde, fix EBUSY mise à jour
+
+- Libellés boutons backup : "Sauvegarder la société" / "Sauvegarder toutes les sociétés"
+- SocieteBackupService : logo (storage/logo/logo_pdf.png) embarqué en base64 dans l'export s'il existe, restauré à l'import
+- update.ts : supprime le fichier temporaire avant téléchargement (fix EBUSY sur relance)
+- Bump 2.18.3
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Corrigé
 - Fix: Configure.ps1 - tiret long Unicode + SERVICE_START_PENDING coupe le script
 
@@ -18,6 +29,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

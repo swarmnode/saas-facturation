@@ -3,9 +3,20 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [2.20.8] — 2026-06-06
+
+### Corrigé
+- Fix: appliquer le patch en-process via execFileSync + process.exit(0)
+
+Supprime toute dependance a des processus externes (schtasks, spawn).
+Node.js extrait lui-meme le zip puis quitte. NSSM redémarre le service
+avec les nouveaux fichiers. Les logs sont ecrits directement via fs.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 
@@ -1810,6 +1821,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.20.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.8
 [2.20.7]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.7
 [2.20.6]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.6
 [2.20.5]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.5

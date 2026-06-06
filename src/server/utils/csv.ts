@@ -17,36 +17,51 @@ export function toCSV(headers: string[], rows: (string | number | null | undefin
   return BOM + lines.join('\r\n');
 }
 
-// Parse un CSV (séparateur ; ou ,) — retourne les lignes sans l'en-tête
+// Parse un CSV (séparateur ; ou ,) — gère les champs multi-lignes entre guillemets
 export function parseCSV(text: string): { headers: string[]; rows: string[][] } {
-  // Détecte le séparateur dominant
-  const firstLine = text.split(/\r?\n/)[0] || '';
+  const clean = text.replace(/^﻿/, ''); // strip BOM
+  if (!clean.trim()) return { headers: [], rows: [] };
+
+  // Détecte le séparateur sur la première ligne
+  const firstLine = clean.split('\n')[0] || '';
   const sep = firstLine.includes(';') ? ';' : ',';
 
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
-  if (!lines.length) return { headers: [], rows: [] };
+  // Parse caractère par caractère pour respecter les guillemets multi-lignes
+  const allRows: string[][] = [];
+  let cur = '', inQuote = false, quoted = false;
+  let fields: string[] = [];
 
-  const parseLine = (line: string): string[] => {
-    const fields: string[] = [];
-    let cur = '', inQuote = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') {
-        if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
-        else inQuote = !inQuote;
-      } else if (c === sep && !inQuote) {
-        fields.push(cur.trim()); cur = '';
-      } else {
-        cur += c;
-      }
-    }
-    fields.push(cur.trim());
-    return fields;
+  const pushField = () => {
+    fields.push(quoted ? cur : cur.trim());
+    cur = ''; quoted = false;
+  };
+  const pushRow = () => {
+    if (fields.length && fields.some(f => f !== '')) allRows.push(fields);
+    fields = [];
   };
 
-  const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
-  const rows    = lines.slice(1).map(parseLine);
-  return { headers, rows };
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean[i];
+    if (c === '"') {
+      if (inQuote && clean[i + 1] === '"') { cur += '"'; i++; } // "" → guillemet littéral
+      else if (inQuote) { inQuote = false; }                    // fermeture de champ quoté
+      else if (cur === '') { inQuote = true; quoted = true; }   // ouverture (début de champ seulement)
+      else { cur += c; }                                        // " isolé au milieu → littéral
+    } else if (c === sep && !inQuote) {
+      pushField();
+    } else if (c === '\r' && !inQuote) {
+      // ignore \r (traité avec \n)
+    } else if (c === '\n' && !inQuote) {
+      pushField(); pushRow();
+    } else {
+      cur += c;
+    }
+  }
+  pushField(); pushRow();
+
+  if (!allRows.length) return { headers: [], rows: [] };
+  const headers = allRows[0].map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+  return { headers, rows: allRows.slice(1) };
 }
 
 export function rowToObj(headers: string[], row: string[]): Record<string, string> {

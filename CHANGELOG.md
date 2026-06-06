@@ -3,6 +3,19 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+## [2.20.0] — 2026-06-06
+
+### Ajouté
+- Catalogue de commentaires prédéfinis par entreprise (`commentaires_predefinis`) : sauvegarder et réutiliser des commentaires depuis l'éditeur (bouton 💾, select de sélection)
+
+### Modifié
+- PDF devis/facture : libellé, description et commentaires en hauteur dynamique (`heightOfString`) — plus de troncature
+- PDF : commentaires fond blanc et texte `#1A1A1A` (cohérent avec l'éditeur)
+- Éditeur : ligne commentaire convertie en `<textarea>` (supporte les retours à la ligne)
+- `parseCSV` : réécriture en parser caractère par caractère — gère les champs multi-lignes entre guillemets et les `"` isolés au milieu d'un champ
+
 ## [2.19.0] — 2026-06-06
 
 ### Ajouté

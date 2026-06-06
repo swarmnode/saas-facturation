@@ -34,6 +34,7 @@ const DocEditor = (() => {
 
   let _entreprise = null;
   let _brandColor = '#1A3A5C';
+  let _comments   = [];
 
   // ── Utilitaires ───────────────────────────────────────────────────────────
 
@@ -408,11 +409,64 @@ const DocEditor = (() => {
     const tr = document.createElement('tr');
     tr.className = 'e-ligne-row e-comment-row';
     tr.dataset.type = 'commentaire';
+
+    const optsHtml = _comments.map(c =>
+      `<option value="${c.id}">${c.texte.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,' ↵ ').slice(0,80)}</option>`
+    ).join('');
+    const selectHtml = _comments.length
+      ? `<select class="e-comment-pick"><option value="">— modèles —</option>${optsHtml}</select>`
+      : '';
+
     tr.innerHTML = `
       <td colspan="${span}" class="e-td-comment">
-        <input class="e-cell e-desig e-comment-inp" value="${(l.designation||'').replace(/"/g,'&quot;')}" placeholder="Texte du commentaire…">
+        <div class="e-comment-wrap">
+          ${selectHtml}
+          <textarea class="e-desig e-comment-inp" placeholder="Texte du commentaire…" rows="1"></textarea>
+          <button class="e-comment-save-btn" title="Sauvegarder dans le catalogue">💾</button>
+        </div>
       </td>
       <td class="e-td-del"><button class="e-del-btn" title="Supprimer">✕</button></td>`;
+
+    const textarea = tr.querySelector('textarea.e-desig');
+    const select   = tr.querySelector('.e-comment-pick');
+    const saveBtn  = tr.querySelector('.e-comment-save-btn');
+
+    function autoResize() {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    if (l.designation) { textarea.value = l.designation; requestAnimationFrame(autoResize); }
+    textarea.addEventListener('input', autoResize);
+
+    if (select) {
+      select.addEventListener('change', () => {
+        const comment = _comments.find(c => c.id === parseInt(select.value));
+        if (comment) { textarea.value = comment.texte; autoResize(); select.value = ''; }
+      });
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      const texte = textarea.value.trim();
+      if (!texte) return;
+      if (_comments.some(c => c.texte === texte)) {
+        saveBtn.textContent = '✓'; setTimeout(() => { saveBtn.textContent = '💾'; }, 1500);
+        return;
+      }
+      const result = await api.post('/api/commentaires', { texte });
+      if (result?.id) {
+        _comments.unshift(result);
+        saveBtn.textContent = '✓'; setTimeout(() => { saveBtn.textContent = '💾'; }, 1500);
+        // Mettre à jour tous les selects ouverts
+        document.querySelectorAll('.e-comment-pick').forEach(sel => {
+          const opt = document.createElement('option');
+          opt.value = result.id;
+          opt.textContent = result.texte.replace(/\n/g, ' ↵ ').slice(0, 80);
+          sel.appendChild(opt);
+        });
+      }
+    });
+
     tr.querySelector('.e-del-btn').onclick = () => {
       tr.remove();
       if (!isBL) calcTotaux(page);
@@ -816,6 +870,7 @@ const DocEditor = (() => {
       ['.e-add-btn', '.e-add-comment-btn', '.e-save-btn'].forEach(s => {
         const n = el.querySelector(s); if (n) n.style.display = 'none';
       });
+      el.querySelectorAll('.e-comment-save-btn').forEach(b => b.style.display = 'none');
       buildReadonlyToolbar(type, id, doc, el);
     } else {
       // Mode édition
@@ -1083,12 +1138,14 @@ const DocEditor = (() => {
   // ── Entrée unique ─────────────────────────────────────────────────────────
 
   async function open(type, id=null, prefill={}) {
-    const [entreprise, doc] = await Promise.all([
+    const [entreprise, doc, comments] = await Promise.all([
       api.get('/api/entreprise'),
       id ? api.get(`/api/${ROUTES[type]}/${id}`) : Promise.resolve(null),
+      api.get('/api/commentaires').catch(() => []),
     ]);
 
     _entreprise = entreprise;
+    _comments   = Array.isArray(comments) ? comments : [];
     if (entreprise.logo_path) _brandColor = await extractBrandColor('/storage/logo/logo_pdf.png');
 
     // Résolution du document effectif (avoir, draft, prefill)

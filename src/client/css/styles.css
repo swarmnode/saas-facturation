@@ -508,7 +508,12 @@ select.e-cell { cursor:pointer; }
 .e-add-comment-btn { display:inline-block; margin-top:8px; margin-left:6px; padding:4px 12px; border:1.5px dashed #ccc; border-radius:4px; background:transparent; color:#aaa; font-size:8.5pt; cursor:pointer; font-family:inherit; }
 .e-add-comment-btn:hover { border-color:#b0820a; color:#b0820a; background:#fffde7; }
 .e-comment-row td { background:#fff !important; }
-.e-comment-inp { font-style:italic; color:#1a1a1a; background:transparent; width:100%; border:none; outline:none; }
+.e-comment-wrap { display:flex; align-items:flex-start; gap:6px; width:100%; }
+.e-comment-pick { flex-shrink:0; font-size:8pt; padding:2px 4px; border:1px solid #ddd; border-radius:3px; color:#888; background:#fff; max-width:150px; font-family:inherit; cursor:pointer; }
+.e-comment-pick:focus { outline:none; border-color:var(--primary); }
+.e-comment-inp { flex:1; font-style:italic; color:#1a1a1a; background:transparent; border:none; outline:none; resize:none; overflow:hidden; min-height:22px; font-family:inherit; font-size:9pt; padding:2px 3px; line-height:1.4; }
+.e-comment-save-btn { flex-shrink:0; background:none; border:none; cursor:pointer; font-size:14px; padding:0 2px; opacity:0.4; line-height:1; }
+.e-comment-save-btn:hover { opacity:1; }
 
 /* Totals */
 .e-totaux       { display:flex; justify-content:flex-end; margin-top:16px; }

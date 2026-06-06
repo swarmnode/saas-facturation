@@ -361,19 +361,24 @@ export class FacturXService {
 
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
         if (l.type === 'commentaire') {
-          if (y + ROW_H_F > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
-          doc.rect(50, y - 2, W, ROW_H_F).fill('#FFFDE7');
-          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
-             .text(l.designation, colX[0], y, { width: W, lineBreak: false });
+          const commentH_F = doc.heightOfString(l.designation, { width: W, fontSize: 8 }) + 4;
+          const commentRowH_F = Math.max(ROW_H_F, commentH_F);
+          if (y + commentRowH_F > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
+          doc.rect(50, y - 2, W, commentRowH_F).fill('#FFFFFF');
+          doc.fillColor('#1A1A1A').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: true });
           doc.font('Helvetica').fillColor('#000000');
-          y += ROW_H_F;
+          y += commentRowH_F;
           return;
         }
-        const rowH = l.description ? ROW_H_F + DESC_H_F : ROW_H_F;
+        const desigH_F = doc.heightOfString(l.designation, { width: 186, fontSize: 8 }) + 4;
+        const baseH_F  = Math.max(ROW_H_F, desigH_F);
+        const descH_F  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 }) + 4 : 0;
+        const rowH     = baseH_F + descH_F;
         if (y + rowH > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
         if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
         doc.fillColor('#000000');
-        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: false });
+        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: true });
         doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54,  lineBreak: false });
         doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50,  lineBreak: false });
         doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50,  lineBreak: false });
@@ -381,7 +386,7 @@ export class FacturXService {
         doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70,  lineBreak: false, align: 'right' });
         if (l.description) {
           doc.fontSize(7).fillColor('#666666')
-             .text(l.description, colX[0] + 2, y + ROW_H_F - 2, { width: 184, lineBreak: false });
+             .text(l.description, colX[0] + 2, y + baseH_F - 2, { width: 184, lineBreak: true });
           doc.fontSize(8).fillColor('#000000');
         }
         y += rowH;
@@ -524,15 +529,20 @@ export class FacturXService {
 
       (devis.lignes ?? []).forEach((l: any, idx: number) => {
         if (l.type === 'commentaire') {
-          if (y + ROW_H > PAGE_SAFE_BOT) { doc.addPage(); y = CONT_TOP; drawTableHeader(); }
-          doc.rect(50, y - 2, W, ROW_H).fill('#FFFDE7');
-          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
-             .text(l.designation, colX[0], y, { width: W, lineBreak: false });
+          const commentH = doc.heightOfString(l.designation, { width: W, fontSize: 8 }) + 4;
+          const commentRowH = Math.max(ROW_H, commentH);
+          if (y + commentRowH > PAGE_SAFE_BOT) { doc.addPage(); y = CONT_TOP; drawTableHeader(); }
+          doc.rect(50, y - 2, W, commentRowH).fill('#FFFFFF');
+          doc.fillColor('#1A1A1A').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: true });
           doc.font('Helvetica').fillColor('#000000');
-          y += ROW_H;
+          y += commentRowH;
           return;
         }
-        const rowH = l.description ? ROW_H + DESC_H : ROW_H;
+        const desigH = doc.heightOfString(l.designation, { width: 186, fontSize: 8 }) + 4;
+        const baseH  = Math.max(ROW_H, desigH);
+        const descH  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 }) + 4 : 0;
+        const rowH   = baseH + descH;
         // Saut de page si plus assez de place
         if (y + rowH > PAGE_SAFE_BOT) {
           doc.addPage();
@@ -541,7 +551,7 @@ export class FacturXService {
         }
         if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
         doc.fillColor('#000000');
-        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: false });
+        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: true });
         doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54,  lineBreak: false });
         doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50,  lineBreak: false });
         doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50,  lineBreak: false });
@@ -549,7 +559,7 @@ export class FacturXService {
         doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70,  lineBreak: false, align: 'right' });
         if (l.description) {
           doc.fontSize(7).fillColor('#666666')
-             .text(l.description, colX[0] + 2, y + ROW_H - 2, { width: 184, lineBreak: false });
+             .text(l.description, colX[0] + 2, y + baseH - 2, { width: 184, lineBreak: true });
           doc.fontSize(8).fillColor('#000000');
         }
         y += rowH;
@@ -683,8 +693,8 @@ export class FacturXService {
       (bl.lignes ?? []).forEach((l: any, idx: number) => {
         if (l.type === 'commentaire') {
           if (y + ROW_H_BL > PAGE_SAFE_BOT_BL) { doc.addPage(); y = CONT_TOP_BL; drawBLHeader(); }
-          doc.rect(50, y - 2, W, ROW_H_BL).fill('#FFFDE7');
-          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
+          doc.rect(50, y - 2, W, ROW_H_BL).fill('#FFFFFF');
+          doc.fillColor('#1A1A1A').font('Helvetica-Oblique').fontSize(8)
              .text(l.designation, colX[0], y, { width: W, lineBreak: false });
           doc.font('Helvetica').fillColor('#000000');
           y += ROW_H_BL;
@@ -816,8 +826,8 @@ export class FacturXService {
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
         if (l.type === 'commentaire') {
           if (y + ROW_H_FS > PAGE_SAFE_BOT_FS) { doc.addPage(); y = CONT_TOP_FS; drawFSHeader(); }
-          doc.rect(50, y - 2, W, ROW_H_FS).fill('#FFFDE7');
-          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
+          doc.rect(50, y - 2, W, ROW_H_FS).fill('#FFFFFF');
+          doc.fillColor('#1A1A1A').font('Helvetica-Oblique').fontSize(8)
              .text(l.designation, colX[0], y, { width: W, lineBreak: false });
           doc.font('Helvetica').fillColor('#000000');
           y += ROW_H_FS;

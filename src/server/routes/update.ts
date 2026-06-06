@@ -185,8 +185,7 @@ router.post('/apply', async (req, res, next) => {
     }
 
     if (found.type === 'light') {
-      const zipPath = path.join(os.tmpdir(), 'FacturPro-Patch.zip');
-      try { fs.unlinkSync(zipPath); } catch {}
+      const zipPath = path.join(os.tmpdir(), `FacturPro-Patch-${Date.now()}.zip`);
       await downloadFile(found.asset.browser_download_url, zipPath);
       await scheduleLightPatch(zipPath, latestVersion);
       return res.json({
@@ -195,8 +194,7 @@ router.post('/apply', async (req, res, next) => {
       });
     }
 
-    const installerPath = path.join(os.tmpdir(), 'FacturPro-Setup.exe');
-    try { fs.unlinkSync(installerPath); } catch {}
+    const installerPath = path.join(os.tmpdir(), `FacturPro-Setup-${Date.now()}.exe`);
     await downloadFile(found.asset.browser_download_url, installerPath);
     await scheduleHeavyInstaller(installerPath, latestVersion);
     return res.json({

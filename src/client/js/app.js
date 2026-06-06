@@ -5277,7 +5277,7 @@ async function renderParametres(el) {
             Exporte uniquement les données de votre société (clients, devis, factures, articles,
             écritures FEC, journal de scellement…) au format JSON compressé.
           </p>
-          <button id="backupSocieteBtn" class="btn btn-primary">⬇ Télécharger la sauvegarde société</button>
+          <button id="backupSocieteBtn" class="btn btn-primary">⬇ Sauvegarder la société</button>
           ${isSA ? `
           <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
@@ -5307,7 +5307,7 @@ async function renderParametres(el) {
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
             Sauvegarde intégrale de la base de données (toutes sociétés) au format SQL compressé (.sql.gz).
           </p>
-          <button id="backupBtn" class="btn btn-secondary">⬇ Télécharger la sauvegarde complète</button>
+          <button id="backupBtn" class="btn btn-secondary">⬇ Sauvegarder toutes les sociétés (sauvegarde complète)</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">
             Restaurer à partir d'un fichier (.sql ou .sql.gz).<br/>

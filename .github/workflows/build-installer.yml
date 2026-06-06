@@ -7,7 +7,57 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # ── Job 1 : patch léger (juste tsc + zip) ────────────────────────────────
+  patch:
+    name: Build patch zip
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+        shell: powershell
+
+      - name: Build TypeScript
+        run: npm run build
+        shell: powershell
+
+      - name: Create patch zip
+        run: Compress-Archive -Path "dist", "package.json" -DestinationPath "FacturPro-Patch.zip" -Force
+        shell: powershell
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FacturPro-Patch
+          path: FacturPro-Patch.zip
+          retention-days: 30
+
+      - name: Publish to GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title $tag --generate-notes --latest
+          }
+          gh release upload $tag FacturPro-Patch.zip --clobber
+        shell: powershell
+
+  # ── Job 2 : installeur complet (Node portable + NSSM + PG + Inno Setup) ──
+  installer:
+    name: Build full installer
     runs-on: windows-latest
     permissions:
       contents: write
@@ -29,13 +79,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: installer/tools
-          key: installer-tools-node20.19.1-nssm2.24
+          key: installer-tools-node20.19.1-nssm2.24-pg17.5-2
 
       - name: Build payload (npm + tsc + Node portable + NSSM)
         run: .\installer\build.ps1
         shell: powershell
 
-      - name: Compile installer (.iss → .exe)
+      - name: Compile installer (.iss -> .exe)
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\FacturPro.iss'
         shell: powershell
 
@@ -46,13 +96,7 @@ jobs:
           path: installer/FacturPro-Setup.exe
           retention-days: 30
 
-      - name: Build patch zip
-        run: |
-          npm run build
-          Compress-Archive -Path "dist", "package.json" -DestinationPath "FacturPro-Patch.zip" -Force
-        shell: powershell
-
-      - name: Attach to GitHub release
+      - name: Attach installer to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,8 +106,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title $tag --generate-notes --latest
           }
-          if (Test-Path "installer\FacturPro-Setup.exe") {
-            gh release upload $tag installer\FacturPro-Setup.exe --clobber
-          }
-          gh release upload $tag FacturPro-Patch.zip --clobber
+          gh release upload $tag installer\FacturPro-Setup.exe --clobber
         shell: powershell

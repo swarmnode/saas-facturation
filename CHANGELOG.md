@@ -3,6 +3,18 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Corrigé
+- Fix: corriger erreurs TypeScript heightOfString (fontSize n'est pas dans TextOptions)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
 ## [2.20.5] — 2026-06-06
 
 ### Corrigé

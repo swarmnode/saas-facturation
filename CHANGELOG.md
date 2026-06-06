@@ -26,9 +26,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Bump 2.18.2
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: archiver les patches dans updates/ avec numero de version
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 

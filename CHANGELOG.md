@@ -3,7 +3,7 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [2.20.2] — 2026-06-06
 
 ### Corrigé
 - Fix: EBUSY sur mise à jour - nom de fichier unique avec timestamp dans TEMP
@@ -20,6 +20,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -27,6 +28,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Sans package.json, la version n'est pas mise à jour après le patch et
 le serveur redémarre toujours en détectant la même mise à jour.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Debug: logging patch.ps1 + install_dir dans /check pour diagnostiquer
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: v2.20.2 - debug patch update
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -1716,6 +1723,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.20.2]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.2
 [2.20.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.0
 [2.19.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.19.0
 [2.18.4]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.4

@@ -507,8 +507,8 @@ select.e-cell { cursor:pointer; }
 .e-add-btn:hover { border-color:var(--primary); color:var(--primary); background:#f0f4ff; }
 .e-add-comment-btn { display:inline-block; margin-top:8px; margin-left:6px; padding:4px 12px; border:1.5px dashed #ccc; border-radius:4px; background:transparent; color:#aaa; font-size:8.5pt; cursor:pointer; font-family:inherit; }
 .e-add-comment-btn:hover { border-color:#b0820a; color:#b0820a; background:#fffde7; }
-.e-comment-row td { background:#fffde7 !important; }
-.e-comment-inp { font-style:italic; color:#5a4400; background:transparent; width:100%; border:none; outline:none; }
+.e-comment-row td { background:#fff !important; }
+.e-comment-inp { font-style:italic; color:#1a1a1a; background:transparent; width:100%; border:none; outline:none; }
 
 /* Totals */
 .e-totaux       { display:flex; justify-content:flex-end; margin-top:16px; }

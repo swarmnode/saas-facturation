@@ -5,13 +5,15 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
-### Corrigé
-- Fix: restauration logo - exporter fichier original + copie de secours
+## [2.19.0] — 2026-06-06
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
+### Modifié
+- Lignes commentaires : fond blanc et couleur de texte identique aux lignes articles (#1a1a1a)
 
 ## [2.18.4] — 2026-06-06
+
+### Corrigé
+- Fix: restauration logo - exporter fichier original + copie de secours
 
 ### Ajouté
 - Feat: patch léger, logos dans sauvegarde, fix EBUSY mise à jour

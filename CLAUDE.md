@@ -33,8 +33,10 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 
 **Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–024 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
+- 005: `clients.adresse2` (complement d'adresse)
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
 - 008: `clients.mode_reglement_defaut`
+- 010: `articles.prix_achat_ht` (nullable, used for margin calculation)
 - 011: `factures.type_avoir` — `'valoir'` (default) or `'remboursement'`
 - 012: `entreprise.cgv_texte` and `entreprise.mention_legale`
 - 013: creates `audit_log` table
@@ -55,7 +57,8 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 **Auth middleware**: `src/server/middleware/auth.ts`
 - `authenticate` — validates Bearer JWT, attaches `req.user` (`AuthUser`: `id`, `email`, `entreprise_id`, `role`, `is_super_admin`, `voir_tout`).
 - `requirePerm('resource:r|w')` — guards routes; `is_super_admin` bypasses all permission checks.
-- Roles: `admin`, `comptable`, `commercial`, `lecteur`. Permission matrix is in `ROLE_PERMS` in that file.
+- `canDo(role, is_super_admin, perm)` — exported helper for programmatic permission checks outside middleware.
+- Roles: `admin`, `comptable`, `commercial`, `lecteur`. Permission matrix is in `ROLE_PERMS` in that file. **`js/app.js` contains a duplicate of `ROLE_PERMS` for client-side UI gating — keep both in sync when changing permissions.**
 - `voir_tout` is only meaningful for the `commercial` role (always `true` for other roles). When `false`, list endpoints filter documents to only those where `created_by = req.user.id`. The flag lives in `user_entreprises.voir_tout` and is embedded in the JWT at login. **Changing `voir_tout` in the DB takes effect only after the user re-authenticates** (the old JWT still carries the old value).
 
 **Multi-tenant**: every business entity (`clients`, `articles`, `devis`, `factures`, `acomptes`, `bons_livraison`) carries an `entreprise_id`. Routes scope queries to `req.user.entreprise_id`. A user can belong to multiple companies via `user_entreprises`.
@@ -105,6 +108,10 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 **File uploads**: Logo is uploaded via `multer` at `POST /api/entreprise/logo` — stored to `storage/logo/logo_pdf.png`.
 
 **Error responses**: All errors go through `src/server/middleware/errorHandler.ts`. Messages containing `INALTÉR` or `ISCA` (immutability/sealing violations from DB triggers) return HTTP 403; everything else returns 500. Response body is always `{ error: string }`.
+
+**Shared utilities** (`src/server/utils/`):
+- `csv.ts` — `toCSV(headers, rows)` produces UTF-8 BOM `;`-separated CSV (Excel FR compatible); `parseCSV(text)` auto-detects `;`/`,` separator; `rowToObj(headers, row)` zips a header array and a row into a plain object. Used by FEC export and CSV import routes.
+- `paginate.ts` — `paginateParams(q)` reads `?page=&limit=&all=1` from query string (default limit 50, cap 200); `buildPage(rows, page, limit)` shapes the response as `{ data, total, page, pages, limit }`. Rows must carry a `_total` column (window count from SQL) which is stripped before returning.
 
 **Tests**: `@playwright/test` is installed as a devDependency but there is no `npm test` script configured. Playwright tests (if any) must be run directly with `npx playwright test`.
 

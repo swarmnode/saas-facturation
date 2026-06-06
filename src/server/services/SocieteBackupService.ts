@@ -1,4 +1,6 @@
 import { createGzip, createGunzip } from 'zlib';
+import fs from 'fs';
+import path from 'path';
 import { query, withTransaction } from '../db/database';
 
 // ─── Format du fichier ────────────────────────────────────────────────────────
@@ -13,6 +15,10 @@ export interface SocieteBackup {
     name: string;
     columns: string[];
     rows: unknown[][];
+  }>;
+  files?: Array<{
+    path: string;  // chemin relatif depuis process.cwd()
+    data: string;  // base64
   }>;
 }
 
@@ -154,6 +160,16 @@ export async function exporterSociete(entreprise_id: number): Promise<Buffer> {
     tables.push({ name: def.name, columns, rows });
   }
 
+  // Logo : storage/logo/logo_pdf.png (chemin canonique unique)
+  const files: SocieteBackup['files'] = [];
+  const logoPath = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
+  if (fs.existsSync(logoPath)) {
+    files.push({
+      path: 'storage/logo/logo_pdf.png',
+      data: fs.readFileSync(logoPath).toString('base64'),
+    });
+  }
+
   const backup: SocieteBackup = {
     format: 'societe-v1',
     version: process.env.npm_package_version ?? '0.0.0',
@@ -161,6 +177,7 @@ export async function exporterSociete(entreprise_id: number): Promise<Buffer> {
     raison_sociale,
     exported_at: new Date().toISOString(),
     tables,
+    ...(files.length ? { files } : {}),
   };
 
   return gzip(Buffer.from(JSON.stringify(backup), 'utf8'));
@@ -192,6 +209,15 @@ export async function restaurerSociete(
     mode,
     tables: [],
   };
+
+  // Restaurer les fichiers (logo…) avant la transaction DB
+  if (backup.files?.length) {
+    for (const f of backup.files) {
+      const dest = path.resolve(process.cwd(), f.path);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, Buffer.from(f.data, 'base64'));
+    }
+  }
 
   await withTransaction(async client => {
     // En mode 'remap' : calcul des nouveaux IDs avant toute insertion

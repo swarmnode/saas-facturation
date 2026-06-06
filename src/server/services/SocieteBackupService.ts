@@ -160,14 +160,21 @@ export async function exporterSociete(entreprise_id: number): Promise<Buffer> {
     tables.push({ name: def.name, columns, rows });
   }
 
-  // Logo : storage/logo/logo_pdf.png (chemin canonique unique)
+  // Logo : logo_pdf.png (PDF) + fichier original référencé par logo_path (navigateur)
   const files: SocieteBackup['files'] = [];
-  const logoPath = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
-  if (fs.existsSync(logoPath)) {
-    files.push({
-      path: 'storage/logo/logo_pdf.png',
-      data: fs.readFileSync(logoPath).toString('base64'),
-    });
+  const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
+  if (fs.existsSync(logoPdf)) {
+    files.push({ path: 'storage/logo/logo_pdf.png', data: fs.readFileSync(logoPdf).toString('base64') });
+  }
+  // Fichier original (ex. /storage/logo/logo.png) affiché dans le navigateur
+  const entLogoRow = tables.find(t => t.name === 'entreprise');
+  const logoPathCol = entLogoRow?.columns.indexOf('logo_path') ?? -1;
+  const logoPathVal = logoPathCol !== -1 ? (entLogoRow!.rows[0]?.[logoPathCol] as string | null) : null;
+  if (logoPathVal) {
+    const logoOrig = path.resolve(process.cwd(), logoPathVal.replace(/^\//, ''));
+    if (fs.existsSync(logoOrig) && logoOrig !== logoPdf) {
+      files.push({ path: logoPathVal.replace(/^\//, ''), data: fs.readFileSync(logoOrig).toString('base64') });
+    }
   }
 
   const backup: SocieteBackup = {
@@ -216,6 +223,19 @@ export async function restaurerSociete(
       const dest = path.resolve(process.cwd(), f.path);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, Buffer.from(f.data, 'base64'));
+    }
+  }
+
+  // Si logo_pdf.png restauré mais fichier original absent → copie pour que le navigateur l'affiche
+  const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
+  const entTable = backup.tables.find(t => t.name === 'entreprise');
+  const lpCol = entTable?.columns.indexOf('logo_path') ?? -1;
+  const lpVal = lpCol !== -1 ? (entTable!.rows[0]?.[lpCol] as string | null) : null;
+  if (lpVal && fs.existsSync(logoPdf)) {
+    const origDest = path.resolve(process.cwd(), lpVal.replace(/^\//, ''));
+    if (!fs.existsSync(origDest)) {
+      fs.mkdirSync(path.dirname(origDest), { recursive: true });
+      fs.copyFileSync(logoPdf, origDest);
     }
   }
 

@@ -214,7 +214,7 @@ function drawCGV(doc: any, entreprise: any, startY = 762): void {
   if (mention) {
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#888888')
        .text(mention, 50, cur, { width: 495, lineBreak: true });
-    cur += doc.heightOfString(mention, { width: 495, fontSize: 6.5 }) + 3;
+    cur += doc.heightOfString(mention, { width: 495, fontSize: 6.5 } as any) + 3;
   }
   if (cgv) {
     doc.fontSize(6.5).font('Helvetica').fillColor('#888888')
@@ -361,7 +361,7 @@ export class FacturXService {
 
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
         if (l.type === 'commentaire') {
-          const commentH_F = doc.heightOfString(l.designation, { width: W, fontSize: 8 }) + 4;
+          const commentH_F = doc.heightOfString(l.designation, { width: W, fontSize: 8 } as any) + 4;
           const commentRowH_F = Math.max(ROW_H_F, commentH_F);
           if (y + commentRowH_F > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
           doc.rect(50, y - 2, W, commentRowH_F).fill('#FFFFFF');
@@ -371,9 +371,9 @@ export class FacturXService {
           y += commentRowH_F;
           return;
         }
-        const desigH_F = doc.heightOfString(l.designation, { width: 186, fontSize: 8 }) + 4;
+        const desigH_F = doc.heightOfString(l.designation, { width: 186, fontSize: 8 } as any) + 4;
         const baseH_F  = Math.max(ROW_H_F, desigH_F);
-        const descH_F  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 }) + 4 : 0;
+        const descH_F  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 } as any) + 4 : 0;
         const rowH     = baseH_F + descH_F;
         if (y + rowH > PAGE_SAFE_BOT_F) { doc.addPage(); y = CONT_TOP_F; drawFacHeader(); }
         if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
@@ -529,7 +529,7 @@ export class FacturXService {
 
       (devis.lignes ?? []).forEach((l: any, idx: number) => {
         if (l.type === 'commentaire') {
-          const commentH = doc.heightOfString(l.designation, { width: W, fontSize: 8 }) + 4;
+          const commentH = doc.heightOfString(l.designation, { width: W, fontSize: 8 } as any) + 4;
           const commentRowH = Math.max(ROW_H, commentH);
           if (y + commentRowH > PAGE_SAFE_BOT) { doc.addPage(); y = CONT_TOP; drawTableHeader(); }
           doc.rect(50, y - 2, W, commentRowH).fill('#FFFFFF');
@@ -539,9 +539,9 @@ export class FacturXService {
           y += commentRowH;
           return;
         }
-        const desigH = doc.heightOfString(l.designation, { width: 186, fontSize: 8 }) + 4;
+        const desigH = doc.heightOfString(l.designation, { width: 186, fontSize: 8 } as any) + 4;
         const baseH  = Math.max(ROW_H, desigH);
-        const descH  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 }) + 4 : 0;
+        const descH  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 } as any) + 4 : 0;
         const rowH   = baseH + descH;
         // Saut de page si plus assez de place
         if (y + rowH > PAGE_SAFE_BOT) {

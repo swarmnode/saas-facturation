@@ -5,6 +5,14 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Corrigé
+- Fix: restauration logo - exporter fichier original + copie de secours
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+## [2.18.4] — 2026-06-06
+
 ### Ajouté
 - Feat: patch léger, logos dans sauvegarde, fix EBUSY mise à jour
 
@@ -32,6 +40,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
@@ -1647,6 +1656,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.18.4]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.4
 [2.18.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.1
 [2.17.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.17.0
 [2.16.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.16.0

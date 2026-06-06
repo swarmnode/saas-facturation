@@ -3,10 +3,13 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [2.20.6] — 2026-06-06
 
 ### Corrigé
-- Fix: corriger erreurs TypeScript heightOfString (fontSize n'est pas dans TextOptions)
+- Fix: utiliser bash pour gh release create (evite problemes PowerShell 5.1)
+
+Remplace PowerShell par bash pour les steps gh CLI.
+Utilise --notes "" au lieu de --generate-notes (evite echec sur tags orphelins).
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -25,9 +28,13 @@ par le telechargement PostgreSQL ~300Mo. Le job installer complet
 peut echouer sans empecher la publication du patch.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: corriger erreurs TypeScript heightOfString (fontSize n'est pas dans TextOptions)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 
@@ -1776,6 +1783,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.20.6]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.6
 [2.20.5]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.5
 [2.20.4]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.4
 [2.20.2]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.2

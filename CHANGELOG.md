@@ -3,6 +3,24 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Corrigé
+- Fix: Configure.ps1 - tiret long Unicode + SERVICE_START_PENDING coupe le script
+
+- Remplace le tiret em dash U+2014 par un tiret ASCII (causait un
+  ParserError sur PowerShell 5.1 sans BOM)
+- Protege nssm start avec ErrorActionPreference Continue pour eviter
+  que SERVICE_START_PENDING stoppe le script avant la regle pare-feu
+- Bump 2.18.2
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
 ## [2.18.1] — 2026-06-06
 
 ### Ajouté

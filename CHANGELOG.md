@@ -3,15 +3,38 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [2.18.0] — 2026-06-05
+## [2.18.1] — 2026-06-06
 
 ### Ajouté
-- Lignes de commentaire dans tous les éditeurs WYSIWYG (devis, factures, BL, avenants)
+- Feat: lignes de commentaire dans tous les éditeurs WYSIWYG
 
-Bouton `+ Commentaire` dans l'éditeur insère une ligne pleine largeur (italic,
-fond jaune pâle) sans colonnes de prix ni TVA. Migration 024 ajoute la colonne
-`type VARCHAR(20) DEFAULT 'ligne'` sur les 4 tables de lignes. Rendu PDF :
-texte italic fond #FFFDE7 sur toute la largeur du tableau.
+Migration 024 ajoute la colonne `type VARCHAR(20) DEFAULT 'ligne'` sur
+les 4 tables de lignes. Les lignes de type 'commentaire' sont rendues en
+texte pleine largeur (italic, fond jaune pâle) sans colonnes de prix —
+aussi bien dans l'éditeur (bouton + Commentaire) que dans les PDFs
+(devis, factures, BL, avenants).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: mise à jour en 2 niveaux (patch léger / installeur complet)
+
+- Patch léger (FacturPro-Patch.zip) : stop service → Expand-Archive → restart, ~15 s
+- Mise à jour lourde (FacturPro-Setup.exe) : mécanisme Inno Setup via schtasks, ~30 s
+- /api/update/check retourne update_type light|heavy|null
+- UI affiche badge coloré et countdown adapté au type
+- Bump version 2.18.1
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Chore: release 2.18.0
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
 
 ## [2.17.0] — 2026-06-05
 
@@ -1590,6 +1613,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.18.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.1
 [2.17.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.17.0
 [2.16.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.16.0
 [2.15.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.15.0

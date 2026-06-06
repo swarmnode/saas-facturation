@@ -14,9 +14,17 @@ le fils herite des droits sans avoir besoin de /ru SYSTEM. Elimine le
 probleme de format HH:MM:SS non supporte par certains Windows.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: workflow cree la release GitHub automatiquement avant upload
+
+Ajoute gh release create si la release n'existe pas encore.
+Evite les releases orphelines (tag sans release) sur les prochains tags.
+Bump v2.20.4 pour exposer le correctif spawn sur une release visible.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

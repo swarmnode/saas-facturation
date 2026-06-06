@@ -3,17 +3,28 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
-
 ## [2.19.0] — 2026-06-06
 
-### Modifié
-- Lignes commentaires : fond blanc et couleur de texte identique aux lignes articles (#1a1a1a)
+### Ajouté
+- Feat: v2.19.0 - lignes commentaires fond blanc couleur texte articles
 
-## [2.18.4] — 2026-06-06
+- styles.css : .e-comment-row fond blanc (#fff) au lieu de jaune (#fffde7)
+- styles.css : .e-comment-inp couleur #1a1a1a identique aux .e-cell articles
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
 
 ### Corrigé
 - Fix: restauration logo - exporter fichier original + copie de secours
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+## [2.18.4] — 2026-06-06
 
 ### Ajouté
 - Feat: patch léger, logos dans sauvegarde, fix EBUSY mise à jour
@@ -1658,6 +1669,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.19.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.19.0
 [2.18.4]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.4
 [2.18.1]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.18.1
 [2.17.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.17.0

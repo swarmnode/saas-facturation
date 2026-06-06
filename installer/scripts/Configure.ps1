@@ -126,6 +126,7 @@ ADMIN_EMAIL=$AdminEmail
 ADMIN_DEFAULT_PASS=$AdminPass
 COMPANY_NAME=$CompanyName
 PG_BIN=$pgBin
+UPDATE_GITHUB_REPO=swarmnode/saas-facturation
 "@
 
 [System.IO.File]::WriteAllText("$InstallDir\.env", $envContent, [System.Text.Encoding]::UTF8)
@@ -180,7 +181,8 @@ $envVars = @(
     "ADMIN_EMAIL=$AdminEmail",
     "ADMIN_DEFAULT_PASS=$AdminPass",
     "COMPANY_NAME=$CompanyName",
-    "PG_BIN=$pgBin"
+    "PG_BIN=$pgBin",
+    "UPDATE_GITHUB_REPO=swarmnode/saas-facturation"
 )
 $out = & $nssm set $svcName AppEnvironmentExtra @envVars 2>&1
 Log "nssm set AppEnvironmentExtra : $out"

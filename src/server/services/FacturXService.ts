@@ -814,6 +814,15 @@ export class FacturXService {
       drawFSHeader();
 
       (facture.lignes ?? []).forEach((l: any, idx: number) => {
+        if (l.type === 'commentaire') {
+          if (y + ROW_H_FS > PAGE_SAFE_BOT_FS) { doc.addPage(); y = CONT_TOP_FS; drawFSHeader(); }
+          doc.rect(50, y - 2, W, ROW_H_FS).fill('#FFFDE7');
+          doc.fillColor('#5A4400').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: false });
+          doc.font('Helvetica').fillColor('#000000');
+          y += ROW_H_FS;
+          return;
+        }
         const rowH = l.description ? ROW_H_FS + DESC_H_FS : ROW_H_FS;
         if (y + rowH > PAGE_SAFE_BOT_FS) { doc.addPage(); y = CONT_TOP_FS; drawFSHeader(); }
         if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);

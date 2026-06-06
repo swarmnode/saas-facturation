@@ -813,9 +813,9 @@ const DocEditor = (() => {
       page.querySelectorAll('input,select,textarea').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';});
       page.querySelectorAll('.e-del-btn').forEach(b=>{b.onclick=null;b.disabled=true;});
       page.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));
-      el.querySelector('.e-add-btn').style.display='none';
-      el.querySelector('.e-add-comment-btn').style.display='none';
-      el.querySelector('.e-save-btn').style.display='none';
+      ['.e-add-btn', '.e-add-comment-btn', '.e-save-btn'].forEach(s => {
+        const n = el.querySelector(s); if (n) n.style.display = 'none';
+      });
       buildReadonlyToolbar(type, id, doc, el);
     } else {
       // Mode édition
@@ -992,6 +992,10 @@ const DocEditor = (() => {
 
     page.querySelectorAll('.e-ligne-row').forEach(row => {
       const desig = row.querySelector('.e-desig')?.value.trim(); if (!desig) return;
+      if (row.dataset.type === 'commentaire') {
+        lignes.push({ type: 'commentaire', designation: desig });
+        return;
+      }
       lignes.push(isBL ? {
         designation:  desig,
         description:  row.querySelector('.e-description-inp')?.innerText.trim()||undefined,

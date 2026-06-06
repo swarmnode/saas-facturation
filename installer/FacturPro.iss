@@ -5,7 +5,7 @@
 ; ============================================================
 
 #define AppName    "FacturPro"
-#define AppVersion "2.15.0"
+#define AppVersion "2.18.1"
 #define AppURL     "http://localhost:3000"
 
 [Setup]
@@ -76,11 +76,19 @@ Name: "{commondesktop}\{#AppName}";   Filename: "{app}\FacturPro.url"; IconFilen
 Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes supplémentaires :"
 
 [Run]
-; Lance le script de configuration après l'extraction (caché, attend la fin)
+; Premiere installation : configuration complete (PostgreSQL, base, service, .env)
 Filename: "powershell.exe"; \
   Parameters: "-ExecutionPolicy Bypass -NonInteractive -File ""{app}\Configure.ps1"" -InstallDir ""{app}"" -PgPass ""{code:GetPgPass}"" -AdminEmail ""{code:GetAdminEmail}"" -AdminPass ""{code:GetAdminPass}"" -CompanyName ""{code:GetSociete}"" -Port ""{code:GetPort}"""; \
   StatusMsg: "Configuration de la base de données et du service..."; \
+  Check: IsFirstInstall; \
   Flags: runhidden waituntilterminated
+
+; Mise a jour silencieuse : redemarrage du service uniquement
+Filename: "{app}\tools\nssm.exe"; \
+  Parameters: "start FacturPro"; \
+  StatusMsg: "Redemarrage du service FacturPro..."; \
+  Check: IsUpgrade; \
+  Flags: runhidden
 
 [UninstallRun]
 Filename: "powershell.exe"; \
@@ -216,21 +224,46 @@ begin
   if Result = '' then Result := '3000';
 end;
 
-// ── Création du fichier .url (raccourci navigateur) ───────────────────────────
+// ── Premiere installation vs mise a jour ─────────────────────────────────────
+// IsFirstInstall : .env absent = installation vierge
+// IsUpgrade      : .env present = mise a jour silencieuse (ne pas toucher la BDD)
+function IsFirstInstall(): Boolean;
+begin
+  Result := not FileExists(ExpandConstant('{app}\.env'));
+end;
+
+function IsUpgrade(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{app}\.env'));
+end;
+
+// ── Gestion du service et raccourci navigateur ────────────────────────────────
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  UrlFile : String;
-  Lines   : TArrayOfString;
-  Port    : String;
+  UrlFile    : String;
+  Lines      : TArrayOfString;
+  Port       : String;
+  ResultCode : Integer;
 begin
+  // Arret du service avant la copie des fichiers (upgrade uniquement)
+  // En premiere installation nssm.exe n'existe pas encore -> skip automatique
+  if CurStep = ssPreInstall then begin
+    if FileExists(ExpandConstant('{app}\tools\nssm.exe')) then
+      Exec(ExpandConstant('{app}\tools\nssm.exe'), 'stop FacturPro', '',
+           SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+
+  // Raccourci .url cree uniquement en premiere installation (le fichier n'existe pas encore)
   if CurStep = ssPostInstall then begin
-    Port    := Trim(PageServeur.Values[0]);
-    if Port = '' then Port := '3000';
-    UrlFile := ExpandConstant('{app}\FacturPro.url');
-    SetArrayLength(Lines, 3);
-    Lines[0] := '[InternetShortcut]';
-    Lines[1] := 'URL=http://localhost:' + Port;
-    Lines[2] := 'IconFile=explorer.exe';
-    SaveStringsToFile(UrlFile, Lines, False);
+    if not FileExists(ExpandConstant('{app}\FacturPro.url')) then begin
+      Port    := Trim(PageServeur.Values[0]);
+      if Port = '' then Port := '3000';
+      UrlFile := ExpandConstant('{app}\FacturPro.url');
+      SetArrayLength(Lines, 3);
+      Lines[0] := '[InternetShortcut]';
+      Lines[1] := 'URL=http://localhost:' + Port;
+      Lines[2] := 'IconFile=explorer.exe';
+      SaveStringsToFile(UrlFile, Lines, False);
+    end;
   end;
 end;

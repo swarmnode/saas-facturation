@@ -1672,12 +1672,16 @@ async function showClientForm(id) {
 
 // ── Devis ─────────────────────────────────────────────────────────────────
 async function openPdf(url) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('Autorisez les pop-ups pour ce site afin de visualiser les PDFs.'); return; }
   const token = localStorage.getItem('jwt');
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || 'Erreur PDF'); return; }
-  const blob = await res.blob();
-  const objUrl = URL.createObjectURL(blob);
-  window.open(objUrl, '_blank');
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) { w.close(); const e = await res.json().catch(() => ({})); alert(e.error || 'Erreur PDF'); return; }
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    w.location.href = objUrl;
+  } catch(e) { w.close(); alert('Erreur lors du chargement du PDF.'); }
 }
 
 // ── Import / Export CSV générique ─────────────────────────────────────────
@@ -4910,6 +4914,7 @@ async function renderParametres(el) {
     ...(currentUser?.is_super_admin ? [{ id: 'backup', label: 'Sauvegarde' }] : []),
     ...(can('users:r')              ? [{ id: 'users',   label: 'Utilisateurs' }] : []),
     ...(currentUser?.is_super_admin ? [{ id: 'societes', label: 'Sociétés' }] : []),
+    ...(currentUser?.is_super_admin ? [{ id: 'update',  label: 'Mises à jour' }] : []),
   ];
 
   let activeTab = localStorage.getItem('params_tab') ?? 'entreprise';
@@ -5405,11 +5410,97 @@ async function renderParametres(el) {
       case 'backup':     renderTabBackup(c);      break;
       case 'users':      renderUtilisateurs(c);   break;
       case 'societes':   renderSocietes(c);       break;
+      case 'update':     renderTabUpdate(c);      break;
     }
   }
 
   renderTabBar();
   renderContent();
+}
+
+// ── Mises à jour (super_admin) ────────────────────────────────────────────
+async function renderTabUpdate(c) {
+  c.innerHTML = `
+    <div class="card" style="max-width:580px">
+      <h3 style="margin-bottom:8px;color:var(--primary)">Mises à jour</h3>
+      <p id="updateStatus" style="font-size:13px;color:var(--text-muted)">Vérification en cours…</p>
+      <div id="updateContent"></div>
+    </div>`;
+
+  const info = await api.get('/api/update/check');
+  const status = c.querySelector('#updateStatus');
+  const content = c.querySelector('#updateContent');
+
+  if (!info || info.error) {
+    status.textContent = info?.error ?? 'Impossible de vérifier les mises à jour.';
+    return;
+  }
+
+  if (!info.update_available) {
+    status.innerHTML = `<span style="color:var(--success,#16a34a)">✓ FacturPro est à jour</span> — version ${info.current_version}`;
+    return;
+  }
+
+  const isLight = info.update_type === 'light';
+  const typeLabel = isLight
+    ? `<span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;vertical-align:middle">Patch léger</span>`
+    : `<span style="background:#dbeafe;color:#1e40af;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;vertical-align:middle">Mise à jour complète</span>`;
+  const typeHint = isLight
+    ? 'Mise à jour du code uniquement — redémarrage en quelques secondes.'
+    : 'Mise à jour complète (dépendances, migrations) — redémarrage en ~30 secondes.';
+  const countdownStart = isLight ? 22 : 36;
+
+  status.innerHTML = `Version actuelle : <strong>${info.current_version}</strong>`;
+  content.innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px">
+      <p style="font-size:14px;margin:0 0 8px">
+        Nouvelle version disponible : <strong style="color:var(--primary)">${info.latest_version}</strong>
+        ${typeLabel}
+        ${info.published_at ? `<span style="font-size:12px;color:var(--text-muted);margin-left:8px">${fmt.date(info.published_at)}</span>` : ''}
+      </p>
+      ${info.release_notes ? `<pre style="font-size:12px;white-space:pre-wrap;color:var(--text-muted);max-height:180px;overflow-y:auto;margin:8px 0 0;padding:0">${info.release_notes.substring(0, 1000)}</pre>` : ''}
+    </div>
+    ${!info.asset_available ? `<div class="alert alert-warning" style="margin-top:12px">Aucun asset de mise à jour disponible dans la release GitHub.</div>` : `
+    <div style="margin-top:16px">
+      <button id="applyUpdateBtn" class="btn btn-primary">⬆ Installer v${info.latest_version}</button>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:6px">${typeHint}</p>
+    </div>`}
+    <div id="updateApplyAlert"></div>`;
+
+  const applyBtn = content.querySelector('#applyUpdateBtn');
+  if (!applyBtn) return;
+
+  applyBtn.onclick = async () => {
+    applyBtn.disabled = true;
+    applyBtn.textContent = 'Téléchargement en cours…';
+    const r = await api.post('/api/update/apply', {});
+    const alertEl = content.querySelector('#updateApplyAlert');
+    if (r.error) {
+      applyBtn.disabled = false;
+      applyBtn.textContent = `⬆ Installer v${info.latest_version}`;
+      alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">${r.error}</div>`;
+      return;
+    }
+    applyBtn.textContent = 'Installation en cours…';
+    alertEl.innerHTML = `<div class="alert alert-success" style="margin-top:8px">${r.message}</div>`;
+    let s = countdownStart;
+    const iv = setInterval(() => {
+      s--;
+      applyBtn.textContent = `Reconnexion dans ${s}s…`;
+      if (s <= 0) { clearInterval(iv); location.reload(); }
+    }, 1000);
+  };
+}
+
+async function checkUpdateBadge() {
+  if (!currentUser?.is_super_admin) return;
+  try {
+    const info = await api.get('/api/update/check');
+    if (info?.update_available) {
+      const badge = document.getElementById('badge-update');
+      if (badge) badge.style.display = '';
+    }
+  } catch {}
 }
 
 // ── Gestion des sociétés (super_admin) ───────────────────────────────────
@@ -5968,6 +6059,7 @@ async function initApp() {
   initTabFilter();
   updateUserUI();
   api.get('/api/entreprise').then(e => { if (e?.logo_path) updateSidebarLogo(e.logo_path); });
+  checkUpdateBadge();
   // Lire l'état sauvegardé AVANT tabMgr.init() qui l'écrase
   const _savedTabState = (() => {
     try { return JSON.parse(localStorage.getItem('facturpro_tabs') || 'null'); } catch(e) { return null; }

@@ -12,7 +12,7 @@ npm start        # node dist/server/index.js (prod)
 
 DB default: `postgresql://facturation:facturation@localhost:5432/facturation` (override with `DATABASE_URL` in `.env`).
 
-Admin default on first start: `admin@localhost` / `Admin1234!` (override with `ADMIN_EMAIL` / `ADMIN_DEFAULT_PASS`).
+Admin default on first start: `admin@localhost` / `Admin1234!` (override with `ADMIN_EMAIL` / `ADMIN_DEFAULT_PASS`). Set `COMPANY_NAME` to pre-fill the default company name created alongside the admin account. Set `UPDATE_GITHUB_REPO=owner/repo` to enable in-app update checks (`GET /api/update/check`) and one-click updates (`POST /api/update/apply`, super_admin only).
 
 `npm run build` also copies `src/client/` → `dist/client/` and all `*.sql` from `src/server/db/` → `dist/server/db/`. When adding a new migration or client asset, the build step is required before `npm start` picks it up.
 
@@ -24,14 +24,14 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 
 ## Architecture
 
-**Entry point**: `src/server/index.ts` — Express app. All routes are under `/api/*` and protected by the `authenticate` JWT middleware, except `/api/auth`.
+**Entry point**: `src/server/index.ts` — Express app. All routes are under `/api/*` and protected by the `authenticate` JWT middleware, except `/api/auth`. Uses `helmet` (CSP disabled — SPA has inline scripts) and `express-rate-limit` on `/api/auth/login` (10 req / 15 min window, bypassed for loopback addresses).
 
 **Database layer**: `src/server/db/database.ts`
 - Exports `query()`, `getPool()`, and `withTransaction<T>(fn)` (use for multi-step atomic operations).
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–023 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–024 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
 - 008: `clients.mode_reglement_defaut`
@@ -48,6 +48,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - 021: auto-dunning fields on `entreprise` (`relance_auto_active`, `relance_auto_jours`, `relance_auto_heure`); tracking fields on `factures` (`derniere_relance`, `nb_relances`); e-signature fields on `devis` (`signature_token`, `signature_ip`, `signature_date`, `signature_nom`)
 - 022: pre-due notification fields on `entreprise` (`notif_echeance_active`, `notif_echeance_jours`); `factures.notif_echeance_envoyee` (timestamp, prevents double-sending)
 - 023: creates `factures_fournisseurs` table (supplier invoices); adds `facture_fournisseur_id` FK on `fec_ecritures`
+- 024: `type` column on `devis_lignes` / `factures_lignes` / `avenants_lignes` / `bons_livraison_lignes` to support comment-only lines
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -62,7 +63,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 **Services** (`src/server/services/`):
 - `NumerotationService` — atomic `INSERT … ON CONFLICT DO UPDATE` on `sequence_numerotation`; produces `FAC-YYYY-NNNN`, `DEV-YYYY-NNNN`, etc. Never call raw `INSERT` for numbering.
 - `ScelleService` — chained SHA-256 in `journal_scellement`; must be called after emitting a fiscal document. The table is immutable (UPDATE/DELETE blocked by DB triggers).
-- `FacturXService` — PDFKit PDF generation + EN 16931 XML. Generates devis, factures, acomptes, bons-livraison as streams (`generer*Stream`) or to disk (`genererFacture`). Logo color is extracted at runtime with `sharp`.
+- `FacturXService` — two-step PDF pipeline: (1) PDFKit renders the visual PDF; (2) `pdf-lib` post-processes it to attach `factur-x.xml` (EN 16931) with `AFRelationship.Alternative`, injects an `/AF` entry in the PDF catalog, and adds XMP metadata declaring PDF/A-3b + Factur-X MINIMUM profile. Generates devis, factures, acomptes, bons-livraison as streams (`generer*Stream`) or to disk (`genererFacture`). Logo color is extracted at runtime with `sharp`.
 - `FecExportService` — writes accounting entries to `fec_ecritures` when a facture is emitted; exports them as tab-separated text (DGFiP FEC format). **Do not alter column names or order.**
 - `LettreService` — lettrage (account matching) of `fec_ecritures` compte 411 lines. `getNextLettre()` uses `sequence_numerotation` with type `LETTRAGE`; `lettrerPaiement()` is called automatically when marking a facture `payee`.
 - `BackupScheduler` — `node-cron` job calling `pg_dump.exe` (path from `PG_BIN` env var) and copying `storage/pdf/` to a `pdfs_<date>/` subfolder inside the backup destination. Config stored in `backup_config` table; reloaded via `loadAndSchedule()`.
@@ -73,6 +74,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `ChorusProService` — submits Factur-X PDFs to the Chorus Pro public procurement portal via PISTE OAuth2. Requires `CHORUS_PRO_CLIENT_ID`, `CHORUS_PRO_CLIENT_SECRET`, and `CHORUS_PRO_LOGIN` env vars. Persists the CPP document ID on `factures.chorus_pro_id`. Only acts on factures with `statut = 'emise'` and an existing PDF.
 - `FournisseurService` — supplier invoice lifecycle (`creer`, `payer`, `supprimer`, `lister`). Creating an invoice atomically writes 3 FEC entries (journal `AC`: compte 401/crédit, `6xx`/débit, `44566`/débit) and upserts `tva_deductible` for the invoice's month. Paying writes 2 FEC entries (journal `BQ`). Deletion reverses FEC entries and recalculates `tva_deductible` (only allowed on `recue` invoices).
 - `RelanceScheduler` — `node-cron` job running two functions daily at the configured hour: `envoyerRelancesAuto()` sends dunning emails for overdue factures (controlled by `relance_auto_active/jours`); `envoyerNotifsEcheance()` sends a reminder N days *before* the due date (controlled by `notif_echeance_active/jours`, default 3 days). The pre-due notification is sent at most once per facture (`notif_echeance_envoyee` timestamp guards against duplicates).
+- `SocieteBackupService` — per-company export/restore (`exporterSociete`, `restaurerSociete`). Produces a gzip JSON blob (`format: 'societe-v1'`) containing all tables in FK order. Restore supports two modes: `'skip'` (INSERT ON CONFLICT DO NOTHING, for same-instance recovery) and `'remap'` (allocates new consecutive IDs above MAX(id) and cascades FK remapping — use for cross-instance import). Polymorphic FK columns on `journal_scellement.document_id` and `archive_documents.document_id_original` are handled explicitly. After restore, all SERIAL sequences are reset to MAX(id).
 
 **Additional routes** not listed above:
 - `sepa` — generates SEPA direct debit XML (pain.008) for a batch of factures. POST `/api/sepa/generer` with `{ facture_ids, date_execution, sequence }`.
@@ -82,6 +84,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `exercices` — GET `/api/exercices` lists fiscal years; POST `/api/exercices` opens one; POST `/api/exercices/:annee/cloturer` closes it (hashes FEC entries, returns a bilan PDF).
 - `chorus-pro` (on `factures` router) — POST `/api/factures/:id/chorus-pro` deposits the facture on Chorus Pro; GET `/api/factures/:id/chorus-pro/statut` refreshes its status.
 - `factures-fournisseurs` — GET `/api/factures-fournisseurs[?statut=recue|payee]` lists supplier invoices; POST `/` creates; POST `/:id/payer` marks paid; DELETE `/:id` removes (only `recue`); POST `/import-csv` imports a CSV file (multipart `csv` field) — parses FEC-style rows from compte 401.
+- `update` — GET `/api/update/check` (`settings:r` permission) compares `package.json` version against latest GitHub release; POST `/api/update/apply` (`is_super_admin` only) downloads `FacturPro-Setup.exe` from the release asset to `os.tmpdir()`, then schedules it via Windows `schtasks /create /sc ONCE /ru SYSTEM` 30 seconds later. Requires `UPDATE_GITHUB_REPO=owner/repo` in `.env`.
 
 **FEC multi-tenant filter**: `FecExportService.exporterCSV()` filters by `entreprise_id` via EXISTS subqueries on both `factures` and `factures_fournisseurs` — entries without either FK are excluded.
 
@@ -93,7 +96,9 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `POST /:id/mapi` — Windows-only: spawns `powershell.exe` to invoke `MAPISendMail`, opening the user's local mail client. Uses temp files in `os.tmpdir()` and cleans them up automatically.
 - `GET /:id/relance-courrier` — generates a printable dunning letter PDF (PDFKit, streamed inline) with the full formal letter layout (objet, coordonnées, corps récapitulatif, pied de page).
 
-**Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing.
+**Public routes (no JWT)**: `/api/auth` and `GET /api/devis/signer/:token` (e-signature endpoint). The signature route is mounted **before** the global `authenticate` middleware — it accepts the token from the URL, validates the devis, stamps `statut='signe'`, `signature_ip`, `signature_nom`, and returns an HTML confirmation page.
+
+**Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing. `js/editor.js` exports a `DocEditor` IIFE that is the shared WYSIWYG editor for all document types (devis, facture, avoir, bon de livraison, acompte); it handles line rendering, totals calculation, comment-type lines, and save/lock logic. `js/app.js` contains the rest of the SPA (routing, view rendering, global state).
 
 **PDF storage**: `storage/pdf/` — served at `/storage`. Logo is read from `storage/logo/logo_pdf.png` (preferred) or the path in `entreprise.logo_path`.
 

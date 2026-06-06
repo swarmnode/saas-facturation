@@ -4,7 +4,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execFile, spawn } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import { requirePerm } from '../middleware/auth';
 
 const router = Router();
@@ -111,53 +111,42 @@ function scheduleHeavyInstaller(installerPath: string, version: string): Promise
   });
 }
 
-// Mise à jour légère : spawne un PowerShell détaché (hérite des droits SYSTEM de NSSM)
-// stop service → Expand-Archive → déplacement ZIP versionné → start service
-function scheduleLightPatch(zipPath: string, version: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.join(INSTALL_DIR, 'logs', 'patch.ps1');
-    const logPath    = path.join(INSTALL_DIR, 'logs', 'patch-apply.log');
-    const archivedPath = path.join(UPDATES_DIR, `FacturPro-Patch-${version}.zip`);
-    const esc = (s: string) => s.replace(/'/g, "''");
-    const log = (msg: string) => `Add-Content -Path '${esc(logPath)}' -Value "[$(Get-Date -Format 'HH:mm:ss')] ${msg}"`;
-    const script = [
-      `$ErrorActionPreference = 'Continue'`,
-      log(`=== Patch ${version} START ===`),
-      log(`INSTALL_DIR: ${esc(INSTALL_DIR)}`),
-      log(`ZIP: ${esc(zipPath)}`),
-      log(`ZIP exists: $(Test-Path '${esc(zipPath)}')`),
-      `Start-Sleep -Seconds 5`,
-      log(`Stopping service ${esc(SERVICE_NAME)}...`),
-      `try { Stop-Service -Name '${esc(SERVICE_NAME)}' -Force -ErrorAction Stop; ${log('Service stopped OK')} } catch { ${log('Stop-Service error: $_')} }`,
-      `Start-Sleep -Seconds 3`,
-      log(`Extracting archive to: ${esc(INSTALL_DIR)}`),
-      `try { Expand-Archive -Path '${esc(zipPath)}' -DestinationPath '${esc(INSTALL_DIR)}' -Force -ErrorAction Stop; ${log('Expand-Archive OK')} } catch { ${log('Expand-Archive error: $_')} }`,
-      log(`package.json version after: $(if (Test-Path '${esc(path.join(INSTALL_DIR, 'package.json'))}') { (Get-Content '${esc(path.join(INSTALL_DIR, 'package.json'))}' | ConvertFrom-Json).version } else { 'FILE NOT FOUND' })`),
-      `New-Item -ItemType Directory -Force -Path '${esc(UPDATES_DIR)}' | Out-Null`,
-      `Move-Item -Path '${esc(zipPath)}' -Destination '${esc(archivedPath)}' -ErrorAction SilentlyContinue`,
-      `Start-Sleep -Seconds 2`,
-      log(`Starting service...`),
-      `try { Start-Service -Name '${esc(SERVICE_NAME)}' -ErrorAction Stop; ${log('Service started OK')} } catch { ${log('Start-Service error: $_')} }`,
-      log(`=== Patch ${version} END ===`),
-    ].join('\r\n');
+// Mise à jour légère : extrait le zip en-process puis process.exit(0) → NSSM redémarre
+function applyLightPatch(zipPath: string, version: string): void {
+  const logPath     = path.join(INSTALL_DIR, 'logs', 'patch-apply.log');
+  const archivedPath = path.join(UPDATES_DIR, `FacturPro-Patch-${version}.zip`);
+  const esc = (s: string) => s.replace(/'/g, "''");
 
+  const log = (msg: string) => {
+    try { fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
+  };
+
+  // 500 ms pour laisser Express envoyer la réponse HTTP avant de bloquer l'event loop
+  setTimeout(() => {
+    log(`=== Patch ${version} START ===`);
+    log(`INSTALL_DIR: ${INSTALL_DIR}`);
+    log(`ZIP: ${zipPath}`);
+    log(`ZIP exists: ${fs.existsSync(zipPath)}`);
     try {
-      fs.mkdirSync(path.join(INSTALL_DIR, 'logs'), { recursive: true });
-      fs.writeFileSync(scriptPath, script, 'utf8');
-    } catch (e) {
-      return reject(new Error(`Impossible d'écrire le script patch : ${e}`));
+      execFileSync('powershell.exe', [
+        '-ExecutionPolicy', 'Bypass', '-NonInteractive', '-Command',
+        `Expand-Archive -Path '${esc(zipPath)}' -DestinationPath '${esc(INSTALL_DIR)}' -Force`,
+      ], { stdio: 'pipe' });
+      log('Expand-Archive OK');
+      try {
+        fs.mkdirSync(UPDATES_DIR, { recursive: true });
+        fs.renameSync(zipPath, archivedPath);
+      } catch {}
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(INSTALL_DIR, 'package.json'), 'utf-8'));
+        log(`Version apres patch: ${pkg.version}`);
+      } catch {}
+    } catch (e: any) {
+      log(`ERREUR Expand-Archive: ${e?.message ?? e}`);
     }
-
-    // Spawn détaché : survit à l'arrêt du service Node.js, hérite des droits SYSTEM
-    const child = spawn('powershell.exe', [
-      '-ExecutionPolicy', 'Bypass',
-      '-NonInteractive',
-      '-File', scriptPath,
-    ], { detached: true, stdio: 'ignore', windowsHide: true });
-    child.on('error', reject);
-    child.unref();
-    resolve();
-  });
+    log('process.exit(0) — NSSM redemarrera le service.');
+    process.exit(0);
+  }, 500);
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────
@@ -202,11 +191,12 @@ router.post('/apply', async (req, res, next) => {
     if (found.type === 'light') {
       const zipPath = path.join(os.tmpdir(), `FacturPro-Patch-${Date.now()}.zip`);
       await downloadFile(found.asset.browser_download_url, zipPath);
-      await scheduleLightPatch(zipPath, latestVersion);
-      return res.json({
+      res.json({
         update_type: 'light',
         message: 'Patch en cours d\'installation. Le service redémarre dans quelques secondes.',
       });
+      applyLightPatch(zipPath, latestVersion);
+      return;
     }
 
     const installerPath = path.join(os.tmpdir(), `FacturPro-Setup-${Date.now()}.exe`);

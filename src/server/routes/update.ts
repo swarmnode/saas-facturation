@@ -4,7 +4,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { requirePerm } from '../middleware/auth';
 
 const router = Router();
@@ -111,7 +111,8 @@ function scheduleHeavyInstaller(installerPath: string, version: string): Promise
   });
 }
 
-// Mise à jour légère : stop service → Expand-Archive → déplacement ZIP versionné → start service (15 s)
+// Mise à jour légère : spawne un PowerShell détaché (hérite des droits SYSTEM de NSSM)
+// stop service → Expand-Archive → déplacement ZIP versionné → start service
 function scheduleLightPatch(zipPath: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(INSTALL_DIR, 'logs', 'patch.ps1');
@@ -140,20 +141,22 @@ function scheduleLightPatch(zipPath: string, version: string): Promise<void> {
       log(`=== Patch ${version} END ===`),
     ].join('\r\n');
 
-    fs.writeFileSync(scriptPath, script, 'utf8');
+    try {
+      fs.mkdirSync(path.join(INSTALL_DIR, 'logs'), { recursive: true });
+      fs.writeFileSync(scriptPath, script, 'utf8');
+    } catch (e) {
+      return reject(new Error(`Impossible d'écrire le script patch : ${e}`));
+    }
 
-    const d = new Date(Date.now() + 15_000);
-    const st = [d.getHours(), d.getMinutes(), d.getSeconds()]
-      .map((n) => String(n).padStart(2, '0')).join(':');
-
-    const tr = `powershell.exe -ExecutionPolicy Bypass -NonInteractive -File "${scriptPath}"`;
-
-    execFile('schtasks', ['/create', '/sc', 'ONCE', '/st', st, '/ru', 'SYSTEM',
-      '/tn', 'FacturProPatch', '/tr', tr, '/f'],
-      (err, _stdout, stderr) => {
-        if (err) reject(new Error(`schtasks: ${stderr || err.message}`));
-        else resolve();
-      });
+    // Spawn détaché : survit à l'arrêt du service Node.js, hérite des droits SYSTEM
+    const child = spawn('powershell.exe', [
+      '-ExecutionPolicy', 'Bypass',
+      '-NonInteractive',
+      '-File', scriptPath,
+    ], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.on('error', reject);
+    child.unref();
+    resolve();
   });
 }
 

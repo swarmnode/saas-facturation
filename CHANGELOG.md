@@ -3,6 +3,18 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [2.20.9] — 2026-06-06
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Chore: bump v2.20.9 pour tester auto-update execFileSync
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ## [2.20.8] — 2026-06-06
 
 ### Corrigé
@@ -1821,6 +1833,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.20.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.9
 [2.20.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.8
 [2.20.7]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.7
 [2.20.6]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.6

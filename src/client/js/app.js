@@ -5450,7 +5450,7 @@ async function renderTabUpdate(c) {
     : 'Mise à jour complète (dépendances, migrations) — redémarrage en ~30 secondes.';
   const countdownStart = isLight ? 22 : 36;
 
-  status.innerHTML = `Version actuelle : <strong>${info.current_version}</strong>`;
+  status.innerHTML = `Version actuelle : <strong>${info.current_version}</strong>${info.install_dir ? ` <span style="font-size:11px;color:var(--text-muted)">(${info.install_dir})</span>` : ''}`;
   content.innerHTML = `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px">
       <p style="font-size:14px;margin:0 0 8px">

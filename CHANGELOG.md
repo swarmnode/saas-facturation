@@ -9,9 +9,16 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 - Fix: EBUSY sur mise à jour - nom de fichier unique avec timestamp dans TEMP
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: structure zip patch - utiliser dist/ entier pour respecter les chemins
+
+Compress-Archive -Path "dist\client" produit des entrees "client\" dans
+le zip, pas "dist\client\" - les fichiers s'extrayaient au mauvais endroit.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

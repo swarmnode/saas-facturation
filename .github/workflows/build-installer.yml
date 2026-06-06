@@ -47,13 +47,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ github.ref_name }}"
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title $tag --generate-notes --latest
-          }
-          gh release upload $tag FacturPro-Patch.zip --clobber
-        shell: powershell
+          tag="${{ github.ref_name }}"
+          gh release view "$tag" > /dev/null 2>&1 || gh release create "$tag" --title "$tag" --notes "" --latest
+          gh release upload "$tag" FacturPro-Patch.zip --clobber
+        shell: bash
 
   # ── Job 2 : installeur complet (Node portable + NSSM + PG + Inno Setup) ──
   installer:
@@ -101,10 +98,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ github.ref_name }}"
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title $tag --generate-notes --latest
-          }
-          gh release upload $tag installer\FacturPro-Setup.exe --clobber
-        shell: powershell
+          tag="${{ github.ref_name }}"
+          gh release view "$tag" > /dev/null 2>&1 || gh release create "$tag" --title "$tag" --notes "" --latest
+          gh release upload "$tag" installer/FacturPro-Setup.exe --clobber
+        shell: bash

@@ -56,7 +56,7 @@ if (-not $pgBin) {
     Log "PostgreSQL absent - installation depuis le bundle..."
     $pgInstaller = "$InstallDir\tools\pg17-installer.exe"
     if (-not (Test-Path $pgInstaller)) {
-        LogError "Installateur PostgreSQL introuvable ($pgInstaller). Le fichier de setup semble corrompu — reinstallez FacturPro."
+        LogError "Installateur PostgreSQL introuvable ($pgInstaller). Le fichier de setup semble corrompu - reinstallez FacturPro."
     }
 
     Log "Installation silencieuse de PostgreSQL (EDB one-click)..."
@@ -197,7 +197,9 @@ if ($pgSvc) {
 }
 
 Log "Service configure - demarrage..."
+$prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
 $out = & $nssm start $svcName 2>&1
+$ErrorActionPreference = $prev
 Log "nssm start : $out"
 Start-Sleep -Seconds 5
 

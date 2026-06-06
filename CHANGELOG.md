@@ -3,6 +3,27 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Corrigé
+- Fix: EBUSY sur mise à jour - nom de fichier unique avec timestamp dans TEMP
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Ci: inclure package.json dans FacturPro-Patch.zip + upload automatique
+
+Sans package.json, la version n'est pas mise à jour après le patch et
+le serveur redémarre toujours en détectant la même mise à jour.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ## [2.20.0] — 2026-06-06
 
 ### Ajouté

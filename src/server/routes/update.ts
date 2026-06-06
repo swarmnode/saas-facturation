@@ -88,15 +88,19 @@ function getUpdateAsset(assets: any[]): { type: UpdateType; asset: any } | null 
   return null;
 }
 
+const UPDATES_DIR = path.join(INSTALL_DIR, 'updates');
+
 // Mise à jour lourde : Inno Setup via schtasks (30 s)
-function scheduleHeavyInstaller(installerPath: string): Promise<void> {
+function scheduleHeavyInstaller(installerPath: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const d = new Date(Date.now() + 30_000);
     const st = [d.getHours(), d.getMinutes(), d.getSeconds()]
       .map((n) => String(n).padStart(2, '0')).join(':');
 
     const logPath = path.join(INSTALL_DIR, 'logs', 'update-install.log');
-    const tr = `"${installerPath}" /VERYSILENT /NORESTART /LOG="${logPath}"`;
+    const archivedPath = path.join(UPDATES_DIR, `FacturPro-Setup-${version}.exe`);
+    const esc = (s: string) => s.replace(/'/g, "''");
+    const tr = `powershell.exe -ExecutionPolicy Bypass -NonInteractive -Command "& '${esc(installerPath)}' /VERYSILENT /NORESTART /LOG='${esc(logPath)}'; New-Item -ItemType Directory -Force -Path '${esc(UPDATES_DIR)}' | Out-Null; Move-Item -Path '${esc(installerPath)}' -Destination '${esc(archivedPath)}' -ErrorAction SilentlyContinue"`;
 
     execFile('schtasks', ['/create', '/sc', 'ONCE', '/st', st, '/ru', 'SYSTEM',
       '/tn', 'FacturProUpdate', '/tr', tr, '/f'],
@@ -107,10 +111,11 @@ function scheduleHeavyInstaller(installerPath: string): Promise<void> {
   });
 }
 
-// Mise à jour légère : stop service → Expand-Archive → start service (15 s)
-function scheduleLightPatch(zipPath: string): Promise<void> {
+// Mise à jour légère : stop service → Expand-Archive → déplacement ZIP versionné → start service (15 s)
+function scheduleLightPatch(zipPath: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(INSTALL_DIR, 'logs', 'patch.ps1');
+    const archivedPath = path.join(UPDATES_DIR, `FacturPro-Patch-${version}.zip`);
     const esc = (s: string) => s.replace(/'/g, "''");
     const script = [
       `$ErrorActionPreference = 'Stop'`,
@@ -118,6 +123,8 @@ function scheduleLightPatch(zipPath: string): Promise<void> {
       `Stop-Service -Name '${esc(SERVICE_NAME)}' -Force`,
       `Start-Sleep -Seconds 3`,
       `Expand-Archive -Path '${esc(zipPath)}' -DestinationPath '${esc(INSTALL_DIR)}' -Force`,
+      `New-Item -ItemType Directory -Force -Path '${esc(UPDATES_DIR)}' | Out-Null`,
+      `Move-Item -Path '${esc(zipPath)}' -Destination '${esc(archivedPath)}' -ErrorAction SilentlyContinue`,
       `Start-Sleep -Seconds 2`,
       `Start-Service -Name '${esc(SERVICE_NAME)}'`,
     ].join('\r\n');
@@ -171,6 +178,7 @@ router.post('/apply', async (req, res, next) => {
     }
 
     const release = await fetchJson(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+    const latestVersion = (release.tag_name as string).replace(/^v/, '');
     const found = getUpdateAsset(release.assets);
     if (!found) {
       return res.status(404).json({ error: 'Aucun asset de mise à jour trouvé dans la release GitHub.' });
@@ -180,7 +188,7 @@ router.post('/apply', async (req, res, next) => {
       const zipPath = path.join(os.tmpdir(), 'FacturPro-Patch.zip');
       try { fs.unlinkSync(zipPath); } catch {}
       await downloadFile(found.asset.browser_download_url, zipPath);
-      await scheduleLightPatch(zipPath);
+      await scheduleLightPatch(zipPath, latestVersion);
       return res.json({
         update_type: 'light',
         message: 'Patch en cours d\'installation. Le service redémarre dans quelques secondes.',
@@ -190,7 +198,7 @@ router.post('/apply', async (req, res, next) => {
     const installerPath = path.join(os.tmpdir(), 'FacturPro-Setup.exe');
     try { fs.unlinkSync(installerPath); } catch {}
     await downloadFile(found.asset.browser_download_url, installerPath);
-    await scheduleHeavyInstaller(installerPath);
+    await scheduleHeavyInstaller(installerPath, latestVersion);
     return res.json({
       update_type: 'heavy',
       message: 'Mise à jour planifiée. Le serveur va redémarrer dans 30 secondes.',

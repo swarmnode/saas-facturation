@@ -112,12 +112,22 @@ La page d'accueil affiche :
 
 ## Navigation latérale
 
-La barre de gauche donne accès à toutes les rubriques. Sur mobile ou petit écran, elle se replie avec le bouton **☰** et peut être rouverte avec le même bouton.
+La barre de gauche donne accès à toutes les rubriques, regroupées par catégories repliables. Sur mobile ou petit écran, elle se replie avec le bouton **☰** et peut être rouverte avec le même bouton.
+
+Trois rubriques restent toujours visibles en haut de la barre :
 
 | Icône | Rubrique |
 |---|---|
 | 📊 | Tableau de bord |
 | 📈 | Statistiques |
+| ⚙️ | Paramètres |
+
+Les autres rubriques sont organisées en **catégories cliquables** (icône **▾**) qui se déplient pour révéler leurs sous-rubriques ; cliquer à nouveau sur l'en-tête de catégorie la replie :
+
+**🛍️ Ventes ▾**
+
+| Icône | Rubrique |
+|---|---|
 | 🧑 | Clients |
 | 📋 | Devis |
 | 🧾 | Factures |
@@ -125,12 +135,26 @@ La barre de gauche donne accès à toutes les rubriques. Sur mobile ou petit éc
 | 💰 | Acomptes |
 | 🚚 | Bons de livraison |
 | 📦 | Articles |
-| 🔍 | Journal d'audit |
+
+**🛒 Achats ▾**
+
+| Icône | Rubrique |
+|---|---|
+| 🏭 | Fournisseurs |
+| 📝 | Commandes |
+| 📥 | Factures d'achats |
+
+**🧮 Comptabilité ▾**
+
+| Icône | Rubrique |
+|---|---|
 | 📑 | Déclaration TVA |
+| ⚖️ | Lettrage |
 | 📅 | Exercices |
 | 🗄️ | Archives |
-| ⚖️ | Lettrage |
-| ⚙️ | Paramètres |
+| 🔍 | Journal d'audit |
+
+> Ce regroupement par catégories simplifie la navigation : seules les rubriques de la catégorie ouverte sont affichées, ce qui réduit l'encombrement de la barre latérale au quotidien.
 
 ## Onglets de travail
 

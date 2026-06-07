@@ -3,6 +3,28 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Ajouté
+- Feat: bundler PostgreSQL portable dans l'installateur (remplace l'EDB one-click)
+
+L'installeur EDB (~300 Mo, 5-10 min) est remplacé par le ZIP binaries-only
+EDB (~130 Mo) extrait dans tools/pgsql/, initialisé via initdb et enregistré
+comme service Windows FacturProPG (pg_ctl register). Réduit le temps
+d'installation de PostgreSQL à ~20 secondes.
+
+- build.ps1 : télécharge/extrait le ZIP binaries-only, supprime symbols/doc/include
+- Configure.ps1 : détecte PG système → sinon initdb + pg_ctl register dans {app}\pgdata
+- Uninstall.ps1 : arrête et déregistre le service FacturProPG
+- FacturPro.iss : bundle tools\pgsql\*, crée {app}\pgdata, met à jour le texte de l'assistant
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
 ## [3.0.0] — 2026-06-07
 
 ### Ajouté

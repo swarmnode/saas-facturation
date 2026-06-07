@@ -3,6 +3,17 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
+## [Non publié]
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: mettre à jour CLAUDE.md (migration 025 + double mécanisme de mise à jour léger/lourd)
+
+
+### Modifications
+- Chore: bump v2.20.10 pour tester la mise à jour à distance
+
+
 ## [2.20.9] — 2026-06-06
 
 ### Documentation

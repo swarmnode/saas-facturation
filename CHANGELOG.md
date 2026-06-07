@@ -3,7 +3,7 @@
 Toutes les modifications notables sont documentées ici.
 Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
-## [Non publié]
+## [3.0.0] — 2026-06-07
 
 ### Ajouté
 - Feat: ajouter Fournisseurs et Commandes d'achats avec chainage non bloquant
@@ -27,10 +27,18 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: documenter migration 026 et routes Fournisseurs/Commandes d'achats dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
 - Chore: bump v2.20.12 pour publier la gestion des fournisseurs et commandes d'achat
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: bump v3.0.0 — passage en version majeure
+
+Nouvelle version majeure pour marquer l'ajout du module Achats
+(Fournisseurs et Commandes d'achats) comme évolution structurante
+de l'application.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -1930,6 +1938,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[3.0.0]: https://github.com/swarmnode/saas-facturation/releases/tag/v3.0.0
 [2.20.11]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.11
 [2.20.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.9
 [2.20.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.8

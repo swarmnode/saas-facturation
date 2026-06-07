@@ -23,6 +23,16 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: documenter migration 026 et routes Fournisseurs/Commandes d'achats dans CLAUDE.md
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Modifications
+- Chore: bump v2.20.12 pour publier la gestion des fournisseurs et commandes d'achat
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.20.11] — 2026-06-07

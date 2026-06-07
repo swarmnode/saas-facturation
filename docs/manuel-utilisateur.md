@@ -761,6 +761,65 @@ Génère des fichiers XML pain.008.001.02 importables dans votre interface banca
 
 ---
 
+# Achats (Fournisseurs, Commandes, Factures d'achats)
+
+Depuis la v3.0.0, FacturPro intègre un module complet de gestion des achats, accessible depuis la catégorie **🛒 Achats** de la barre latérale. Il regroupe trois sous-modules chaînés de façon non bloquante : **Fournisseurs**, **Commandes** et **Factures d'achats**.
+
+## Fournisseurs
+
+![Liste des fournisseurs](screenshots/20-fournisseurs-liste.png)
+
+**Achats > Fournisseurs** liste l'ensemble de vos fournisseurs avec raison sociale, email, téléphone, SIRET et conditions de paiement.
+
+Bouton **+ Nouveau fournisseur** pour ouvrir la fiche de création :
+
+![Fiche fournisseur](screenshots/21-fournisseur-fiche.png)
+
+| Champ | Remarque |
+|---|---|
+| Raison sociale * | Obligatoire |
+| Adresse / Complément / Code postal / Ville | Coordonnées postales |
+| Email / Téléphone | Coordonnées de contact |
+| SIRET / TVA Intracom | Identifiants légaux |
+| Conditions de paiement | Texte libre, pour information uniquement |
+| IBAN / BIC | Coordonnées bancaires pour vos virements, repliées dans **🏦 Coordonnées bancaires** |
+| Notes | Texte libre |
+
+Les boutons **⬇ Exporter CSV** et **⬆ Importer CSV** permettent d'échanger votre liste de fournisseurs au format tableur.
+
+## Commandes
+
+![Liste des commandes](screenshots/22-commandes-liste.png)
+
+**Achats > Commandes** liste les commandes passées auprès de vos fournisseurs, filtrables par statut (**Toutes**, **En cours**, **Réceptionnées**, **Annulées**).
+
+Bouton **+ Nouvelle commande** :
+
+![Fiche commande](screenshots/23-commande-fiche.png)
+
+| Champ | Remarque |
+|---|---|
+| Fournisseur * | Sélection dans la liste des fournisseurs |
+| Statut | En cours / Réceptionnée / Annulée |
+| Date de commande * | Date de passation |
+| Livraison prévue | Date estimée de réception |
+| Montant HT | Montant prévisionnel de la commande |
+| Description | Objet de la commande |
+| Facture d'achat liée | Chaînage **non bloquant** : facultatif, modifiable à tout moment, sans incidence sur le scellement |
+
+> Le lien entre une commande et une facture d'achat est purement informatif : il aide à suivre le cycle commande → réception → facturation, sans imposer de contrainte d'ordre ni verrouiller les documents.
+
+## Factures d'achats
+
+**Achats > Factures d'achats** liste les factures reçues de vos fournisseurs, filtrables par statut **reçue** / **payée**.
+
+- **+ Nouvelle facture** saisit une facture fournisseur et génère automatiquement les écritures FEC du journal **AC** (compte 401 au crédit, charge 6xx au débit, TVA déductible 44566 au débit), tout en alimentant la déclaration de TVA déductible du mois correspondant.
+- **Marquer payée** écrit les écritures de règlement (journal **BQ**) et déclenche le lettrage du compte 401.
+- **Import CSV** permet d'importer un lot de factures au format FEC (lignes du compte 401).
+- La suppression n'est possible que sur les factures au statut **reçue** : elle annule les écritures FEC et recalcule la TVA déductible du mois concerné.
+
+---
+
 # Statistiques
 
 ![Statistiques KPIs](screenshots/08-stats-kpis.png)
@@ -995,6 +1054,21 @@ Le super-administrateur peut gérer plusieurs entités depuis un seul compte :
 - **Paramètres > Entreprise > Nouvelle société** pour créer une entité supplémentaire.
 - Le commutateur de société apparaît lors de la connexion si plusieurs entités sont accessibles.
 
+### Gestion des sociétés
+
+![Gestion des sociétés](screenshots/25-societes-gestion.png)
+
+L'onglet **Paramètres > Sociétés** (super-administrateur) liste toutes les entités de l'instance avec leur raison sociale, forme juridique, SIRET et email :
+
+| Action | Effet |
+|---|---|
+| **Accéder** | Bascule l'espace de travail courant vers cette société |
+| **Modifier** | Édite raison sociale, forme juridique, SIRET, TVA intracom, adresse, email, téléphone |
+| **+ Nouvelle société** | Crée une entité supplémentaire |
+| **Supprimer** | Disponible uniquement sur les sociétés autres que la société courante (`COURANTE`) — suppression définitive de l'entité et de toutes ses données |
+
+> La société marquée **COURANTE** ne peut pas être supprimée depuis cet écran.
+
 ---
 
 # Sauvegardes
@@ -1029,6 +1103,30 @@ gunzip sauvegarde.sql.gz
 # Restaurer
 psql -U facturpro -d facturpro -f sauvegarde.sql
 ```
+
+## Sauvegarder et restaurer une société
+
+![Sauvegarde de société](screenshots/26-sauvegarde-societe.png)
+
+En complément de la sauvegarde complète de la base, **Paramètres > Sauvegarde > Sauvegarde de ma société** exporte uniquement les données de la société active (clients, devis, factures, articles, écritures FEC, journal de scellement, logo…) au format JSON compressé (`.json.gz`).
+
+| Bouton | Usage |
+|---|---|
+| **⬇ Sauvegarder la société** | Télécharge l'export JSON compressé de la société courante |
+| **⬆ Restaurer (même instance)** | Réinjecte une sauvegarde sur la même instance — les lignes déjà présentes (même ID) sont conservées, seules les données manquantes sont insérées. Idéal après une perte partielle de données |
+| **⬆ Importer (cross-instance)** | Importe une société exportée depuis un autre serveur FacturPro — tous les identifiants sont réattribués pour éviter toute collision avec les sociétés existantes |
+
+> Les options de restauration/import sont réservées au super-administrateur.
+
+## Maintenance de la base de données
+
+![Maintenance BDD](screenshots/24-maintenance-bdd.png)
+
+**Paramètres > Maintenance BDD** propose un nettoyage manuel de l'espace disque (`VACUUM`), normalement géré automatiquement en arrière-plan par PostgreSQL (processus *autovacuum*).
+
+- Lancer ce nettoyage manuellement ne modifie ni ne supprime aucune donnée métier — il récupère simplement l'espace disque laissé par les lignes supprimées ou modifiées.
+- L'opération peut ralentir temporairement l'application ; à privilégier en dehors des heures d'utilisation.
+- L'option **Mode complet (FULL)** réécrit entièrement les tables pour récupérer le maximum d'espace possible, mais verrouille les tables concernées pendant toute la durée du traitement (l'application devient indisponible). À réserver aux cas où l'espace disque devient critique.
 
 ---
 
@@ -1085,4 +1183,4 @@ FacturPro satisfait aux conditions de l'article 88 de la loi n° 2015-1785 du 29
 
 ---
 
-*Document généré par FacturPro v2.13.0 — 2026*
+*Document généré par FacturPro v3.0.0 — 2026*

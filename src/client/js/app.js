@@ -5523,6 +5523,7 @@ async function renderSocietes(el) {
             <td>
               <button class="btn btn-outline btn-sm" onclick="switchCompany(${s.id})">Accéder</button>
               <button class="btn btn-outline btn-sm" onclick="showSocieteForm(${s.id})">Modifier</button>
+              ${s.id === currentUser.entreprise_id ? '' : `<button class="btn btn-outline btn-sm" style="color:#e74c3c;border-color:#e74c3c" onclick="confirmerSuppressionSociete(${s.id})">Supprimer</button>`}
             </td>
           </tr>`).join('') : ''}
         </tbody>
@@ -5605,6 +5606,100 @@ async function showSocieteForm(societeId) {
       }
     };
   });
+}
+
+// ── Suppression d'une société (super_admin, assistant à étapes) ──────────
+async function confirmerSuppressionSociete(societeId) {
+  const all = await api.get('/api/entreprise/all');
+  const societe = Array.isArray(all) ? all.find(x => x.id === societeId) : null;
+  if (!societe) return;
+  let etape = 1;
+
+  const render = () => {
+    let html = '';
+    if (etape === 1) {
+      html = `
+        <div class="alert alert-danger" style="font-weight:600">
+          Vous vous apprêtez à supprimer définitivement la société <u>${societe.raison_sociale}</u>.
+        </div>
+        <p>Cette opération supprimera <strong>irréversiblement</strong> toutes les données associées :
+        clients, articles, devis, factures, acomptes, bons de livraison, écritures comptables, etc.</p>
+        <p>Si cette société a déjà émis ou scellé des documents fiscaux, la suppression sera
+        <strong>refusée</strong> par la base de données afin de respecter l'obligation légale de
+        conservation pendant 10 ans (cette protection ne peut pas être contournée).</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button type="button" class="btn btn-outline" onclick="modal.close()">Annuler</button>
+          <button type="button" class="btn btn-danger" id="suppEtapeSuivante1">Continuer</button>
+        </div>`;
+    } else if (etape === 2) {
+      html = `
+        <p>Avant toute suppression, le serveur génère <strong>automatiquement et obligatoirement</strong>
+        une sauvegarde complète de la société (toutes ses tables, son journal de scellement, ses archives,
+        son logo) au format gzip, enregistrée dans <code>storage/backups_societes/</code> sur le serveur.</p>
+        <p>Cette sauvegarde est créée systématiquement, même en cas d'échec ultérieur de la suppression —
+        elle ne peut pas être ignorée.</p>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-top:10px">
+          <input type="checkbox" id="suppAckBackup"/>
+          <span>Je comprends qu'une sauvegarde sera créée automatiquement avant toute suppression et je
+          souhaite continuer.</span>
+        </label>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button type="button" class="btn btn-outline" onclick="modal.close()">Annuler</button>
+          <button type="button" class="btn btn-danger" id="suppEtapeSuivante2" disabled>Continuer</button>
+        </div>`;
+    } else {
+      html = `
+        <p>Confirmation finale — saisissez exactement la raison sociale <strong>${societe.raison_sociale}</strong>
+        pour valider la suppression définitive :</p>
+        <div class="form-group"><input type="text" id="suppNomSaisi" autocomplete="off" placeholder="${societe.raison_sociale}"/></div>
+        <div id="suppFinalAlert"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button type="button" class="btn btn-outline" onclick="modal.close()">Annuler</button>
+          <button type="button" class="btn btn-danger" id="suppValiderFinal" disabled>Supprimer définitivement</button>
+        </div>`;
+    }
+
+    modal.show('Suppression d\'une société', html, body => {
+      if (etape === 1) {
+        body.querySelector('#suppEtapeSuivante1').onclick = () => { etape = 2; render(); };
+      } else if (etape === 2) {
+        const ack = body.querySelector('#suppAckBackup');
+        const next = body.querySelector('#suppEtapeSuivante2');
+        ack.onchange = () => { next.disabled = !ack.checked; };
+        next.onclick = () => { etape = 3; render(); };
+      } else {
+        const input = body.querySelector('#suppNomSaisi');
+        const btn   = body.querySelector('#suppValiderFinal');
+        input.oninput = () => { btn.disabled = input.value !== societe.raison_sociale; };
+        btn.onclick = async () => {
+          btn.disabled = true;
+          btn.textContent = 'Suppression en cours…';
+          try {
+            const resp = await fetch(`/api/entreprise/${societe.id}`, {
+              method: 'DELETE',
+              headers: api._headers(),
+              body: JSON.stringify({ confirmation_nom: input.value }),
+            });
+            const r = await resp.json();
+            if (r?.error) {
+              body.querySelector('#suppFinalAlert').innerHTML = `<div class="alert alert-danger">${r.error}</div>`;
+              btn.disabled = false;
+              btn.textContent = 'Supprimer définitivement';
+            } else {
+              modal.close();
+              tabMgr.openViewTab('parametres');
+            }
+          } catch (e) {
+            body.querySelector('#suppFinalAlert').innerHTML = `<div class="alert alert-danger">Erreur réseau lors de la suppression.</div>`;
+            btn.disabled = false;
+            btn.textContent = 'Supprimer définitivement';
+          }
+        };
+      }
+    });
+  };
+
+  render();
 }
 
 // ── Sauvegarde automatique (super_admin) ─────────────────────────────────

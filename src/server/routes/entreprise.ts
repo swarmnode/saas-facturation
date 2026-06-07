@@ -3,9 +3,13 @@ import multer from 'multer';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
-import { query } from '../db/database';
+import { query, withTransaction } from '../db/database';
 import { requirePerm } from '../middleware/auth';
 import { initRelanceScheduler } from '../services/RelanceScheduler';
+import { exporterSociete } from '../services/SocieteBackupService';
+import { logAudit } from './audit';
+
+const BACKUPS_SOCIETES_DIR = path.resolve(process.cwd(), 'storage', 'backups_societes');
 
 const router = Router();
 
@@ -81,6 +85,98 @@ router.post('/update/:id', async (req, res, next) => {
     const r2 = await query('SELECT * FROM entreprise WHERE id=$1', [id]);
     res.json(r2.rows[0]);
   } catch(e) { next(e); }
+});
+
+// Supprime définitivement une société (super_admin uniquement)
+// Une sauvegarde complète est générée et écrite sur disque AVANT toute suppression — non contournable.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    if (!req.user!.is_super_admin) return res.status(403).json({ error: 'Réservé au super-administrateur' });
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identifiant invalide' });
+
+    if (id === req.user!.entreprise_id) {
+      return res.status(400).json({ error: 'Impossible de supprimer la société actuellement sélectionnée. Changez de société active avant de continuer.' });
+    }
+
+    const er = await query('SELECT * FROM entreprise WHERE id = $1', [id]);
+    const entreprise = er.rows[0];
+    if (!entreprise) return res.status(404).json({ error: 'Société introuvable' });
+
+    const cnt = await query('SELECT COUNT(*)::int AS n FROM entreprise');
+    if (cnt.rows[0].n <= 1) {
+      return res.status(400).json({ error: 'Impossible de supprimer la dernière société restante.' });
+    }
+
+    if (req.body?.confirmation_nom !== entreprise.raison_sociale) {
+      return res.status(400).json({ error: 'La confirmation ne correspond pas à la raison sociale de la société.' });
+    }
+
+    // Sauvegarde imposée — toujours générée et persistée avant toute suppression, ne peut pas être sautée
+    const buf = await exporterSociete(id);
+    if (!fs.existsSync(BACKUPS_SOCIETES_DIR)) fs.mkdirSync(BACKUPS_SOCIETES_DIR, { recursive: true });
+    const diacritics = new RegExp('[\\u0300-\\u036f]', 'g');
+    const slug = (entreprise.raison_sociale as string)
+      .normalize('NFD').replace(diacritics, '')
+      .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'societe';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupName = `societe_${id}_${slug}_${stamp}.json.gz`;
+    fs.writeFileSync(path.join(BACKUPS_SOCIETES_DIR, backupName), buf);
+
+    try {
+      await withTransaction(async (client) => {
+        const e = id;
+        // Ordre inverse des dépendances (FK) — voir TABLES dans SocieteBackupService.ts
+        await client.query(`DELETE FROM exercices WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM tva_deductible WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM audit_log WHERE entreprise_id = $1`, [e]);
+        // Les deux suppressions suivantes échoueront avec une erreur ISCA si la société
+        // a déjà émis/scellé/archivé un document — c'est voulu (conservation légale 10 ans).
+        await client.query(`DELETE FROM archive_documents WHERE entreprise_id = $1`, [e]);
+        await client.query(
+          `DELETE FROM journal_scellement js WHERE
+             (js.type_document IN ('FACTURE','AVOIR') AND js.document_id IN (SELECT id FROM factures WHERE entreprise_id = $1))
+          OR (js.type_document = 'DEVIS'   AND js.document_id IN (SELECT id FROM devis WHERE entreprise_id = $1))
+          OR (js.type_document = 'ACOMPTE' AND js.document_id IN (SELECT id FROM acomptes WHERE entreprise_id = $1))
+          OR (js.type_document = 'AVENANT' AND js.document_id IN (SELECT id FROM avenants WHERE devis_initial_id IN (SELECT id FROM devis WHERE entreprise_id = $1)))
+          OR (js.type_document = 'BL'      AND js.document_id IN (SELECT id FROM bons_livraison WHERE entreprise_id = $1))`,
+          [e]
+        );
+        await client.query(
+          `DELETE FROM fec_ecritures WHERE
+             facture_id IN (SELECT id FROM factures WHERE entreprise_id = $1)
+          OR facture_fournisseur_id IN (SELECT id FROM factures_fournisseurs WHERE entreprise_id = $1)`,
+          [e]
+        );
+        await client.query(`DELETE FROM factures_fournisseurs WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM bons_livraison_lignes WHERE bl_id IN (SELECT id FROM bons_livraison WHERE entreprise_id = $1)`, [e]);
+        await client.query(`DELETE FROM bons_livraison WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM acomptes WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM factures_lignes WHERE facture_id IN (SELECT id FROM factures WHERE entreprise_id = $1)`, [e]);
+        await client.query(`DELETE FROM factures WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM avenants_lignes WHERE avenant_id IN (SELECT id FROM avenants WHERE devis_initial_id IN (SELECT id FROM devis WHERE entreprise_id = $1))`, [e]);
+        await client.query(`DELETE FROM avenants WHERE devis_initial_id IN (SELECT id FROM devis WHERE entreprise_id = $1)`, [e]);
+        await client.query(`DELETE FROM devis_lignes WHERE devis_id IN (SELECT id FROM devis WHERE entreprise_id = $1)`, [e]);
+        await client.query(`DELETE FROM devis WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM articles WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM clients WHERE entreprise_id = $1`, [e]);
+        await client.query(`DELETE FROM sequence_numerotation WHERE entreprise_id = $1`, [e]);
+        // user_entreprises et commentaires_predefinis sont supprimés par CASCADE
+        await client.query(`DELETE FROM entreprise WHERE id = $1`, [e]);
+      });
+    } catch (txErr: any) {
+      const msg: string = txErr?.message || '';
+      if (/ISCA/i.test(msg)) {
+        return res.status(409).json({
+          error: `Suppression impossible : cette société a émis et scellé des documents fiscaux soumis à une conservation légale de 10 ans (archives/journal de scellement inaltérables). Une sauvegarde complète a néanmoins été enregistrée sous storage/backups_societes/${backupName}.`,
+        });
+      }
+      throw txErr;
+    }
+
+    await logAudit(req, 'suppression_societe', 'entreprise', id, { raison_sociale: entreprise.raison_sociale, backup: backupName });
+    res.json({ ok: true, backup: backupName });
+  } catch (e) { next(e); }
 });
 
 router.post('/', requirePerm('settings:w'), async (req, res, next) => {

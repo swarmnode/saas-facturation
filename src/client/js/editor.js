@@ -141,9 +141,14 @@ const DocEditor = (() => {
 
   // ── HTML partagés ─────────────────────────────────────────────────────────
 
+  // Logo PDF normalisé : nommé par entreprise_id côté serveur pour éviter les collisions multi-tenant
+  function logoPdfUrl(entreprise) {
+    return `/storage/logo/logo_pdf_${entreprise.id}.png`;
+  }
+
   function buildLogoHTML(entreprise) {
     return entreprise.logo_path
-      ? `<img class="e-logo" src="/storage/logo/logo_pdf.png?t=${Date.now()}" alt="logo">`
+      ? `<img class="e-logo" src="${logoPdfUrl(entreprise)}?t=${Date.now()}" alt="logo">`
       : '';
   }
 
@@ -1146,7 +1151,7 @@ const DocEditor = (() => {
 
     _entreprise = entreprise;
     _comments   = Array.isArray(comments) ? comments : [];
-    if (entreprise.logo_path) _brandColor = await extractBrandColor('/storage/logo/logo_pdf.png');
+    if (entreprise.logo_path) _brandColor = await extractBrandColor(logoPdfUrl(entreprise));
 
     // Résolution du document effectif (avoir, draft, prefill)
     let effectiveDoc = doc;
@@ -1179,7 +1184,7 @@ const DocEditor = (() => {
     const [entreprise, ac] = await Promise.all([api.get('/api/entreprise'), api.get(`/api/acomptes/${id}`)]);
     if (!ac?.id) return;
     _entreprise = entreprise;
-    if (entreprise.logo_path) _brandColor = await extractBrandColor('/storage/logo/logo_pdf.png');
+    if (entreprise.logo_path) _brandColor = await extractBrandColor(logoPdfUrl(entreprise));
     const bc = _brandColor;
 
     tabMgr.openDocTab('acompte', id, ac.numero, async el => {

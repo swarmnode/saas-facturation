@@ -17,7 +17,8 @@ const upload = multer({
       if (!fs.existsSync(LOGO_DIR)) fs.mkdirSync(LOGO_DIR, { recursive: true });
       cb(null, LOGO_DIR);
     },
-    filename: (_req, file, cb) => cb(null, 'logo' + path.extname(file.originalname).toLowerCase()),
+    // Nommage par entreprise_id pour éviter qu'une société écrase le logo d'une autre (multi-tenant)
+    filename: (req, file, cb) => cb(null, `logo_${req.user!.entreprise_id}` + path.extname(file.originalname).toLowerCase()),
   }),
   fileFilter: (_req, file, cb) => {
     const ok = /^image\/(png|jpeg|gif|webp|svg\+xml)$/.test(file.mimetype);
@@ -150,23 +151,25 @@ router.post('/relances', requirePerm('settings:w'), async (req, res, next) => {
 router.post('/logo', requirePerm('settings:w'), upload.single('logo'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Fichier image invalide (PNG, JPG, SVG, max 2 Mo)' });
+    const entrepriseId = req.user!.entreprise_id;
     const logoPath = `/storage/logo/${req.file.filename}`;
-    await sharp(req.file.path).resize({ width: 600, withoutEnlargement: true }).png().toFile(path.join(LOGO_DIR, 'logo_pdf.png'));
-    await query('UPDATE entreprise SET logo_path=$1 WHERE id=$2', [logoPath, req.user!.entreprise_id]);
+    await sharp(req.file.path).resize({ width: 600, withoutEnlargement: true }).png().toFile(path.join(LOGO_DIR, `logo_pdf_${entrepriseId}.png`));
+    await query('UPDATE entreprise SET logo_path=$1 WHERE id=$2', [logoPath, entrepriseId]);
     res.json({ logo_path: logoPath });
   } catch(err) { next(err); }
 });
 
 router.delete('/logo', requirePerm('settings:w'), async (req, res, next) => {
   try {
-    const er = await query('SELECT logo_path FROM entreprise WHERE id=$1', [req.user!.entreprise_id]);
+    const entrepriseId = req.user!.entreprise_id;
+    const er = await query('SELECT logo_path FROM entreprise WHERE id=$1', [entrepriseId]);
     const e  = er.rows[0];
     if (e?.logo_path) {
       const abs = path.resolve(process.cwd(), (e.logo_path as string).replace(/^\//, ''));
       if (fs.existsSync(abs)) fs.unlinkSync(abs);
-      const pdfPng = path.join(LOGO_DIR, 'logo_pdf.png');
+      const pdfPng = path.join(LOGO_DIR, `logo_pdf_${entrepriseId}.png`);
       if (fs.existsSync(pdfPng)) fs.unlinkSync(pdfPng);
-      await query('UPDATE entreprise SET logo_path=NULL WHERE id=$1', [req.user!.entreprise_id]);
+      await query('UPDATE entreprise SET logo_path=NULL WHERE id=$1', [entrepriseId]);
     }
     res.json({ ok: true });
   } catch(e) { next(e); }

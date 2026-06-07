@@ -5,6 +5,19 @@ import path from 'path';
 import { PDFDocument as PdfLib, AFRelationship, PDFName } from 'pdf-lib';
 
 const STORAGE_PDF = path.resolve(process.cwd(), 'storage', 'pdf');
+const STORAGE_LOGO = path.resolve(process.cwd(), 'storage', 'logo');
+
+// Logo PDF normalisé (PNG 600px, par société pour éviter les collisions multi-tenant) ;
+// repli sur le fichier original si la version normalisée n'existe pas encore.
+function resolveLogoAbsPath(entreprise: any): string | null {
+  const logoPdf = path.join(STORAGE_LOGO, `logo_pdf_${entreprise.id}.png`);
+  if (fs.existsSync(logoPdf)) return logoPdf;
+  if (entreprise.logo_path) {
+    const original = path.resolve(process.cwd(), (entreprise.logo_path as string).replace(/^\//, ''));
+    if (fs.existsSync(original)) return original;
+  }
+  return null;
+}
 
 // Formate un SIRET en xxx xxx xxx xxxxx
 function formatSiret(s: string | null | undefined): string {
@@ -264,11 +277,8 @@ export class FacturXService {
     // Pré-calcul logo (await interdit dans le callback PDFKit synchrone)
     let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
     if (entreprise.logo_path) {
-      const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
-      const logoAbs = fs.existsSync(logoPdf)
-        ? logoPdf
-        : path.resolve(process.cwd(), (entreprise.logo_path as string).replace(/^\//, ''));
-      if (fs.existsSync(logoAbs)) {
+      const logoAbs = resolveLogoAbsPath(entreprise);
+      if (logoAbs) {
         try {
           const meta = await sharp(logoAbs).metadata();
           const imgW = meta.width  ?? 200;
@@ -450,11 +460,8 @@ export class FacturXService {
     // Pré-calcul logo
     let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
     if (entreprise.logo_path) {
-      const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
-      const logoAbs = fs.existsSync(logoPdf)
-        ? logoPdf
-        : path.resolve(process.cwd(), (entreprise.logo_path as string).replace(/^\//, ''));
-      if (fs.existsSync(logoAbs)) {
+      const logoAbs = resolveLogoAbsPath(entreprise);
+      if (logoAbs) {
         try {
           const meta  = await sharp(logoAbs).metadata();
           const imgW  = meta.width ?? 200; const imgH = meta.height ?? 80;
@@ -610,11 +617,8 @@ export class FacturXService {
     // Pré-calcul logo
     let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
     if (entreprise.logo_path) {
-      const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
-      const logoAbs = fs.existsSync(logoPdf)
-        ? logoPdf
-        : path.resolve(process.cwd(), (entreprise.logo_path as string).replace(/^\//, ''));
-      if (fs.existsSync(logoAbs)) {
+      const logoAbs = resolveLogoAbsPath(entreprise);
+      if (logoAbs) {
         try {
           const meta  = await sharp(logoAbs).metadata();
           const imgW  = meta.width ?? 200; const imgH = meta.height ?? 80;
@@ -742,11 +746,8 @@ export class FacturXService {
   static async genererFactureStream(facture: any, entreprise: any, client: any, outputStream: NodeJS.WritableStream): Promise<void> {
     let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
     if (entreprise.logo_path) {
-      const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
-      const logoAbs = fs.existsSync(logoPdf)
-        ? logoPdf
-        : path.resolve(process.cwd(), (entreprise.logo_path as string).replace(/^\//, ''));
-      if (fs.existsSync(logoAbs)) {
+      const logoAbs = resolveLogoAbsPath(entreprise);
+      if (logoAbs) {
         try {
           const meta = await sharp(logoAbs).metadata();
           const imgW = meta.width ?? 200; const imgH = meta.height ?? 80;
@@ -900,11 +901,8 @@ export class FacturXService {
   static async genererAcompteStream(acompte: any, entreprise: any, client: any, outputStream: NodeJS.WritableStream): Promise<void> {
     let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
     if (entreprise.logo_path) {
-      const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
-      const logoAbs = fs.existsSync(logoPdf)
-        ? logoPdf
-        : path.resolve(process.cwd(), (entreprise.logo_path as string).replace(/^\//, ''));
-      if (fs.existsSync(logoAbs)) {
+      const logoAbs = resolveLogoAbsPath(entreprise);
+      if (logoAbs) {
         try {
           const meta = await sharp(logoAbs).metadata();
           const imgW = meta.width ?? 200; const imgH = meta.height ?? 80;

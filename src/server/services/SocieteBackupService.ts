@@ -160,13 +160,15 @@ export async function exporterSociete(entreprise_id: number): Promise<Buffer> {
     tables.push({ name: def.name, columns, rows });
   }
 
-  // Logo : logo_pdf.png (PDF) + fichier original référencé par logo_path (navigateur)
+  // Logo : logo_pdf_<id>.png (PDF) + fichier original référencé par logo_path (navigateur).
+  // Les noms intègrent l'entreprise_id pour éviter les collisions multi-tenant ;
+  // restaurerSociete() les renomme selon l'ID cible (utile en mode 'remap').
   const files: SocieteBackup['files'] = [];
-  const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
+  const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', `logo_pdf_${entreprise_id}.png`);
   if (fs.existsSync(logoPdf)) {
-    files.push({ path: 'storage/logo/logo_pdf.png', data: fs.readFileSync(logoPdf).toString('base64') });
+    files.push({ path: `storage/logo/logo_pdf_${entreprise_id}.png`, data: fs.readFileSync(logoPdf).toString('base64') });
   }
-  // Fichier original (ex. /storage/logo/logo.png) affiché dans le navigateur
+  // Fichier original (ex. /storage/logo/logo_<id>.png) affiché dans le navigateur
   const entLogoRow = tables.find(t => t.name === 'entreprise');
   const logoPathCol = entLogoRow?.columns.indexOf('logo_path') ?? -1;
   const logoPathVal = logoPathCol !== -1 ? (entLogoRow!.rows[0]?.[logoPathCol] as string | null) : null;
@@ -217,22 +219,42 @@ export async function restaurerSociete(
     tables: [],
   };
 
-  // Restaurer les fichiers (logo…) avant la transaction DB
+  // ID final de l'entreprise restaurée : inchangé en mode 'skip', recalculé en mode
+  // 'remap' (même règle que buildIdMap : MAX(id)+1, la table entreprise du backup
+  // ne contenant qu'une seule ligne). Sert à renommer les fichiers de logo et à
+  // réécrire entreprise.logo_path pour éviter toute collision multi-tenant.
+  const targetEntrepriseId = mode === 'remap'
+    ? ((await query(`SELECT COALESCE(MAX(id), 0)::int AS mx FROM entreprise`)).rows[0].mx as number) + 1
+    : backup.entreprise_id;
+
+  // Réécrit storage/logo/logo[_pdf]_<ancienId>.<ext> → storage/logo/logo[_pdf]_<targetId>.<ext>
+  const LOGO_NAME_RE = /^storage[\\/]logo[\\/]logo(_pdf)?_\d+(\.[^./\\]+)$/i;
+  const rewriteLogoPath = (relPath: string): string =>
+    relPath.replace(LOGO_NAME_RE, (_m, pdf, ext) => `storage/logo/logo${pdf ?? ''}_${targetEntrepriseId}${ext}`);
+
+  // Restaurer les fichiers (logo…) avant la transaction DB, renommés selon l'ID cible
   if (backup.files?.length) {
     for (const f of backup.files) {
-      const dest = path.resolve(process.cwd(), f.path);
+      const dest = path.resolve(process.cwd(), rewriteLogoPath(f.path));
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, Buffer.from(f.data, 'base64'));
     }
   }
 
-  // Si logo_pdf.png restauré mais fichier original absent → copie pour que le navigateur l'affiche
-  const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', 'logo_pdf.png');
+  // Réécrit entreprise.logo_path dans les données du backup pour pointer vers le
+  // fichier renommé (sinon la ligne restaurée référencerait l'ancien nom de fichier)
   const entTable = backup.tables.find(t => t.name === 'entreprise');
   const lpCol = entTable?.columns.indexOf('logo_path') ?? -1;
   const lpVal = lpCol !== -1 ? (entTable!.rows[0]?.[lpCol] as string | null) : null;
-  if (lpVal && fs.existsSync(logoPdf)) {
-    const origDest = path.resolve(process.cwd(), lpVal.replace(/^\//, ''));
+  if (lpVal && lpCol !== -1 && entTable) {
+    entTable.rows[0][lpCol] = rewriteLogoPath(lpVal.replace(/^\//, '')).replace(/^/, '/');
+  }
+
+  // Si logo_pdf_<id>.png restauré mais fichier original absent → copie pour que le navigateur l'affiche
+  const logoPdf = path.resolve(process.cwd(), 'storage', 'logo', `logo_pdf_${targetEntrepriseId}.png`);
+  const finalLpVal = lpCol !== -1 ? (entTable!.rows[0]?.[lpCol] as string | null) : null;
+  if (finalLpVal && fs.existsSync(logoPdf)) {
+    const origDest = path.resolve(process.cwd(), finalLpVal.replace(/^\//, ''));
     if (!fs.existsSync(origDest)) {
       fs.mkdirSync(path.dirname(origDest), { recursive: true });
       fs.copyFileSync(logoPdf, origDest);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FacturPro — Devis & Facturation France</title>
   <link rel="icon" type="image/x-icon" href="/storage/logo/facturpro.ico?v=2"/>
-  <link rel="stylesheet" href="/css/styles.css?v=1780238400000"/>
+  <link rel="stylesheet" href="/css/styles.css?v=1780849785429"/>
 </head>
 <body>
 
@@ -55,45 +55,79 @@
         <a href="#" class="nav-item" data-view="stats" data-perm="factures:r">
           <span class="nav-icon">📈</span> Statistiques
         </a>
-        <a href="#" class="nav-item" data-view="clients" data-perm="clients:r">
-          <span class="nav-icon">🧑</span> Clients
-        </a>
-        <a href="#" class="nav-item" data-view="devis" data-perm="devis:r">
-          <span class="nav-icon">📋</span> Devis <span id="badge-devis" style="display:none;background:#f59e0b;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px"></span>
-        </a>
-        <a href="#" class="nav-item" data-view="factures" data-perm="factures:r">
-          <span class="nav-icon">🧾</span> Factures <span id="badge-factures" style="display:none;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px"></span>
-        </a>
-        <a href="#" class="nav-item" data-view="factures-fournisseurs" data-perm="factures:r">
-          <span class="nav-icon">🛒</span> Fournisseurs
-        </a>
-        <a href="#" class="nav-item" data-view="avoirs" data-perm="factures:r">
-          <span class="nav-icon">↩️</span> Avoirs
-        </a>
-        <a href="#" class="nav-item" data-view="acomptes" data-perm="acomptes:r">
-          <span class="nav-icon">💰</span> Acomptes
-        </a>
-        <a href="#" class="nav-item" data-view="bons-livraison" data-perm="bl:r">
-          <span class="nav-icon">🚚</span> Bons de livraison
-        </a>
-        <a href="#" class="nav-item" data-view="articles" data-perm="articles:r">
-          <span class="nav-icon">📦</span> Articles
-        </a>
-        <a href="#" class="nav-item" data-view="audit" data-perm="settings:r">
-          <span class="nav-icon">🔍</span> Journal d'audit
-        </a>
-        <a href="#" class="nav-item" data-view="decl-tva" data-perm="factures:r">
-          <span class="nav-icon">📑</span> Déclaration TVA
-        </a>
-        <a href="#" class="nav-item" data-view="exercices" data-perm="factures:r">
-          <span class="nav-icon">📅</span> Exercices
-        </a>
-        <a href="#" class="nav-item" data-view="archives" data-perm="factures:r">
-          <span class="nav-icon">🗄️</span> Archives
-        </a>
-        <a href="#" class="nav-item" data-view="lettrage" data-perm="factures:r">
-          <span class="nav-icon">⚖️</span> Lettrage
-        </a>
+
+        <div class="nav-group" data-group="ventes">
+          <button type="button" class="nav-group-header" data-group-toggle="ventes">
+            <span class="nav-icon">🛍️</span> Ventes
+            <span class="nav-group-chevron">▾</span>
+          </button>
+          <div class="nav-group-items">
+            <a href="#" class="nav-item" data-view="clients" data-perm="clients:r">
+              <span class="nav-icon">🧑</span> Clients
+            </a>
+            <a href="#" class="nav-item" data-view="devis" data-perm="devis:r">
+              <span class="nav-icon">📋</span> Devis <span id="badge-devis" style="display:none;background:#f59e0b;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px"></span>
+            </a>
+            <a href="#" class="nav-item" data-view="factures" data-perm="factures:r">
+              <span class="nav-icon">🧾</span> Factures <span id="badge-factures" style="display:none;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px"></span>
+            </a>
+            <a href="#" class="nav-item" data-view="avoirs" data-perm="factures:r">
+              <span class="nav-icon">↩️</span> Avoirs
+            </a>
+            <a href="#" class="nav-item" data-view="acomptes" data-perm="acomptes:r">
+              <span class="nav-icon">💰</span> Acomptes
+            </a>
+            <a href="#" class="nav-item" data-view="bons-livraison" data-perm="bl:r">
+              <span class="nav-icon">🚚</span> Bons de livraison
+            </a>
+            <a href="#" class="nav-item" data-view="articles" data-perm="articles:r">
+              <span class="nav-icon">📦</span> Articles
+            </a>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group="achats">
+          <button type="button" class="nav-group-header" data-group-toggle="achats">
+            <span class="nav-icon">🛒</span> Achats
+            <span class="nav-group-chevron">▾</span>
+          </button>
+          <div class="nav-group-items">
+            <a href="#" class="nav-item" data-view="fournisseurs" data-perm="factures:r">
+              <span class="nav-icon">🏭</span> Fournisseurs
+            </a>
+            <a href="#" class="nav-item" data-view="commandes-fournisseurs" data-perm="factures:r">
+              <span class="nav-icon">📝</span> Commandes
+            </a>
+            <a href="#" class="nav-item" data-view="factures-fournisseurs" data-perm="factures:r">
+              <span class="nav-icon">📥</span> Factures d'achats
+            </a>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group="compta">
+          <button type="button" class="nav-group-header" data-group-toggle="compta">
+            <span class="nav-icon">🧮</span> Comptabilité
+            <span class="nav-group-chevron">▾</span>
+          </button>
+          <div class="nav-group-items">
+            <a href="#" class="nav-item" data-view="decl-tva" data-perm="factures:r">
+              <span class="nav-icon">📑</span> Déclaration TVA
+            </a>
+            <a href="#" class="nav-item" data-view="lettrage" data-perm="factures:r">
+              <span class="nav-icon">⚖️</span> Lettrage
+            </a>
+            <a href="#" class="nav-item" data-view="exercices" data-perm="factures:r">
+              <span class="nav-icon">📅</span> Exercices
+            </a>
+            <a href="#" class="nav-item" data-view="archives" data-perm="factures:r">
+              <span class="nav-icon">🗄️</span> Archives
+            </a>
+            <a href="#" class="nav-item" data-view="audit" data-perm="settings:r">
+              <span class="nav-icon">🔍</span> Journal d'audit
+            </a>
+          </div>
+        </div>
+
         <a href="#" class="nav-item" data-view="parametres" data-perm="settings:r">
           <span class="nav-icon">⚙️</span> Paramètres
           <span id="badge-update" style="display:none;background:#2563eb;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px">MAJ</span>
@@ -156,8 +190,9 @@
     </div>
   </div>
 
-  <script src="/js/components.js?v=1780700400000"></script>
-  <script src="/js/app.js?v=1780700400000"></script>
-  <script src="/js/editor.js?v=1780700400000"></script>
+  <script src="/js/components.js?v=1780849785429"></script>
+  <script src="/js/helpTexts.js?v=1780849785429"></script>
+  <script src="/js/app.js?v=1780849785429"></script>
+  <script src="/js/editor.js?v=1780849785429"></script>
 </body>
 </html>

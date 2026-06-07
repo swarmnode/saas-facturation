@@ -79,6 +79,68 @@ const btn = {
   trash:   (onclick, title='Supprimer') => `<button class="btn-trash" onclick="${onclick}" title="${title}">🗑️</button>`,
 };
 
+// ── Aide contextuelle ──────────────────────────────────────────────────────
+// Le dictionnaire des textes (helpTexts) vit dans helpTexts.js, chargé avant ce
+// script. Ici, seule la fonction de rendu (consommant ce dictionnaire) : elle pose
+// data-tooltip directement sur l'élément concerné — bulle au survol, sans icône visible.
+// Pour les éléments qui ne peuvent pas contenir de bulle (ex. <select>) : data-tooltip
+// sur l'élément lui-même, capté par le mécanisme générique ci-dessous.
+function helpAttr(key) {
+  const txt = helpTexts[key];
+  return txt ? ` data-tooltip="${txt.replace(/"/g, '&quot;')}"` : '';
+}
+
+// Bulle d'aide générique au survol : un seul élément flottant partagé, affiché
+// au-dessus de tout élément portant un attribut data-tooltip (icônes "?", <select>
+// de filtre, boutons…). Positionné en JS pour ne jamais être recouvert par le
+// curseur ni rogné par un conteneur avec overflow.
+let _appTooltipEl = null;
+function _appTooltip() {
+  if (!_appTooltipEl) {
+    _appTooltipEl = document.createElement('div');
+    _appTooltipEl.className = 'app-tooltip';
+    document.body.appendChild(_appTooltipEl);
+  }
+  return _appTooltipEl;
+}
+document.addEventListener('mouseover', e => {
+  if (!aideContextuelleActive()) return;
+  const el = e.target.closest('[data-tooltip]');
+  if (!el) return;
+  const txt = el.getAttribute('data-tooltip');
+  if (!txt) return;
+  const tt = _appTooltip();
+  tt.textContent = txt;
+  tt.style.display = 'block';
+  const r = el.getBoundingClientRect();
+  const tr = tt.getBoundingClientRect();
+  let left = r.left + r.width / 2 - tr.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tr.width - 8));
+  let top = r.top - tr.height - 12;
+  if (top < 8) top = r.bottom + 12; // pas assez de place au-dessus : afficher en-dessous
+  tt.style.left = `${left}px`;
+  tt.style.top = `${top}px`;
+});
+document.addEventListener('mouseout', e => {
+  const el = e.target.closest('[data-tooltip]');
+  if (!el || !_appTooltipEl) return;
+  if (el.contains(e.relatedTarget)) return;
+  _appTooltipEl.style.display = 'none';
+});
+
+function aideContextuelleActive() {
+  return localStorage.getItem('aide_contextuelle') !== '0';
+}
+
+function appliquerAideContextuelle() {
+  document.body.classList.toggle('aide-masquee', !aideContextuelleActive());
+}
+
+function toggleAideContextuelle(actif) {
+  localStorage.setItem('aide_contextuelle', actif ? '1' : '0');
+  appliquerAideContextuelle();
+}
+
 // ── Configuration par type de document ────────────────────────────────────
 const DOC_CONFIGS = {
   devis: {
@@ -87,7 +149,7 @@ const DOC_CONFIGS = {
       const s = _listFilters['devis']?.statut ? '' : '';
       const alerteActive = !!_listFilters['devis']?.alerte;
       return `
-        <select class="btn btn-outline" style="padding:5px 8px" onchange="setDocStatutFilter('devis',this.value)">
+        <select class="btn btn-outline" style="padding:5px 8px"${helpAttr('devis_statut')} onchange="setDocStatutFilter('devis',this.value)">
           <option value="">Tous les statuts</option>
           <option value="brouillon">Brouillon</option>
           <option value="envoye">Envoyé</option>
@@ -95,7 +157,7 @@ const DOC_CONFIGS = {
           <option value="accepte">Accepté</option>
           <option value="refuse">Refusé</option>
         </select>
-        <button id="btnDevisExpires" class="btn ${alerteActive?'btn-danger':'btn-outline'}" onclick="toggleDevisExpiresFilter()">${alerteActive?'✕ Voir tout':'⏰ Expirés'}</button>
+        <button id="btnDevisExpires" class="btn ${alerteActive?'btn-danger':'btn-outline'}" onclick="toggleDevisExpiresFilter()"${helpAttr('devis_expires')}>${alerteActive?'✕ Voir tout':'⏰ Expirés'}</button>
         <button class="btn btn-primary" onclick="DocEditor.openDevis()">+ Nouveau devis</button>`;
     },
     headers:  ['N°','Client','Objet','HT','TTC','Statut','Créé le','Validité'],
@@ -127,19 +189,19 @@ const DOC_CONFIGS = {
   factures: {
     api:      '/api/factures',
     topbar:   () => `
-      <button class="btn btn-outline" onclick="exportFEC()">Export FEC</button>
-      <button class="btn btn-outline" onclick="verifierScellement()">Vérifier scellement</button>
+      <button class="btn btn-outline" onclick="exportFEC()"${helpAttr('facture_fec')}>Export FEC</button>
+      <button class="btn btn-outline" onclick="verifierScellement()"${helpAttr('facture_scellement')}>Vérifier scellement</button>
       <button class="btn btn-outline" onclick="ouvrirAttestation()">📋 Attestation</button>
       <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
-      <select class="btn btn-outline" style="padding:5px 8px" onchange="setDocStatutFilter('factures',this.value)">
+      <select class="btn btn-outline" style="padding:5px 8px"${helpAttr('facture_statut')} onchange="setDocStatutFilter('factures',this.value)">
         <option value="">Tous les statuts</option>
         <option value="brouillon">Brouillon</option>
         <option value="emise">Émise</option>
         <option value="payee">Payée</option>
       </select>
       <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
-      <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none">🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
-      <button id="btnRetardFilter" class="btn btn-outline" onclick="toggleFacRetardFilter()">⚠️ En retard</button>
+      <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none"${helpAttr('facture_sepa')}>🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
+      <button id="btnRetardFilter" class="btn btn-outline" onclick="toggleFacRetardFilter()"${helpAttr('facture_retard')}>⚠️ En retard</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
     headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement','Retard'],
     sortKeys: [null,'numero','client_nom','montant_ht','montant_ttc','statut','date_emission',null,'date_echeance'],
@@ -219,7 +281,7 @@ const DOC_CONFIGS = {
   },
   'bons-livraison': {
     api:      '/api/bons-livraison',
-    topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button>`,
+    topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button><span class="help-icon" data-tooltip="${helpTexts.bl_statut.replace(/"/g,'&quot;')}" style="margin-left:14px">?</span>`,
     headers:  ['N°','Client','Date émission','Lieu','Statut'],
     sortKeys: ['numero','client_nom','date_emission','lieu_livraison','statut'],
     rowOpen:  b => `DocEditor.openBL(${b.id})`,
@@ -414,7 +476,9 @@ const tabMgr = (() => {
     clients:          { title: 'Clients',          icon: '👥' },
     devis:            { title: 'Devis',            icon: '📋' },
     factures:                { title: 'Factures',              icon: '🧾' },
-    'factures-fournisseurs': { title: 'Factures fournisseurs', icon: '🛒' },
+    'factures-fournisseurs': { title: 'Factures d\'achats',    icon: '🛒' },
+    fournisseurs:            { title: 'Fournisseurs',          icon: '🏭' },
+    'commandes-fournisseurs':{ title: 'Commandes',             icon: '📝' },
     avoirs:                  { title: 'Avoirs',                icon: '↩️' },
     acomptes:         { title: 'Acomptes',         icon: '💰' },
     'bons-livraison': { title: 'Bons de livraison', icon: '🚚' },
@@ -520,6 +584,7 @@ const tabMgr = (() => {
     document.getElementById('pageTitle').textContent = tab.title;
     document.querySelectorAll('.nav-item').forEach(n =>
       n.classList.toggle('active', tab.type === 'view' && n.dataset.view === tab.viewName));
+    if (typeof openNavGroupForActiveView === 'function') openNavGroupForActiveView();
 
     const panel = panels().querySelector(`.tab-panel[data-tid="${tabId}"]`);
 
@@ -681,6 +746,43 @@ document.querySelectorAll('.nav-item').forEach(el => {
   });
 });
 
+// ── Groupes de navigation repliables (Ventes / Achats / Comptabilité…) ────
+// État (ouvert/fermé) mémorisé par l'utilisateur ; le groupe contenant la vue
+// active s'ouvre toujours automatiquement, même s'il était replié.
+const NAV_GROUPS_KEY = 'navGroupsOpen';
+function _loadOpenGroups() {
+  try { return JSON.parse(localStorage.getItem(NAV_GROUPS_KEY)) || {}; } catch { return {}; }
+}
+function _saveOpenGroups(state) {
+  localStorage.setItem(NAV_GROUPS_KEY, JSON.stringify(state));
+}
+function setNavGroupOpen(name, open) {
+  const grp = document.querySelector(`.nav-group[data-group="${name}"]`);
+  if (grp) grp.classList.toggle('open', open);
+  const state = _loadOpenGroups();
+  state[name] = open;
+  _saveOpenGroups(state);
+}
+document.querySelectorAll('.nav-group-header').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const grp = btn.closest('.nav-group');
+    setNavGroupOpen(grp.dataset.group, !grp.classList.contains('open'));
+  });
+});
+// Ouvre automatiquement le groupe contenant la vue actuellement active
+function openNavGroupForActiveView() {
+  const active = document.querySelector('.nav-item.active');
+  const grp = active && active.closest('.nav-group');
+  if (grp) grp.classList.add('open');
+}
+(function initNavGroups() {
+  const state = _loadOpenGroups();
+  document.querySelectorAll('.nav-group').forEach(grp => {
+    if (state[grp.dataset.group]) grp.classList.add('open');
+  });
+  openNavGroupForActiveView();
+})();
+
 async function renderView(view, el) {
   if (!el) return;
   el.innerHTML = '<div class="empty"><p>Chargement…</p></div>';
@@ -695,6 +797,8 @@ async function renderView(view, el) {
     case 'devis':           return renderDocList('devis', el);
     case 'factures':               return renderDocList('factures', el);
     case 'factures-fournisseurs':  return renderFournisseurs(el);
+    case 'fournisseurs':           return renderFournisseursEntites(el);
+    case 'commandes-fournisseurs': return renderCommandes(el);
     case 'avoirs':                 return renderDocList('avoirs', el);
     case 'acomptes':        return renderDocList('acomptes', el);
     case 'bons-livraison':  return renderDocList('bons-livraison', el);
@@ -4542,7 +4646,7 @@ async function renderFournisseurs(el) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0">Factures fournisseurs</h2>
+        <h2 style="margin:0">Factures d'achats</h2>
         <div style="display:flex;gap:8px">
           <button class="btn btn-primary" id="btnNouveauFF">+ Nouvelle facture</button>
           <label class="btn btn-outline" style="cursor:pointer;margin:0" title="Importer un CSV">
@@ -4715,6 +4819,276 @@ async function renderFournisseurs(el) {
       };
     });
   }
+
+  await reload();
+}
+
+// ── Fournisseurs (fiche entité, sur le modèle de Clients) ────────────────
+async function renderFournisseursEntites(el) {
+  const fournisseurs = await api.get('/api/fournisseurs') ?? [];
+  document.getElementById('topbarActions').innerHTML = `
+    <button class="btn btn-primary" onclick="showFournisseurForm()">+ Nouveau fournisseur</button>
+    <button class="btn btn-outline" onclick="exportCSV('/api/fournisseurs/export','fournisseurs')">⬇ Exporter CSV</button>
+    <label class="btn btn-outline" style="cursor:pointer;margin:0;text-transform:none">⬆ Importer CSV
+      <input type="file" accept=".csv" style="display:none" onchange="importCSV('/api/fournisseurs/import',this,()=>renderFournisseursEntites(el))">
+    </label>`;
+
+  el.innerHTML = `<div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Raison sociale</th><th>Email</th><th>Téléphone</th>
+          <th>SIRET</th><th>Conditions de paiement</th><th></th>
+        </tr></thead>
+        <tbody>${fournisseurs.length ? fournisseurs.map(f => `
+          <tr>
+            <td><strong>${f.raison_sociale}</strong></td>
+            <td>${f.email || '—'}</td>
+            <td>${f.telephone || '—'}</td>
+            <td><code>${f.siret || '—'}</code></td>
+            <td>${f.conditions_paiement || '—'}</td>
+            <td style="display:flex;gap:4px">
+              <button class="btn btn-outline btn-sm" onclick="showFournisseurForm(${f.id})">Éditer</button>
+              <button class="btn-trash" onclick="deleteFournisseurEntite(${f.id})" title="Supprimer ce fournisseur">🗑️</button>
+            </td>
+          </tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun fournisseur</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function showFournisseurForm(id) {
+  const fournisseur = id ? (await api.get('/api/fournisseurs')).find(x => x.id === id) : {};
+  const html = `
+    <form id="fournisseurForm">
+      <div class="form-group"><label>Raison sociale *</label>
+        <input name="raison_sociale" value="${fournisseur.raison_sociale || ''}" required/>
+      </div>
+      <div class="form-group"><label>Adresse</label><input name="adresse" value="${fournisseur.adresse || ''}"/></div>
+      <div class="form-group"><label>Complément d'adresse</label><input name="adresse2" value="${fournisseur.adresse2 || ''}" placeholder="Bâtiment, étage, BP…"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>Code postal</label><input name="code_postal" value="${fournisseur.code_postal || ''}"/></div>
+        <div class="form-group"><label>Ville</label><input name="ville" value="${fournisseur.ville || ''}"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input name="email" type="email" value="${fournisseur.email || ''}"/></div>
+        <div class="form-group"><label>Téléphone</label><input name="telephone" value="${fournisseur.telephone || ''}"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SIRET</label><input name="siret" value="${fournisseur.siret || ''}"/></div>
+        <div class="form-group"><label>TVA Intracom</label><input name="tva_intracom" value="${fournisseur.tva_intracom || ''}"/></div>
+      </div>
+      <div class="form-group">
+        <label>Conditions de paiement <small style="font-weight:normal;color:var(--text-muted)">(pour information)</small></label>
+        <input name="conditions_paiement" list="cond-paiement-list-fourn" value="${fournisseur.conditions_paiement || ''}" placeholder="Ex : Paiement à 30 jours fin de mois"/>
+        <datalist id="cond-paiement-list-fourn">
+          <option value="Paiement comptant à réception de facture"/>
+          <option value="Paiement à 30 jours"/>
+          <option value="Paiement à 30 jours fin de mois"/>
+          <option value="Paiement à 45 jours fin de mois"/>
+          <option value="Paiement à 60 jours"/>
+        </datalist>
+      </div>
+      <details style="margin-top:8px;border:1px solid var(--border);border-radius:6px;padding:12px">
+        <summary style="font-weight:600;cursor:pointer;font-size:13px">🏦 Coordonnées bancaires (pour vos virements)</summary>
+        <div style="margin-top:12px" class="form-row">
+          <div class="form-group"><label>IBAN</label><input name="iban" value="${fournisseur.iban || ''}" placeholder="FR76 0000 0000 0000 0000 0000 000" style="font-family:monospace"/></div>
+          <div class="form-group"><label>BIC</label><input name="bic" value="${fournisseur.bic || ''}" placeholder="BNPAFRPPXXX" style="text-transform:uppercase"/></div>
+        </div>
+      </details>
+      <div class="form-group" style="margin-top:8px"><label>Notes</label>
+        <textarea name="notes" rows="2" style="width:100%;resize:vertical">${fournisseur.notes || ''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+        <button type="submit" class="btn btn-primary">${id ? 'Enregistrer' : 'Créer'}</button>
+      </div>
+    </form>`;
+
+  modal.show(id ? 'Modifier le fournisseur' : 'Nouveau fournisseur', html, body => {
+    attachSireneAutocomplete(body.querySelector('[name="raison_sociale"]'), body);
+    attachNominatimAutocomplete(body.querySelector('[name="adresse"]'), body);
+
+    const siretInp = body.querySelector('[name="siret"]');
+    const tvaInp   = body.querySelector('[name="tva_intracom"]');
+    if (siretInp && tvaInp) {
+      siretInp.addEventListener('blur', () => {
+        if (siretInp.value.trim() && !tvaInp.value.trim()) {
+          const tva = tvaFromSiret(siretInp.value);
+          if (tva) { tvaInp.value = tva; tvaInp.style.background = '#f0fdf4'; setTimeout(() => tvaInp.style.background = '', 1500); }
+        }
+      });
+    }
+    body.querySelector('#fournisseurForm').onsubmit = async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const r = id ? await api.put(`/api/fournisseurs/${id}`, data) : await api.post('/api/fournisseurs', data);
+      if (r?.error) return alert(r.error);
+      modal.hide();
+      tabMgr.openViewTab('fournisseurs');
+    };
+  });
+}
+
+async function deleteFournisseurEntite(id) {
+  if (!confirm('Supprimer ce fournisseur ? Cette action est irréversible.')) return;
+  const r = await api.delete(`/api/fournisseurs/${id}`);
+  if (r?.error) return alert(r.error);
+  tabMgr.openViewTab('fournisseurs');
+}
+
+// ── Commandes fournisseurs (chaînage non bloquant avec les factures d'achats)
+async function renderCommandes(el) {
+  let filtreStatut = 'all';
+  const STATUTS = {
+    en_cours:     { label: 'En cours',      badge: 'badge-warning' },
+    receptionnee: { label: 'Réceptionnée',  badge: 'badge-success' },
+    annulee:      { label: 'Annulée',       badge: 'badge-danger'  },
+  };
+
+  async function reload() {
+    const url = filtreStatut === 'all' ? '/api/commandes-fournisseurs' : `/api/commandes-fournisseurs?statut=${filtreStatut}`;
+    const commandes = await api.get(url) ?? [];
+
+    const rows = commandes.map(c => {
+      const livr = c.date_livraison_prevue ? new Date(c.date_livraison_prevue).toLocaleDateString('fr-FR') : '—';
+      const st = STATUTS[c.statut] || STATUTS.en_cours;
+      const lien = c.facture_fournisseur_id
+        ? `<span class="badge badge-info" title="Chaînage non bloquant — modifiable à tout moment">${c.facture_numero}</span>`
+        : `<span style="color:var(--text-muted)">— non liée —</span>`;
+      return `<tr>
+        <td>${new Date(c.date_commande).toLocaleDateString('fr-FR')}</td>
+        <td><strong>${c.fournisseur_nom}</strong></td>
+        <td>${c.numero}</td>
+        <td style="color:var(--text-muted);font-size:13px">${c.description ?? ''}</td>
+        <td style="text-align:right">${Number(c.montant_ht).toFixed(2)} €</td>
+        <td>${livr}</td>
+        <td><span class="badge ${st.badge}">${st.label}</span></td>
+        <td>${lien}</td>
+        <td style="white-space:nowrap">
+          <button class="btn-sm btn-outline" onclick="showCommandeForm(${c.id})">Éditer</button>
+          <button class="btn-sm btn-danger" onclick="deleteCommande(${c.id})">Supprimer</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const emptyRow = commandes.length === 0
+      ? `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:32px">Aucune commande fournisseur</td></tr>`
+      : '';
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">Commandes fournisseurs</h2>
+        <button class="btn btn-primary" id="btnNouvelleCmd">+ Nouvelle commande</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn ${filtreStatut==='all'          ? 'btn-primary' : 'btn-outline'}" onclick="window._cmdFiltre('all')">Toutes</button>
+        <button class="btn ${filtreStatut==='en_cours'     ? 'btn-primary' : 'btn-outline'}" onclick="window._cmdFiltre('en_cours')">En cours</button>
+        <button class="btn ${filtreStatut==='receptionnee' ? 'btn-primary' : 'btn-outline'}" onclick="window._cmdFiltre('receptionnee')">Réceptionnées</button>
+        <button class="btn ${filtreStatut==='annulee'      ? 'btn-primary' : 'btn-outline'}" onclick="window._cmdFiltre('annulee')">Annulées</button>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <table class="table">
+          <thead><tr>
+            <th>Date</th><th>Fournisseur</th><th>N° commande</th><th>Description</th>
+            <th style="text-align:right">Montant HT</th><th>Livraison prévue</th>
+            <th>Statut</th><th>Facture d'achat liée</th><th></th>
+          </tr></thead>
+          <tbody>${rows}${emptyRow}</tbody>
+        </table>
+      </div>`;
+
+    el.querySelector('#btnNouvelleCmd').onclick = () => showCommandeForm();
+  }
+
+  window._cmdFiltre = (s) => { filtreStatut = s; reload(); };
+
+  window.deleteCommande = async (id) => {
+    if (!confirm('Supprimer cette commande ? Cette action est irréversible (le chaînage non bloquant avec une éventuelle facture d\'achat sera également retiré).')) return;
+    await api.delete(`/api/commandes-fournisseurs/${id}`);
+    reload();
+  };
+
+  window.showCommandeForm = async (id) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const [commande, fournisseurs, facturesAchat] = await Promise.all([
+      id ? api.get(`/api/commandes-fournisseurs/${id}`) : Promise.resolve({}),
+      api.get('/api/fournisseurs') ?? [],
+      api.get('/api/factures-fournisseurs') ?? [],
+    ]);
+
+    const fournOpts = (fournisseurs || []).map(f =>
+      `<option value="${f.id}" ${commande.fournisseur_id === f.id ? 'selected' : ''}>${f.raison_sociale}</option>`).join('');
+    const factureOpts = (facturesAchat || []).map(f =>
+      `<option value="${f.id}" ${commande.facture_fournisseur_id === f.id ? 'selected' : ''}>${f.numero} — ${f.fournisseur_nom} (${Number(f.montant_ttc).toFixed(2)} €)</option>`).join('');
+
+    modal.show(id ? 'Modifier la commande' : 'Nouvelle commande', `
+      <form id="cmdForm" style="display:grid;gap:12px">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fournisseur *</label>
+            <select name="fournisseur_id" id="cmdFournSelect" required>
+              <option value="">Sélectionner…</option>
+              ${fournOpts}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Statut</label>
+            <select name="statut">
+              <option value="en_cours"     ${(commande.statut||'en_cours')==='en_cours'     ? 'selected' : ''}>En cours</option>
+              <option value="receptionnee" ${commande.statut==='receptionnee' ? 'selected' : ''}>Réceptionnée</option>
+              <option value="annulee"      ${commande.statut==='annulee'      ? 'selected' : ''}>Annulée</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Date de commande *</label>
+            <input name="date_commande" type="date" value="${commande.date_commande ? commande.date_commande.slice(0,10) : today}" required/>
+          </div>
+          <div class="form-group"><label>Livraison prévue</label>
+            <input name="date_livraison_prevue" type="date" value="${commande.date_livraison_prevue ? commande.date_livraison_prevue.slice(0,10) : ''}"/>
+          </div>
+          <div class="form-group"><label>Montant HT (€)</label>
+            <input name="montant_ht" type="number" step="0.01" min="0" value="${commande.montant_ht ?? ''}"/>
+          </div>
+        </div>
+        <div class="form-group"><label>Description</label>
+          <input name="description" value="${commande.description || ''}" placeholder="Objet de la commande"/>
+        </div>
+        <div class="form-group">
+          <label>Facture d'achat liée <small style="font-weight:normal;color:var(--text-muted)">— chaînage non bloquant : facultatif, modifiable à tout moment, sans incidence sur le scellement</small></label>
+          <select name="facture_fournisseur_id">
+            <option value="">— Aucune —</option>
+            ${factureOpts}
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+          <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+          <button type="submit" class="btn btn-primary">${id ? 'Enregistrer' : 'Créer'}</button>
+        </div>
+      </form>`, body => {
+      body.querySelector('#cmdForm').onsubmit = async e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const select = body.querySelector('#cmdFournSelect');
+        const fournisseur_nom = select.selectedOptions[0]?.textContent || commande.fournisseur_nom || '';
+        const data = {
+          fournisseur_id: fd.get('fournisseur_id') || null,
+          fournisseur_nom,
+          date_commande: fd.get('date_commande'),
+          date_livraison_prevue: fd.get('date_livraison_prevue') || null,
+          montant_ht: fd.get('montant_ht') || 0,
+          statut: fd.get('statut'),
+          description: fd.get('description') || null,
+          facture_fournisseur_id: fd.get('facture_fournisseur_id') || null,
+        };
+        const r = id ? await api.put(`/api/commandes-fournisseurs/${id}`, data) : await api.post('/api/commandes-fournisseurs', data);
+        if (r?.error) return alert(r.error);
+        modal.hide();
+        reload();
+      };
+    });
+  };
 
   await reload();
 }
@@ -6041,12 +6415,21 @@ function updateUserUI() {
       <div style="color:var(--text-muted);font-size:12px">${label}</div>
       ${ents.length > 1 ? `<button class="btn btn-outline btn-sm" style="margin-top:6px;width:100%" onclick="showSwitchCompany()">Changer de société</button>` : ''}
     </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);margin-bottom:8px;cursor:pointer">
+      <input type="checkbox" ${aideContextuelleActive()?'checked':''} onchange="toggleAideContextuelle(this.checked)">
+      Afficher les bulles d'aide (?)
+    </label>
     <button class="btn btn-outline btn-sm" style="width:100%" onclick="logout()">Déconnexion</button>
   `;
 
   // Masquer les éléments de navigation sans permission
   document.querySelectorAll('.nav-item[data-perm]').forEach(el => {
     el.style.display = can(el.dataset.perm) ? '' : 'none';
+  });
+  // Masquer un groupe entier si plus aucun de ses éléments n'est visible
+  document.querySelectorAll('.nav-group').forEach(grp => {
+    const hasVisible = [...grp.querySelectorAll('.nav-item')].some(el => el.style.display !== 'none');
+    grp.style.display = hasVisible ? '' : 'none';
   });
 }
 
@@ -6260,6 +6643,7 @@ async function initApp() {
   modal.init();
   modal2.init();
   initTabFilter();
+  appliquerAideContextuelle();
   updateUserUI();
   api.get('/api/entreprise').then(e => { if (e?.logo_path) updateSidebarLogo(e.logo_path); });
   checkUpdateBadge();

@@ -619,7 +619,7 @@ const DocEditor = (() => {
       <div class="e-tb-right">
         ${doc?.id?`<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>`:''}
         <button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>
-        <button class="btn btn-primary btn-sm e-save-btn">Enregistrer</button>
+        <button class="btn btn-primary btn-sm e-save-btn" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.doc_enregistrer) || ''}">Enregistrer</button>
       </div>
     </div>
     <div class="e-canvas">
@@ -972,6 +972,13 @@ const DocEditor = (() => {
       else b.onclick = fn;
       return b;
     };
+    // Bulle d'aide au survol DU bouton lui-même (texte centralisé dans helpTexts, app.js) —
+    // pas d'icône visible, juste data-tooltip capté par le mécanisme générique de app.js
+    const insHelp = (btnNode, key) => {
+      const txt = (typeof helpTexts !== 'undefined') && helpTexts[key];
+      if (txt) btnNode.setAttribute('data-tooltip', txt);
+      return btnNode;
+    };
 
     if (type==='devis' && id) {
       const s = doc?.statut;
@@ -979,7 +986,7 @@ const DocEditor = (() => {
         ins(mkBtn('✓ Accepté','btn-success',null,true));
         ins(mkBtn('🚚 → BL','btn-primary',()=>showBLFromDevisForm(id)));
         ins(mkBtn('🧾 Facturer','btn-outline',()=>showFactureFromDevisForm(id)));
-        ins(mkBtn('Signer','btn-outline',async()=>{if(!confirm('Signer ce devis ?'))return;await api.post(`/api/devis/${id}/signer`);tabMgr.closeTab(el.dataset.tid);tabMgr.openViewTab('devis');}));
+        insHelp(ins(mkBtn('Signer','btn-outline',async()=>{if(!confirm('Signer ce devis ?'))return;await api.post(`/api/devis/${id}/signer`);tabMgr.closeTab(el.dataset.tid);tabMgr.openViewTab('devis');})), 'devis_emettre');
       } else if (s==='signe') {
         ins(mkBtn('✓ Accepté','btn-success',null,true));
         ins(mkBtn('📝 Avenant','btn-warning',()=>showAvenantForm(id)));
@@ -995,26 +1002,26 @@ const DocEditor = (() => {
           tbRight.insertBefore(mkBtn('🧾 Facturer','btn-outline',()=>showFactureFromDevisForm(id)),accepterBtn.nextSibling.nextSibling);
         });
         ins(accepterBtn);
-        if(s==='envoye') ins(mkBtn('Signer','btn-outline',async()=>{if(!confirm('Signer ce devis ?'))return;await api.post(`/api/devis/${id}/signer`);tabMgr.closeTab(el.dataset.tid);tabMgr.openViewTab('devis');}));
+        if(s==='envoye') insHelp(ins(mkBtn('Signer','btn-outline',async()=>{if(!confirm('Signer ce devis ?'))return;await api.post(`/api/devis/${id}/signer`);tabMgr.closeTab(el.dataset.tid);tabMgr.openViewTab('devis');})), 'devis_emettre');
         ins(mkBtn('✉ Envoyer','btn-outline',()=>envoyerDevis(id)));
       }
     }
 
     // Boutons contextuels factures/avoirs en mode édition (brouillon)
     if ((type === 'facture' || type === 'avoir') && id && doc?.statut === 'brouillon') {
-      ins(mkBtn('Émettre & Envoyer', 'btn-outline', async () => {
+      insHelp(ins(mkBtn('Émettre & Envoyer', 'btn-outline', async () => {
         if (!confirm('Émettre cette facture ? Elle sera verrouillée définitivement.')) return;
         const r = await api.post(`/api/factures/${id}/emettre`);
         if (r?.error) { alert(r.error); return; }
         tabMgr.closeTab(el.dataset.tid);
         tabMgr.openViewTab(type === 'avoir' ? 'avoirs' : 'factures');
         setTimeout(() => envoyerFacture(id), 400);
-      }));
+      })), 'doc_emettre');
     }
 
     // Bouton → Facture pour les BL émis en mode édition
     if (type === 'bl' && id) {
-      ins(mkBtn('🧾 → Facture', 'btn-outline', () => factureFromBL(id)));
+      insHelp(ins(mkBtn('🧾 → Facture', 'btn-outline', () => factureFromBL(id))), 'bl_facture');
     }
 
     // Document existant : commencer en état "sauvegardé" jusqu'à la 1ère modification

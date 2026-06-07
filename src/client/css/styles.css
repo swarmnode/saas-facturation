@@ -76,6 +76,25 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); co
 .nav-item.active { background: rgba(255,255,255,.15); color: #fff; font-weight: 600; }
 .nav-icon { font-size: 26px; width: 32px; text-align: center; flex-shrink: 0; }
 
+/* ── Groupes de navigation repliables (Ventes / Achats / Comptabilité…) ──── */
+.nav-group-header {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 8px 14px; border: none; background: transparent; cursor: pointer;
+  border-radius: var(--radius); color: rgba(255,255,255,.8);
+  font: inherit; font-size: 15px; text-align: left; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.nav-group-header:hover { background: rgba(255,255,255,.1); color: #fff; }
+.nav-group-chevron { margin-left: auto; font-size: 11px; transition: transform .18s ease; opacity: .7; }
+.nav-group.open > .nav-group-header .nav-group-chevron { transform: rotate(180deg); }
+.nav-group-items {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 0; overflow: hidden; transition: max-height .22s ease;
+}
+.nav-group.open > .nav-group-items { max-height: 600px; }
+.nav-group-items .nav-item { padding-left: 38px; font-size: 14px; }
+.nav-group-items .nav-icon { font-size: 22px; width: 28px; }
+
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 .topbar {
@@ -719,4 +738,39 @@ select.e-cell { cursor:pointer; }
   /* ── Tableaux : éviter les coupures de page intempestives ─────────────── */
   table { break-inside: auto; }
   tr    { break-inside: avoid; }
+}
+
+/* ── Aide contextuelle ───────────────────────────────────────────────────── */
+.help-icon {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  align-self: center; flex: 0 0 18px;
+  width: 18px; height: 18px; min-width: 18px; min-height: 18px;
+  margin-left: 6px; border-radius: 50%;
+  background: var(--primary, #1A3A5C); color: #fff;
+  font-size: 12px; font-weight: 700; line-height: 1; cursor: help;
+  vertical-align: middle; user-select: none; opacity: .55;
+}
+.help-icon:hover { opacity: 1; }
+body.aide-masquee [data-tooltip] { pointer-events: none; }
+body.aide-masquee .help-icon { display: none !important; }
+
+/* Bulle d'aide générique (rectangle à coins arrondis, jaune pâle) : un seul
+   élément flottant, positionné en JS au-dessus de l'élément survolé — fonctionne
+   pour n'importe quel élément portant data-tooltip (icônes "?", <select>, etc.)
+   et ne risque pas d'être recouverte par le curseur ni rognée par un parent. */
+.app-tooltip {
+  position: fixed;
+  display: none;
+  background: #fffbcc;
+  color: #4a4222;
+  border: 1px solid #e3d585;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  padding: 6px 10px;
+  font-size: 12px; font-weight: 400; line-height: 1.4;
+  white-space: normal; text-align: left;
+  max-width: 280px;
+  pointer-events: none;
+  z-index: 9999;
 }

@@ -7,6 +7,7 @@ const PREFIXES: Record<string, string> = {
   ACOMPTE:  'AC',
   AVENANT:  'AVN',
   BL:       'BL',
+  COMMANDE: 'CMD',
 };
 
 export class NumerotationService {

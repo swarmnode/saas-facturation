@@ -34,6 +34,7 @@ const MIGRATION22_PATH = path.resolve(__dirname, 'migration_022_notif_echeance.s
 const MIGRATION23_PATH = path.resolve(__dirname, 'migration_023_factures_fournisseurs.sql');
 const MIGRATION24_PATH = path.resolve(__dirname, 'migration_024_comment_lines.sql');
 const MIGRATION25_PATH = path.resolve(__dirname, 'migration_025_commentaires_predefinis.sql');
+const MIGRATION26_PATH = path.resolve(__dirname, 'migration_026_fournisseurs_commandes.sql');
 
 let pool: Pool;
 
@@ -140,6 +141,9 @@ export async function initDb(): Promise<void> {
 
   const migration25 = fs.readFileSync(MIGRATION25_PATH, 'utf-8');
   await getPool().query(migration25);
+
+  const migration26 = fs.readFileSync(MIGRATION26_PATH, 'utf-8');
+  await getPool().query(migration26);
 
   await createDefaultAdmin();
 }

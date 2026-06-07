@@ -162,10 +162,10 @@ router.delete('/:id', requirePerm('clients:w'), async (req, res, next) => {
     if (!cr.rows[0]) return res.status(404).json({ error: 'Introuvable' });
 
     const docs = await query(
-      `SELECT 1 FROM devis WHERE client_id=$1 LIMIT 1
-       UNION ALL SELECT 1 FROM factures WHERE client_id=$1 LIMIT 1
-       UNION ALL SELECT 1 FROM acomptes WHERE client_id=$1 LIMIT 1
-       UNION ALL SELECT 1 FROM bons_livraison WHERE client_id=$1 LIMIT 1`,
+      `(SELECT 1 FROM devis WHERE client_id=$1 LIMIT 1)
+       UNION ALL (SELECT 1 FROM factures WHERE client_id=$1 LIMIT 1)
+       UNION ALL (SELECT 1 FROM acomptes WHERE client_id=$1 LIMIT 1)
+       UNION ALL (SELECT 1 FROM bons_livraison WHERE client_id=$1 LIMIT 1)`,
       [id]
     );
     if (docs.rows.length) return res.status(400).json({ error: 'Ce client a des documents associés. Supprimez-les d\'abord ou anonymisez le client (RGPD).' });

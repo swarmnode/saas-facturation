@@ -30,6 +30,7 @@ import exercicesRouter          from './routes/exercices';
 import facturesFournisseursRouter from './routes/factures-fournisseurs';
 import updateRouter               from './routes/update';
 import commentairesRouter         from './routes/commentaires';
+import maintenanceRouter          from './routes/maintenance';
 
 dotenv.config();
 
@@ -115,6 +116,7 @@ app.use('/api/exercices',              exercicesRouter);
 app.use('/api/factures-fournisseurs', facturesFournisseursRouter);
 app.use('/api/update',               updateRouter);
 app.use('/api/commentaires',         commentairesRouter);
+app.use('/api/maintenance',           maintenanceRouter);
 
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.resolve(__dirname, '../client/index.html'));

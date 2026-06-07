@@ -4914,6 +4914,7 @@ async function renderParametres(el) {
     ...(currentUser?.is_super_admin ? [{ id: 'backup', label: 'Sauvegarde' }] : []),
     ...(can('users:r')              ? [{ id: 'users',   label: 'Utilisateurs' }] : []),
     ...(currentUser?.is_super_admin ? [{ id: 'societes', label: 'Sociétés' }] : []),
+    ...(currentUser?.is_super_admin ? [{ id: 'maintenance', label: 'Maintenance BDD' }] : []),
     ...(currentUser?.is_super_admin ? [{ id: 'update',  label: 'Mises à jour' }] : []),
   ];
 
@@ -5410,12 +5411,119 @@ async function renderParametres(el) {
       case 'backup':     renderTabBackup(c);      break;
       case 'users':      renderUtilisateurs(c);   break;
       case 'societes':   renderSocietes(c);       break;
+      case 'maintenance': renderTabMaintenance(c); break;
       case 'update':     renderTabUpdate(c);      break;
     }
   }
 
   renderTabBar();
   renderContent();
+}
+
+// ── Maintenance base de données (super_admin) ────────────────────────────
+function renderTabMaintenance(c) {
+  c.innerHTML = `
+    <div class="card" style="max-width:680px">
+      <h3 style="margin-bottom:8px;color:var(--primary)">Maintenance de la base de données</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
+        Ces opérations sont normalement exécutées automatiquement en arrière-plan par PostgreSQL
+        (processus <code>autovacuum</code>). Les lancer manuellement ne présente aucun risque pour
+        vos données — elles ne modifient ni ne suppriment aucune donnée métier — mais peuvent
+        ralentir temporairement l'application, voire la rendre indisponible quelques instants pour
+        certaines options. À privilégier en dehors des heures d'utilisation.
+      </p>
+
+      <div style="border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+        <h4 style="margin:0 0 6px">VACUUM — Nettoyage de l'espace disque</h4>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px">
+          Récupère l'espace disque laissé par les lignes supprimées ou modifiées au fil du temps
+          (PostgreSQL ne les efface pas immédiatement, par conception). Utile après une grosse
+          suppression de données pour limiter le « gonflement » (bloat) des tables.
+        </p>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;margin:0 0 12px;font-weight:normal;text-transform:none">
+          <input type="checkbox" id="vacuumFull" style="width:auto;margin-top:2px"/>
+          <span>
+            <strong>Mode complet — FULL</strong> (option « forcer ») : réécrit entièrement les
+            tables pour récupérer le maximum d'espace possible (au lieu d'un nettoyage léger en
+            arrière-plan). <strong>Beaucoup plus efficace mais beaucoup plus lourd</strong> : verrouille
+            les tables concernées pendant toute la durée de l'opération — l'application sera
+            indisponible le temps du traitement. À réserver aux cas où l'espace disque devient
+            réellement critique, en dehors des heures d'utilisation.
+          </span>
+        </label>
+        <button id="btnVacuum" class="btn btn-outline">Lancer le nettoyage (VACUUM)</button>
+        <span id="vacuumResult" style="margin-left:10px;font-size:13px"></span>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+        <h4 style="margin:0 0 6px">ANALYZE — Mise à jour des statistiques</h4>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">
+          Recalcule les statistiques que PostgreSQL utilise pour choisir le plan d'exécution le
+          plus rapide pour vos requêtes. Utile après un import ou une suppression importante de
+          données pour que l'application reste réactive. Opération légère, sans verrouillage notable.
+        </p>
+        <button id="btnAnalyze" class="btn btn-outline">Lancer la mise à jour des statistiques (ANALYZE)</button>
+        <span id="analyzeResult" style="margin-left:10px;font-size:13px"></span>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:8px;padding:16px">
+        <h4 style="margin:0 0 6px">REINDEX — Reconstruction des index</h4>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">
+          Reconstruit tous les index de la base à neuf. Utile si une recherche ou un tri devient
+          anormalement lent (signe d'un index « boursouflé » ou abîmé), ou après une suppression
+          massive de données. <strong>Opération lourde</strong> : verrouille les tables concernées
+          pendant la reconstruction — l'application sera indisponible le temps du traitement. À
+          réserver à un usage ponctuel, en dehors des heures d'utilisation.
+        </p>
+        <button id="btnReindex" class="btn btn-outline">Lancer la reconstruction des index (REINDEX)</button>
+        <span id="reindexResult" style="margin-left:10px;font-size:13px"></span>
+      </div>
+    </div>`;
+
+  const wire = (btnId, resultId, run, label, getConfirmMsg) => {
+    const btn = c.querySelector(`#${btnId}`);
+    const result = c.querySelector(`#${resultId}`);
+    btn.onclick = async () => {
+      const confirmMsg = getConfirmMsg ? getConfirmMsg() : null;
+      if (confirmMsg && !confirm(confirmMsg)) return;
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = `${label} en cours…`;
+      result.textContent = '';
+      try {
+        const r = await run();
+        if (r?.error) {
+          result.innerHTML = `<span style="color:#DC2626">Erreur : ${r.error}</span>`;
+        } else {
+          const secondes = (r.duree_ms / 1000).toFixed(1);
+          result.innerHTML = `<span style="color:#16a34a">✓ Terminé en ${secondes} s</span>`;
+        }
+      } catch (e) {
+        result.innerHTML = `<span style="color:#DC2626">Erreur réseau.</span>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    };
+  };
+
+  const fullCheckbox = c.querySelector('#vacuumFull');
+
+  wire('btnVacuum', 'vacuumResult',
+    () => api.post('/api/maintenance/vacuum', { full: fullCheckbox.checked }),
+    'Nettoyage',
+    () => fullCheckbox.checked
+      ? 'Le mode complet (FULL) va verrouiller les tables et rendre l\'application indisponible le temps du traitement. Continuer ?'
+      : null);
+
+  wire('btnAnalyze', 'analyzeResult',
+    () => api.post('/api/maintenance/analyze', {}),
+    'Mise à jour des statistiques', null);
+
+  wire('btnReindex', 'reindexResult',
+    () => api.post('/api/maintenance/reindex', {}),
+    'Reconstruction des index',
+    () => 'La reconstruction des index va verrouiller les tables et rendre l\'application indisponible le temps du traitement. Continuer ?');
 }
 
 // ── Mises à jour (super_admin) ────────────────────────────────────────────

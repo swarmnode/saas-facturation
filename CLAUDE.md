@@ -31,7 +31,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–025 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–026 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
 - 005: `clients.adresse2` (complement d'adresse)
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
@@ -52,6 +52,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - 023: creates `factures_fournisseurs` table (supplier invoices); adds `facture_fournisseur_id` FK on `fec_ecritures`
 - 024: `type` column on `devis_lignes` / `factures_lignes` / `avenants_lignes` / `bons_livraison_lignes` to support comment-only lines
 - 025: creates `commentaires_predefinis` table (per-company catalogue of reusable comment texts; served via `GET/POST/DELETE /api/commentaires`)
+- 026: creates `fournisseurs` (supplier directory, CRUD mirrors `clients` incl. CSV export/import) and `commandes_fournisseurs` (purchase orders, numbered `CMD-YYYY-NNNN`); adds `factures_fournisseurs.fournisseur_id` (nullable FK). Purchase-side chaining (commande ↔ facture d'achat ↔ fournisseur) is **intentionally non-blocking**: no legal obligation to chain on the purchase side (unlike emitted documents), so all FKs are nullable and freely editable — do not add locking/sealing here
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -87,7 +88,9 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `audit` — GET `/api/audit` reads `audit_log`. The exported `logAudit()` helper is used by other routes to record sensitive actions.
 - `exercices` — GET `/api/exercices` lists fiscal years; POST `/api/exercices` opens one; POST `/api/exercices/:annee/cloturer` closes it (hashes FEC entries, returns a bilan PDF).
 - `chorus-pro` (on `factures` router) — POST `/api/factures/:id/chorus-pro` deposits the facture on Chorus Pro; GET `/api/factures/:id/chorus-pro/statut` refreshes its status.
-- `factures-fournisseurs` — GET `/api/factures-fournisseurs[?statut=recue|payee]` lists supplier invoices; POST `/` creates; POST `/:id/payer` marks paid; DELETE `/:id` removes (only `recue`); POST `/import-csv` imports a CSV file (multipart `csv` field) — parses FEC-style rows from compte 401.
+- `factures-fournisseurs` — GET `/api/factures-fournisseurs[?statut=recue|payee]` lists supplier invoices (UI label: "Factures d'achats", renamed to avoid ambiguity with the `fournisseurs` directory); POST `/` creates; POST `/:id/payer` marks paid; DELETE `/:id` removes (only `recue`); POST `/import-csv` imports a CSV file (multipart `csv` field) — parses FEC-style rows from compte 401.
+- `fournisseurs` — supplier directory, CRUD mirroring `clients` (`requirePerm('factures:r'|'factures:w')`); GET `/export` and POST `/import` for CSV (same `toCSV`/`parseCSV` utilities as clients).
+- `commandes-fournisseurs` — purchase orders; numbered via `NumerotationService` with the `COMMANDE` type (prefix `CMD`); optional `fournisseur_id` and `facture_fournisseur_id` links are nullable and freely editable in both directions (non-blocking chaining, see migration 026).
 - `update` (`src/server/routes/update.ts`) — GET `/api/update/check` (`settings:r` permission) compares `package.json` version against the latest GitHub release and reports an `update_type` of `light` or `heavy` depending on which asset is attached; POST `/api/update/apply` (`is_super_admin` only) applies it. Requires `UPDATE_GITHUB_REPO=owner/repo` in `.env`. Two update paths, chosen by `getUpdateAsset()` (light preferred when both are present):
   - **Light** (`FacturPro-Patch.zip` asset): downloaded to `os.tmpdir()`, expanded **in-process** over `INSTALL_DIR` via `execFileSync('powershell.exe', ['Expand-Archive', ...])`, then `process.exit(0)` — NSSM detects the dead process and restarts the service. `schtasks` and detached `spawn` were tried first and failed silently on this server; `execFileSync` + `process.exit(0)` is the only approach that works reliably. The zip is archived to `updates/FacturPro-Patch-<version>.zip` and progress is logged to `logs/patch-apply.log`.
   - **Heavy** (`FacturPro-Setup.exe` asset, fallback): downloaded to `os.tmpdir()`, then scheduled via Windows `schtasks /create /sc ONCE /ru SYSTEM` to run `/VERYSILENT /NORESTART` 30 seconds later (lets the HTTP response return first); archived to `updates/FacturPro-Setup-<version>.exe`, logged to `logs/update-install.log`.

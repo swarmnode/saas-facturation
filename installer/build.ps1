@@ -7,7 +7,7 @@
 param(
     [string]$NodeVersion = "20.19.1",
     [string]$NssmVersion = "2.24",
-    [string]$PgVersion   = "17.5-2"    # format EDB : postgresql-{PgVersion}-windows-x64.exe
+    [string]$PgVersion   = "17.5-2"    # format EDB : postgresql-{PgVersion}-windows-x64-binaries.zip
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,7 +16,7 @@ $Installer = $PSScriptRoot
 $Payload   = "$Installer\payload"
 $Tools     = "$Installer\tools"
 
-function Step($n, $msg) { Write-Host "[$n/7] $msg" -ForegroundColor Cyan }
+function Step($n, $msg) { Write-Host "[$n/6] $msg" -ForegroundColor Cyan }
 function OK  ($msg)      { Write-Host "  OK : $msg"  -ForegroundColor Green }
 function Fail($msg)      { Write-Host "  ERREUR : $msg" -ForegroundColor Red; exit 1 }
 
@@ -82,44 +82,72 @@ if (Test-Path "$NodeDir\node.exe") {
     OK "Node.js portable : $NodeDir"
 }
 
-# -- 5. PostgreSQL installer (bundle) -------------------------------------------
-Step 5 "PostgreSQL $PgVersion installer (bundle dans l'installateur)"
-$PgInstallerDest = "$Tools\pg17-installer.exe"
-$PgMinSize = 200MB
-$pgNeedsDownload = $true
-if (Test-Path $PgInstallerDest) {
-    $pgSize = (Get-Item $PgInstallerDest).Length
-    if ($pgSize -ge $PgMinSize) {
-        OK "Deja present : $PgInstallerDest"
-        $pgNeedsDownload = $false
-    } else {
-        Write-Host "  Fichier corrompu ($([math]::Round($pgSize/1MB))Mo), re-telechargement..."
-        Remove-Item $PgInstallerDest -Force
+# -- 5. PostgreSQL portable (binaries-only, sans installeur) --------------------
+Step 5 "PostgreSQL $PgVersion portable (binaries-only)"
+$PgDir     = "$Tools\pgsql"
+$PgMinSize = 80MB   # zip binaries-only : ~130 Mo
+
+if (Test-Path "$PgDir\bin\postgres.exe") {
+    OK "Deja present : $PgDir"
+} else {
+    $PgZip = "$Tools\pg-binaries.zip"
+    $PgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-windows-x64-binaries.zip"
+    $pgNeedsDownload = $true
+
+    if (Test-Path $PgZip) {
+        $pgSize = (Get-Item $PgZip).Length
+        if ($pgSize -ge $PgMinSize) {
+            Write-Host "  ZIP deja present ($([math]::Round($pgSize/1MB))Mo), extraction directe..."
+            $pgNeedsDownload = $false
+        } else {
+            Write-Host "  ZIP corrompu ($([math]::Round($pgSize/1MB))Mo), re-telechargement..."
+            Remove-Item $PgZip -Force
+        }
     }
-}
-if ($pgNeedsDownload) {
-    $PgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-windows-x64.exe"
-    Write-Host "  Telechargement de PostgreSQL $PgVersion (~300 Mo)..."
-    Write-Host "  URL : $PgUrl"
-    try {
-        Import-Module BitsTransfer -ErrorAction Stop
-        Start-BitsTransfer -Source $PgUrl -Destination $PgInstallerDest -DisplayName "PostgreSQL $PgVersion"
-    } catch {
-        # Fallback Invoke-WebRequest si BITS indisponible
-        Invoke-WebRequest -Uri $PgUrl -OutFile $PgInstallerDest -UseBasicParsing
+
+    if ($pgNeedsDownload) {
+        Write-Host "  Telechargement PostgreSQL $PgVersion binaries (~130 Mo)..."
+        Write-Host "  URL : $PgUrl"
+        try {
+            Import-Module BitsTransfer -ErrorAction Stop
+            Start-BitsTransfer -Source $PgUrl -Destination $PgZip -DisplayName "PostgreSQL $PgVersion binaries"
+        } catch {
+            Invoke-WebRequest -Uri $PgUrl -OutFile $PgZip -UseBasicParsing
+        }
+        $pgSizeFinal = (Get-Item $PgZip -ErrorAction SilentlyContinue).Length
+        if ($null -eq $pgSizeFinal -or $pgSizeFinal -lt $PgMinSize) {
+            if (Test-Path $PgZip) { Remove-Item $PgZip -Force }
+            Write-Host ""
+            Write-Host "ERREUR : telechargement de PostgreSQL echoue ou incomplet." -ForegroundColor Red
+            Write-Host "Placez manuellement postgresql-$PgVersion-windows-x64-binaries.zip dans :" -ForegroundColor Yellow
+            Write-Host "  $PgZip" -ForegroundColor Cyan
+            Write-Host "Telechargez depuis : $PgUrl" -ForegroundColor Cyan
+            Write-Host "puis relancez build.ps1" -ForegroundColor Yellow
+            exit 1
+        }
+        OK "ZIP telecharge : $PgZip ($([math]::Round($pgSizeFinal/1MB))Mo)"
     }
-    $pgSizeFinal = (Get-Item $PgInstallerDest -ErrorAction SilentlyContinue).Length
-    if ($null -eq $pgSizeFinal -or $pgSizeFinal -lt $PgMinSize) {
-        if (Test-Path $PgInstallerDest) { Remove-Item $PgInstallerDest -Force }
-        Write-Host ""
-        Write-Host "ERREUR : telechargement de PostgreSQL echoue ou incomplet." -ForegroundColor Red
-        Write-Host "Placez manuellement postgresql-$PgVersion-windows-x64.exe dans :" -ForegroundColor Yellow
-        Write-Host "  $PgInstallerDest" -ForegroundColor Cyan
-        Write-Host "Telechargez depuis : $PgUrl" -ForegroundColor Cyan
-        Write-Host "puis relancez build.ps1" -ForegroundColor Yellow
-        exit 1
+
+    # Extraction : le ZIP contient un dossier racine "pgsql"
+    Write-Host "  Extraction..."
+    $PgTmp = "$Tools\pg-tmp"
+    if (Test-Path $PgTmp) { Remove-Item $PgTmp -Recurse -Force }
+    Expand-Archive -Path $PgZip -DestinationPath $PgTmp -Force
+
+    # Le zip EDB contient directement un sous-dossier "pgsql"
+    $Extracted = Get-ChildItem $PgTmp | Select-Object -First 1
+    Move-Item $Extracted.FullName $PgDir
+    Remove-Item $PgTmp  -Recurse -Force
+    Remove-Item $PgZip  -Force
+
+    # Supprimer les fichiers inutiles pour reduire la taille du bundle
+    @("symbols", "doc", "include") | ForEach-Object {
+        $d = "$PgDir\$_"
+        if (Test-Path $d) { Remove-Item $d -Recurse -Force; Write-Host "  Supprime : $_" }
     }
-    OK "PostgreSQL installer : $PgInstallerDest ($([math]::Round($pgSizeFinal/1MB))Mo)"
+
+    $pgBinSize = [math]::Round((Get-ChildItem $PgDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB)
+    OK "PostgreSQL portable : $PgDir ($pgBinSize Mo)"
 }
 
 # -- 6. NSSM --------------------------------------------------------------------
@@ -163,13 +191,16 @@ if (Test-Path $NssmExe) {
     OK "NSSM : $NssmExe"
 }
 
-# -- 7. Resume ------------------------------------------------------------------
-Step 7 "Resume"
+# -- Resume ---------------------------------------------------------------------
 Write-Host ""
-Write-Host "  Payload    : $Payload"         -ForegroundColor White
-Write-Host "  Node       : $NodeDir"          -ForegroundColor White
-Write-Host "  NSSM       : $NssmExe"          -ForegroundColor White
-Write-Host "  PostgreSQL : $PgInstallerDest"  -ForegroundColor White
+Write-Host "======================================" -ForegroundColor Cyan
+Write-Host "  Resume"                              -ForegroundColor Cyan
+Write-Host "======================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Payload    : $Payload"              -ForegroundColor White
+Write-Host "  Node       : $NodeDir"               -ForegroundColor White
+Write-Host "  NSSM       : $NssmExe"               -ForegroundColor White
+Write-Host "  PostgreSQL : $PgDir (portable)"      -ForegroundColor White
 Write-Host ""
 Write-Host "Prochaine etape :" -ForegroundColor Yellow
 Write-Host "  Compilez installer/FacturPro.iss avec Inno Setup (ISCC.exe ou IDE Inno Setup)"

@@ -50,8 +50,8 @@ Source: "tools\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsu
 ; NSSM
 Source: "tools\nssm.exe"; DestDir: "{app}\tools"; Flags: ignoreversion
 
-; Installateur PostgreSQL 17 (EDB one-click, exécuté silencieusement par Configure.ps1)
-Source: "tools\pg17-installer.exe"; DestDir: "{app}\tools"; Flags: ignoreversion
+; PostgreSQL 17 portable (binaries-only, initialisé par Configure.ps1 via initdb)
+Source: "tools\pgsql\*"; DestDir: "{app}\pgsql"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 ; Script de configuration (exécuté après l'extraction)
 Source: "scripts\Configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -66,6 +66,7 @@ Source: "facturpro.ico"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{app}\storage\logo"
 Name: "{app}\storage\pdf"
 Name: "{app}\logs"
+Name: "{app}\pgdata"
 
 [Icons]
 Name: "{group}\{#AppName}";           Filename: "{app}\FacturPro.url"; IconFilename: "{app}\facturpro.ico"
@@ -111,8 +112,9 @@ begin
   PagePostgres := CreateInputQueryPage(wpSelectDir,
     'Configuration PostgreSQL',
     'Mot de passe du superutilisateur PostgreSQL',
-    'Si PostgreSQL est déjà installé sur ce poste, entrez son mot de passe superutilisateur.' + #13#10 +
-    'Sinon, laissez la valeur par défaut — PostgreSQL sera installé automatiquement avec ce mot de passe.');
+    'FacturPro inclut PostgreSQL intégré — aucune installation séparée requise.' + #13#10 +
+    'Si PostgreSQL est déjà installé sur ce poste, son installation existante sera utilisée.' + #13#10 +
+    'Choisissez un mot de passe pour le compte superutilisateur « postgres ».');
   PagePostgres.Add('Mot de passe superutilisateur (postgres) :', True);
   PagePostgres.Values[0] := 'postgres';
 

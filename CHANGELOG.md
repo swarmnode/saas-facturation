@@ -58,10 +58,14 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: mettre à jour CLAUDE.md (migration 025 + double mécanisme de mise à jour léger/lourd)
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
 - Chore: bump v2.20.10 pour tester la mise à jour à distance
+- Chore: bump v2.20.11 pour publier la suppression de societe et la maintenance BDD
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [2.20.9] — 2026-06-06

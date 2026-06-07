@@ -5,9 +5,59 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 
 ## [Non publié]
 
+### Ajouté
+- Feat: permettre au super-admin de supprimer une societe avec sauvegarde imposee
+
+Ajoute DELETE /api/entreprise/:id (super-admin uniquement) qui genere
+systematiquement un export complet de la societe sur disque avant toute
+suppression, puis supprime les donnees liees dans l'ordre inverse des FK
+au sein d'une transaction. Si la societe a deja emis des documents
+scelles/archives, les triggers ISCA bloquent l'operation (conformite
+loi anti-fraude TVA) et un message clair est renvoye, en rappelant que
+la sauvegarde a neanmoins ete creee.
+
+Cote client, ajoute un assistant de confirmation a 3 etapes (avertissement,
+acquittement de la sauvegarde automatique, saisie de la raison sociale) pour
+eviter toute suppression accidentelle.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: ajouter des outils de maintenance BDD pour le super-admin (VACUUM/ANALYZE/REINDEX)
+
+Ajoute un onglet "Maintenance BDD" dans Parametres (super-admin uniquement)
+avec trois operations PostgreSQL documentees directement a cote des boutons :
+- VACUUM (avec option "forcer" = VACUUM FULL, plus efficace mais verrouille
+  les tables le temps du traitement, confirmation requise)
+- ANALYZE (mise a jour des statistiques du planificateur de requetes)
+- REINDEX (reconstruction des index, confirmation requise car verrouillant)
+
+Cote backend, nouvelle route /api/maintenance (vacuum/analyze/reindex),
+protegee par requireSuperAdmin, executee hors transaction via un client
+dedie du pool, et journalisee dans l'audit log.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Corrigé
+- Fix: scoper le stockage des logos par entreprise_id (multi-tenant)
+
+Tous les logos étaient écrits sous des noms de fichiers fixes
+(logo.<ext>, logo_pdf.png) dans storage/logo/ : la dernière société
+à uploader écrasait le logo de toutes les autres. Les fichiers sont
+désormais nommés logo_<entreprise_id>.<ext> et
+logo_pdf_<entreprise_id>.png.
+
+Adapte en conséquence FacturXService (helper resolveLogoAbsPath),
+editor.js (helper logoPdfUrl) et SocieteBackupService — dont la
+restauration en mode 'remap', qui doit renommer les fichiers et
+réécrire entreprise.logo_path selon le nouvel ID attribué.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: mettre à jour CLAUDE.md (migration 025 + double mécanisme de mise à jour léger/lourd)
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications

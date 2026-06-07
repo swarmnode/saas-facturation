@@ -23,6 +23,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: mettre a jour le manuel utilisateur pour la v3.0.0
+
+Ajoute le chapitre Achats (Fournisseurs, Commandes, Factures d'achats),
+la gestion des societes (creation/edition/suppression), la sauvegarde/
+restauration par societe et la maintenance de la base de donnees,
+avec captures d'ecran a l'appui. Regenere le docx via pandoc.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

@@ -32,6 +32,15 @@ restauration par societe et la maintenance de la base de donnees,
 avec captures d'ecran a l'appui. Regenere le docx via pandoc.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: mettre a jour le manuel utilisateur pour la nouvelle barre laterale categorisee
+
+La navigation laterale a ete reorganisee en categories repliables (Ventes,
+Achats, Comptabilite). Reecriture de la section Navigation laterale et
+recapture du screenshot du tableau de bord pour refleter la nouvelle
+structure.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

@@ -41,6 +41,15 @@ recapture du screenshot du tableau de bord pour refleter la nouvelle
 structure.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: corriger la table des matieres du manuel (titre francais + champ fonctionnel)
+
+Pandoc generait un titre "Table of Contents" en anglais et un champ Word
+vide sans entrees ni numeros de page (necessitant une mise a jour manuelle
+F9). Ajout de toc-title en francais dans l'entete YAML et activation de
+updateFields pour que la table se calcule automatiquement a l'ouverture.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

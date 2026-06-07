@@ -6,6 +6,28 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [Non publié]
 
 ### Ajouté
+- Feat: ajouter Fournisseurs et Commandes d'achats avec chainage non bloquant
+
+Nouveau groupe Achats enrichi : fiche Fournisseurs (CRUD calque sur Clients,
+export/import CSV) et Commandes fournisseurs avec lien optionnel et non
+verrouillant vers une facture d'achat (aucune obligation legale de chainage
+cote achats, contrairement aux documents emis). "Fournisseurs" est renomme
+en "Factures d'achats" pour lever l'ambiguite avec la nouvelle entite.
+
+Generalise aussi les bulles d'aide au survol (data-tooltip directement sur
+les elements, sans icone visible) et regroupe la sidebar en categories
+repliables (Ventes / Achats / Comptabilite) persistees en localStorage.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+### Documentation
+- Docs: update CHANGELOG.md [skip ci]
+
+
+## [2.20.11] — 2026-06-07
+
+### Ajouté
 - Feat: permettre au super-admin de supprimer une societe avec sauvegarde imposee
 
 Ajoute DELETE /api/entreprise/:id (super-admin uniquement) qui genere
@@ -1898,6 +1920,7 @@ Signed-off-by: dependabot[bot] <support@github.com>
 - Initial commit — FacturPro SaaS devis/facturation France
 
 
+[2.20.11]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.11
 [2.20.9]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.9
 [2.20.8]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.8
 [2.20.7]: https://github.com/swarmnode/saas-facturation/releases/tag/v2.20.7

@@ -4,6 +4,7 @@ author: "Équipe FacturPro"
 date: "2026"
 lang: fr
 toc: true
+toc-title: "Table des matières"
 toc-depth: 3
 numbersections: true
 geometry: margin=2.5cm

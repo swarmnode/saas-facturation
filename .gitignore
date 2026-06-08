@@ -22,6 +22,10 @@ test_flux.js
 /scripts/
 /database/
 
+# Artefacts Playwright
+/test-results/
+/playwright-report/
+
 # Anciens documents
 Manuel_FacturPro.docx
 

@@ -131,6 +131,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -161,6 +162,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.2.1
+- Chore: bump v3.2.2
 
 
 ## [3.0.0] — 2026-06-07

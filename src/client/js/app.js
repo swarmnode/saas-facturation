@@ -958,7 +958,7 @@ async function renderDeclTVA(el) {
       <div style="max-width:800px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:10px;padding:32px;font-family:'Helvetica Neue',sans-serif">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #1a3a5c">
           <div>
-            <div style="font-size:20px;font-weight:700;color:#1a3a5c">DÉCLARATION DE TVA</div>
+            <div style="font-size:20px;font-weight:700;color:#1a3a5c">DÉCLARATION DE TVA <span class="help-icon" data-tooltip="${helpTexts.decl_tva.replace(/"/g,'&quot;')}">?</span></div>
             <div style="font-size:14px;color:#555;margin-top:4px">Formulaire CA3 — ${d.periode}</div>
           </div>
           <div style="text-align:right;font-size:12px;color:#555">
@@ -3125,7 +3125,7 @@ async function renderExercices(el) {
                   <button class="btn btn-outline" style="font-size:12px"
                     onclick="ouvrirPV(${e.annee})">📄 PV</button>
                 ` : `
-                  <button class="btn btn-primary" style="font-size:12px"
+                  <button class="btn btn-primary" style="font-size:12px" data-tooltip="${helpTexts.exercice_cloturer.replace(/"/g,'&quot;')}"
                     onclick="cloturer(${e.annee}, '${e.date_ouverture}')">🔒 Clôturer</button>
                 `}
               </td>
@@ -4646,7 +4646,7 @@ async function renderFournisseurs(el) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0">Factures d'achats</h2>
+        <h2 style="margin:0">Factures d'achats <span class="help-icon" data-tooltip="${helpTexts.facture_fournisseur_statut.replace(/"/g,'&quot;')}">?</span></h2>
         <div style="display:flex;gap:8px">
           <button class="btn btn-primary" id="btnNouveauFF">+ Nouvelle facture</button>
           <label class="btn btn-outline" style="cursor:pointer;margin:0" title="Importer un CSV">
@@ -4978,7 +4978,7 @@ async function renderCommandes(el) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0">Commandes fournisseurs</h2>
+        <h2 style="margin:0">Commandes fournisseurs <span class="help-icon" data-tooltip="${helpTexts.commande_chainage.replace(/"/g,'&quot;')}">?</span></h2>
         <button class="btn btn-primary" id="btnNouvelleCmd">+ Nouvelle commande</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -5170,7 +5170,7 @@ async function renderLettrage(el) {
     return `
       <div class="card" style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-          <h3 style="margin:0;flex:1">Lettrage — compte 411 Clients</h3>
+          <h3 style="margin:0;flex:1">Lettrage — compte 411 Clients <span class="help-icon" data-tooltip="${helpTexts.lettrage.replace(/"/g,'&quot;')}">?</span></h3>
           <select id="letClientFilter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px">
             ${clientNames.map(n => `<option value="${n}" ${n === filtreClient ? 'selected' : ''}>${n}</option>`).join('')}
           </select>

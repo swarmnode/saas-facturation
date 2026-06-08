@@ -16,4 +16,9 @@ const helpTexts = {
   doc_enregistrer: "Enregistre le document. Tant qu'il reste au statut « Brouillon », il peut être modifié et réenregistré librement.",
   bl_statut:       "Cycle de vie du bon de livraison : Brouillon → Émis → Livré. Le passage à « Livré » peut décrémenter le stock des articles suivis.",
   bl_facture:      "Crée une facture reprenant les lignes de ce bon de livraison — pratique pour facturer après livraison effective.",
+  exercice_cloturer: "Clôture définitive de l'exercice : toutes les écritures comptables de l'année sont hachées (SHA-256) et le résultat est figé dans un procès-verbal. Un exercice clôturé ne peut plus être rouvert (loi anti-fraude TVA 2018).",
+  lettrage:        "Rapproche les paiements reçus (compte 411 Clients) avec les factures correspondantes : sélectionnez les écritures dont la somme s'équilibre puis lettrez-les pour les marquer comme soldées. Le lettrage automatique se fait déjà à l'encaissement d'une facture.",
+  facture_fournisseur_statut: "Cycle de vie d'une facture d'achat : Reçue → Payée. Contrairement aux documents émis, ce circuit n'est pas verrouillé par la loi anti-fraude TVA — une facture reçue peut être supprimée (les écritures FEC et la TVA déductible sont alors recalculées).",
+  commande_chainage: "Le lien entre une commande, une facture d'achat et un fournisseur est volontairement non bloquant : aucune obligation légale de chaînage côté achats (contrairement aux documents émis), donc ces liens restent modifiables librement à tout moment.",
+  decl_tva:        "Formulaire CA3 généré automatiquement à partir des écritures FEC : section A = TVA collectée sur les ventes, section B = TVA déductible sur les achats (saisie manuelle pour l'instant), section C = solde à payer ou crédit de TVA.",
 };

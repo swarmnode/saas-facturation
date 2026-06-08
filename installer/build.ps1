@@ -16,13 +16,26 @@ $Installer = $PSScriptRoot
 $Payload   = "$Installer\payload"
 $Tools     = "$Installer\tools"
 
-function Step($n, $msg) { Write-Host "[$n/6] $msg" -ForegroundColor Cyan }
+function Step($n, $msg) { Write-Host "[$n/7] $msg" -ForegroundColor Cyan }
 function OK  ($msg)      { Write-Host "  OK : $msg"  -ForegroundColor Green }
 function Fail($msg)      { Write-Host "  ERREUR : $msg" -ForegroundColor Red; exit 1 }
 
-Write-Host "======================================"  -ForegroundColor Cyan
-Write-Host "  Build FacturPro - package installeur" -ForegroundColor Cyan
-Write-Host "======================================"  -ForegroundColor Cyan
+# -- Lecture version depuis package.json ----------------------------------------
+$PkgJson = Get-Content "$Root\package.json" -Raw | ConvertFrom-Json
+$AppVersion = $PkgJson.version
+if (-not $AppVersion -or $AppVersion -eq '0.0.0') { Fail "Version invalide dans package.json : '$AppVersion'" }
+
+Write-Host "========================================"  -ForegroundColor Cyan
+Write-Host "  Build FacturPro v$AppVersion - installeur" -ForegroundColor Cyan
+Write-Host "========================================"  -ForegroundColor Cyan
+
+# -- 0. Synchronisation version dans FacturPro.iss ------------------------------
+Step 0 "Synchronisation version -> FacturPro.iss ($AppVersion)"
+$IssPath = "$Installer\FacturPro.iss"
+$IssContent = Get-Content $IssPath -Raw
+$IssContent = $IssContent -replace '#define AppVersion\s+"[^"]*"', "#define AppVersion `"$AppVersion`""
+Set-Content $IssPath $IssContent -Encoding utf8
+OK "FacturPro.iss mis a jour (AppVersion = $AppVersion)"
 
 # -- 1. Dependances npm ---------------------------------------------------------
 Step 1 "npm ci (toutes dependances)"

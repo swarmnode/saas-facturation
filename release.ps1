@@ -4,7 +4,7 @@
     Build + zip + tag git + release GitHub en une seule commande.
 
 .PARAMETER Version
-    Numero de version cible, ex: 3.1.0
+    Numero de version cible, ex: 3.2.0
 
 .EXAMPLE
     .\release.ps1 3.2.0
@@ -15,7 +15,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$GH = "C:\Program Files\GitHub CLI\gh.exe"
+$GH   = "C:\Program Files\GitHub CLI\gh.exe"
 $Root = $PSScriptRoot
 
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
@@ -53,7 +53,8 @@ Step "Creation de FacturPro-Patch.zip"
 $ZipPath = "$Root\FacturPro-Patch.zip"
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
 Compress-Archive -Path "$Root\dist", "$Root\package.json" -DestinationPath $ZipPath -Force
-OK "Zip cree ($([math]::Round((Get-Item $ZipPath).Length / 1MB, 1)) Mo)"
+$SizeMo = [math]::Round((Get-Item $ZipPath).Length / 1MB, 1)
+OK "Zip cree ($SizeMo Mo)"
 
 # -- Archive locale ------------------------------------------------------------
 $UpdatesDir = "$Root\updates"
@@ -70,8 +71,12 @@ git tag $Tag
 if ($LASTEXITCODE -ne 0) { Fail "git tag a echoue (tag deja existant ?)" }
 OK "Commit et tag crees"
 
-# -- Push ----------------------------------------------------------------------
+# -- Push (avec rebase pour absorber les commits CI eventuels) -----------------
 Step "Push vers origin (main + tag)"
+git stash
+git pull --rebase origin main
+if ($LASTEXITCODE -ne 0) { Fail "git pull --rebase a echoue" }
+git stash pop
 git push origin main
 if ($LASTEXITCODE -ne 0) { Fail "git push main a echoue" }
 git push origin $Tag
@@ -80,15 +85,13 @@ OK "Push OK"
 
 # -- Release GitHub ------------------------------------------------------------
 Step "Publication de la release GitHub $Tag"
-& $GH release create $Tag `
-    --title $Tag `
-    --notes "Release $Tag — voir CHANGELOG.md pour le detail." `
-    --latest
+& $GH release create $Tag --title $Tag --notes "Release $Tag - voir CHANGELOG.md pour le detail." --latest
 if ($LASTEXITCODE -ne 0) { Fail "gh release create a echoue" }
 
 & $GH release upload $Tag $ZipPath --clobber
 if ($LASTEXITCODE -ne 0) { Fail "gh release upload a echoue" }
 OK "Release GitHub publiee"
 
-Write-Host "`n Release $Tag publiee avec succes !" -ForegroundColor Green
-Write-Host "  https://github.com/swarmnode/saas-facturation/releases/tag/$Tag" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Release $Tag publiee avec succes !" -ForegroundColor Green
+Write-Host "https://github.com/swarmnode/saas-facturation/releases/tag/$Tag" -ForegroundColor Gray

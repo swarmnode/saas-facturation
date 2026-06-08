@@ -15,7 +15,8 @@ const INSTALL_DIR  = process.cwd();
 
 let currentVersion = '0.0.0';
 try {
-  const pkg = JSON.parse(fs.readFileSync(path.join(INSTALL_DIR, 'package.json'), 'utf-8'));
+  const raw = fs.readFileSync(path.join(INSTALL_DIR, 'package.json'), 'utf-8').replace(/^﻿/, '');
+  const pkg = JSON.parse(raw);
   currentVersion = pkg.version ?? '0.0.0';
 } catch {}
 
@@ -138,8 +139,8 @@ function applyLightPatch(zipPath: string, version: string): void {
         fs.renameSync(zipPath, archivedPath);
       } catch {}
       try {
-        const pkg = JSON.parse(fs.readFileSync(path.join(INSTALL_DIR, 'package.json'), 'utf-8'));
-        log(`Version apres patch: ${pkg.version}`);
+        const rawPkg = fs.readFileSync(path.join(INSTALL_DIR, 'package.json'), 'utf-8').replace(/^﻿/, '');
+        log(`Version apres patch: ${JSON.parse(rawPkg).version}`);
       } catch {}
     } catch (e: any) {
       log(`ERREUR Expand-Archive: ${e?.message ?? e}`);

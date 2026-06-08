@@ -87,6 +87,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - FacturPro.iss : version corrigee 2.18.5 -> 3.2.1 (sync manuelle initiale)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: corriger ecriture BOM dans package.json (release.ps1) + lecture defensive dans update.ts
 
 
 ### Documentation
@@ -132,6 +133,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -163,6 +165,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.2.1
 - Chore: bump v3.2.2
+- Chore: bump v3.2.3
 
 
 ## [3.0.0] — 2026-06-07

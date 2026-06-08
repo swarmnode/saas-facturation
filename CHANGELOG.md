@@ -91,6 +91,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -108,6 +109,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Topbar : boutons sur 2 lignes, largeur fixe, zero saut de mise en page
 - Bouton Sélect. SEPA toggleable (Sélect. / Désélect.)
 - Test de fumée Playwright (parcours login -> devis -> facture -> émission)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: remplacer CI release par script local release.ps1
+
+La release (build + zip + tag + upload GitHub) se fait desormais
+en local via release.ps1 au lieu d'attendre un runner GitHub Actions.
+Usage : .\release.ps1 3.2.0
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 

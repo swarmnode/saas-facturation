@@ -539,13 +539,13 @@ const DocEditor = (() => {
       <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.objet||'').replace(/"/g,'&quot;')}" placeholder="Objet du document…"></div>
       <div class="e-meta-row"><span class="e-meta-label">N° commande</span><input class="e-meta-inp" name="numero_commande" value="${(doc?.numero_commande||'').replace(/"/g,'&quot;')}" placeholder="Réf. bon de commande client…"></div>
       <div class="e-meta-row"><span class="e-meta-label">Escompte (%)</span><input class="e-meta-inp" name="escompte_taux" type="number" min="0" max="100" step="0.1" value="${doc?.escompte_taux||0}" style="width:80px"></div>
-      <div class="e-meta-row"><span class="e-meta-label">Régime TVA</span><select class="e-meta-sel" name="tva_mode">
+      <div class="e-meta-row"><span class="e-meta-label">Régime TVA <span class="help-icon" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.editor_tva_mode || '').replace(/"/g,'&quot;')}">?</span></span><select class="e-meta-sel" name="tva_mode">
         <option value="normal" ${(doc?.tva_mode||'normal')==='normal'?'selected':''}>Normal</option>
         <option value="franchise_293b" ${doc?.tva_mode==='franchise_293b'?'selected':''}>Franchise 293 B</option>
         <option value="autoliquidation" ${doc?.tva_mode==='autoliquidation'?'selected':''}>Autoliquidation</option>
       </select></div>
       ${isAvoir ? `
-        <div class="e-meta-row"><span class="e-meta-label">Type d'avoir</span>
+        <div class="e-meta-row"><span class="e-meta-label">Type d'avoir <span class="help-icon" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.editor_type_avoir || '').replace(/"/g,'&quot;')}">?</span></span>
           <select class="e-meta-sel" name="type_avoir"
             onchange="(sel=>{const page=sel.closest('.a4-page');const r=page.querySelector('.e-avoir-reglement');if(r)r.style.display=sel.value==='remboursement'?'':'none';if(sel.value==='remboursement'){const m=page.querySelector('[name=mode_paiement]');if(m&&m.value==='prelevement_sepa')m.value='virement_sepa';}})(this)">
             <option value="valoir"        ${(doc?.type_avoir||'valoir')==='valoir'        ?'selected':''}>À valoir sur prochaine facture</option>
@@ -553,7 +553,7 @@ const DocEditor = (() => {
           </select>
         </div>
         <div class="e-avoir-reglement" style="display:${doc?.type_avoir==='remboursement'?'':'none'}">
-          <div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span>
+          <div class="e-meta-row"><span class="e-meta-label">Mode de règlement <span class="help-icon" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.editor_mode_paiement || '').replace(/"/g,'&quot;')}">?</span></span>
             <select class="e-meta-sel" name="mode_paiement">
               <option value="">— Non précisé —</option>
               ${MODES_PAIEMENT.map(([lbl,v])=>`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${lbl}</option>`).join('')}
@@ -562,7 +562,7 @@ const DocEditor = (() => {
         </div>`
       : isPaid
         ? `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><span style="font-size:9pt;color:#2e7d32;font-weight:600">${(MODES_PAIEMENT.find(([,v])=>v===doc?.mode_paiement)||[doc?.mode_paiement||'—'])[0]}</span></div>`
-        : `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><select class="e-meta-sel" name="mode_paiement">
+        : `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement <span class="help-icon" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.editor_mode_paiement || '').replace(/"/g,'&quot;')}">?</span></span><select class="e-meta-sel" name="mode_paiement">
             <option value="">— Non précisé —</option>
             ${MODES_PAIEMENT.map(([lbl,v])=>`<option value="${v}" ${doc?.mode_paiement===v?'selected':''}>${lbl}</option>`).join('')}
           </select></div>`

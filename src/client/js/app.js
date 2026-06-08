@@ -191,16 +191,16 @@ const DOC_CONFIGS = {
     topbar:   () => `
       <button class="btn btn-outline" onclick="exportFEC()"${helpAttr('facture_fec')}>Export FEC</button>
       <button class="btn btn-outline" onclick="verifierScellement()"${helpAttr('facture_scellement')}>Vérifier scellement</button>
-      <button class="btn btn-outline" onclick="ouvrirAttestation()">📋 Attestation</button>
-      <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" style="display:none">✉ Envoyer la sélection (<span id="selCount">0</span>)</button>
+      <button class="btn btn-outline" onclick="ouvrirAttestation()"${helpAttr('facture_attestation')}>📋 Attestation</button>
+      <button id="btnEnvoiGroupe" class="btn btn-outline" onclick="envoyerGroupeFactures()" disabled>✉ Envoyer la sélection (<span id="selCount" style="display:inline-block;min-width:1.4em;text-align:center">0</span>)</button>
       <select class="btn btn-outline" style="padding:5px 8px"${helpAttr('facture_statut')} onchange="setDocStatutFilter('factures',this.value)">
         <option value="">Tous les statuts</option>
         <option value="brouillon">Brouillon</option>
         <option value="emise">Émise</option>
         <option value="payee">Payée</option>
       </select>
-      <button class="btn btn-outline" onclick="selectionnerClientsSepa()" title="Cocher toutes les factures des clients en prélèvement SEPA">🏦 Sélect. SEPA</button>
-      <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" style="display:none"${helpAttr('facture_sepa')}>🏦 Prélèvement SEPA (<span id="selCountSepa">0</span>)</button>
+      <button id="btnSelectSepa" class="btn btn-outline" onclick="selectionnerClientsSepa()"${helpAttr('facture_sepa_select')}>🏦 Sélect. SEPA</button>
+      <button id="btnSepaGroupe" class="btn btn-outline" onclick="genererSepa()" disabled${helpAttr('facture_sepa')}>🏦 Prélèvement SEPA (<span id="selCountSepa" style="display:inline-block;min-width:1.4em;text-align:center">0</span>)</button>
       <button id="btnRetardFilter" class="btn btn-outline" onclick="toggleFacRetardFilter()"${helpAttr('facture_retard')}>⚠️ En retard</button>
       <button class="btn btn-primary" onclick="DocEditor.openFacture()">+ Nouvelle facture</button>`,
     headers:  ['','N°','Client','HT','TTC','Statut','Émise le','Règlement','Retard'],
@@ -230,7 +230,7 @@ const DOC_CONFIGS = {
       btn.outline(`previewFacture(${f.id})`, '👁 PDF'),
       f.statut==='brouillon' ? btn.outline(`emettreEtEnvoyer(${f.id})`, 'Émettre & Envoyer') : btn.outline(`envoyerFacture(${f.id})`, '✉ Envoyer'),
       ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? btn.outline(`showBLFromFactureForm(${f.id})`, '🚚 BL') : '',
-      ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? btn.outline(`DocEditor.openAvoir(${f.id})`, 'Avoir') : '',
+      ['emise','payee'].includes(f.statut)&&f.type_facture!=='avoir' ? `<button class="btn btn-outline btn-sm" onclick="DocEditor.openAvoir(${f.id})"${helpAttr('doc_avoir')}>Avoir</button>` : '',
     ],
   },
   avoirs: {
@@ -272,7 +272,7 @@ const DOC_CONFIGS = {
       fmt.date(a.date_encaissement),
     ],
     actions: a => [
-      a.statut==='en_attente' ? btn.success(`encaisserAcompte(${a.id})`, 'Encaisser') : '',
+      a.statut==='en_attente' ? `<button class="btn btn-success btn-sm" onclick="encaisserAcompte(${a.id})"${helpAttr('acompte_encaisser')}>Encaisser</button>` : '',
       btn.outline(`DocEditor.openAcompte(${a.id})`, 'Voir'),
       btn.outline(`openPdf('/api/acomptes/${a.id}/apercu')`, '👁 PDF'),
       btn.outline(`envoyerAcompte(${a.id})`, '✉ Envoyer'),
@@ -296,7 +296,7 @@ const DOC_CONFIGS = {
       btn.outline(`DocEditor.openBL(${b.id})`, b.statut!=='livre'?'Voir/Modifier':'Voir'),
       btn.outline(`previewBL(${b.id})`, '👁 PDF'),
       btn.outline(`envoyerBL(${b.id})`, '✉ Envoyer'),
-      b.statut==='brouillon'&&(b.devis_id||b.facture_id) ? '' : (b.statut!=='livre' ? btn.success(`livrerBL(${b.id})`,'✓ Livré') : ''),
+      b.statut==='brouillon'&&(b.devis_id||b.facture_id) ? '' : (b.statut!=='livre' ? `<button class="btn btn-success btn-sm" onclick="livrerBL(${b.id})"${helpAttr('bl_livrer')}>✓ Livré</button>` : ''),
       btn.outline(`factureFromBL(${b.id})`,'🧾 → Facture'),
       b.statut==='brouillon' ? btn.trash(`supprimerBL(${b.id})`) : '',
     ],
@@ -1216,7 +1216,7 @@ async function renderStats(el) {
       kpiCard('CA encaissé', fmt.money(kpis.encaisse_ttc), periodeLabel(periode), '#22c55e'),
       kpiCard('En attente', fmt.money(kpis.attente_ttc), `${kpis.attente_nb} facture(s) émise(s)`, '#f59e0b'),
       kpiCard('En retard', fmt.money(kpis.retard_ttc), `${kpis.retard_nb} facture(s) échue(s)`, kpis.retard_nb > 0 ? '#ef4444' : '#22c55e'),
-      kpiCard('Conversion devis', `${tauxConv} %`, `Délai moyen : ${kpis.delai_moyen_acceptation}j`, 'var(--primary)'),
+      kpiCard(`Conversion devis <span class="help-icon" style="text-transform:none" data-tooltip="${helpTexts.stats_conversion.replace(/"/g,'&quot;')}">?</span>`, `${tauxConv} %`, `Délai moyen : ${kpis.delai_moyen_acceptation}j`, 'var(--primary)'),
     ].join('');
 
     // ── Pipeline commercial ─────────────────────────────────────────────────
@@ -1276,13 +1276,13 @@ async function renderStats(el) {
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">${kpiRow}</div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-        ${card('Pipeline commercial', `<div style="display:flex;gap:4px;align-items:stretch">${pipelineHtml}</div>`)}
-        ${card('Balance âgée', balanceSummary || '<p style="color:var(--text-muted);font-size:13px">Aucune créance ouverte</p>')}
+        ${card(`Pipeline commercial <span class="help-icon" data-tooltip="${helpTexts.stats_pipeline.replace(/"/g,'&quot;')}">?</span>`, `<div style="display:flex;gap:4px;align-items:stretch">${pipelineHtml}</div>`)}
+        ${card(`Balance âgée <span class="help-icon" data-tooltip="${helpTexts.stats_balance_agee.replace(/"/g,'&quot;')}">?</span>`, balanceSummary || '<p style="color:var(--text-muted);font-size:13px">Aucune créance ouverte</p>')}
       </div>
 
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
         ${card(`Évolution CA (12 mois) <span style="font-size:11px;font-weight:400;color:var(--text-muted)"><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin:0 4px 0 10px"></span>Facturé HT <span style="display:inline-block;width:10px;height:10px;background:#22c55e;border-radius:2px;margin:0 4px 0 8px"></span>Encaissé HT</span>`, svgBar(evolution))}
-        ${card(`Top clients — ${new Date().getFullYear()} <span style="font-size:11px;font-weight:400;color:#ef4444">  ⚠ ≥ 30 %</span>`, topHtml)}
+        ${card(`Top clients — ${new Date().getFullYear()} <span style="font-size:11px;font-weight:400;color:#ef4444">  ⚠ ≥ 30 %</span> <span class="help-icon" data-tooltip="${helpTexts.stats_top_clients_risque.replace(/"/g,'&quot;')}">?</span>`, topHtml)}
       </div>
 
       ${card(`Détail des créances (${balance.rows.length})`, `<div class="table-wrap"><table class="data-table">
@@ -1291,7 +1291,7 @@ async function renderStats(el) {
       </table></div>`)}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
-        ${card(`DSO : ${treso.dso_jours}j <span style="font-weight:400;font-size:12px;color:var(--text-muted)">— délai moyen de paiement</span> — Prévisions 90j <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(${treso.previsions.length} facture(s))</span>`, (() => {
+        ${card(`DSO : ${treso.dso_jours}j <span style="font-weight:400;font-size:12px;color:var(--text-muted)">— délai moyen de paiement</span> <span class="help-icon" data-tooltip="${helpTexts.stats_dso.replace(/"/g,'&quot;')}">?</span> — Prévisions 90j <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(${treso.previsions.length} facture(s))</span>`, (() => {
           if (!treso.previsions.length) return '<p style="color:var(--text-muted);font-size:13px">Aucune échéance dans les 90 prochains jours</p>';
           const groupes = {};
           treso.previsions.forEach(p => {
@@ -1335,7 +1335,7 @@ async function renderStats(el) {
           </div>`).join('');
         })())}
 
-        ${card('Marge du catalogue (articles avec prix achat)', (() => {
+        ${card(`Marge du catalogue (articles avec prix achat) <span class="help-icon" data-tooltip="${helpTexts.stats_marge_catalogue.replace(/"/g,'&quot;')}">?</span>`, (() => {
           if (!marge.length) return '<p style="color:var(--text-muted);font-size:13px">Aucun article avec prix d\'achat renseigné</p>';
           return `<table class="data-table" style="font-size:12px"><thead><tr><th>Article</th><th style="text-align:right">P.V. HT</th><th style="text-align:right">P.A. HT</th><th style="text-align:right">Taux marque</th></tr></thead><tbody>${
             marge.map(m => {
@@ -1661,7 +1661,7 @@ async function showClientForm(id) {
           </select>
         </div>
         <div class="form-group">
-          <label>Statut RGPD</label>
+          <label>Statut RGPD <span class="help-icon" data-tooltip="${helpTexts.client_statut_rgpd.replace(/"/g,'&quot;')}">?</span></label>
           <select name="statut_rgpd">
             <option value="prospect" ${client.statut_rgpd === 'prospect' ? 'selected' : ''}>Prospect</option>
             <option value="client"   ${client.statut_rgpd === 'client'   ? 'selected' : ''}>Client</option>
@@ -1690,14 +1690,14 @@ async function showClientForm(id) {
         <div class="form-group"><label>TVA Intracom</label><input name="tva_intracom" value="${client.tva_intracom || ''}"/></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Mode TVA</label>
+        <div class="form-group"><label>Mode TVA <span class="help-icon" data-tooltip="${helpTexts.client_tva_mode.replace(/"/g,'&quot;')}">?</span></label>
           <select name="tva_mode">
             <option value="normal"          ${client.tva_mode === 'normal'          ? 'selected' : ''}>Normal</option>
             <option value="autoliquidation" ${client.tva_mode === 'autoliquidation' ? 'selected' : ''}>Autoliquidation</option>
             <option value="exonere"         ${client.tva_mode === 'exonere'         ? 'selected' : ''}>Exonéré</option>
           </select>
         </div>
-        <div class="form-group"><label>Mode de règlement par défaut</label>
+        <div class="form-group"><label>Mode de règlement par défaut <span class="help-icon" data-tooltip="${helpTexts.client_mode_reglement.replace(/"/g,'&quot;')}">?</span></label>
           <select name="mode_reglement_defaut">
             <option value="">— Non précisé —</option>
             <option value="virement"          ${client.mode_reglement_defaut==='virement'         ?'selected':''}>Virement bancaire</option>
@@ -1725,7 +1725,7 @@ async function showClientForm(id) {
         </datalist>
       </div>
       <details style="margin-top:16px;border:1px solid var(--border);border-radius:6px;padding:12px">
-        <summary style="font-weight:600;cursor:pointer;font-size:13px">🏦 Mandat SEPA (prélèvement automatique)</summary>
+        <summary style="font-weight:600;cursor:pointer;font-size:13px">🏦 Mandat SEPA (prélèvement automatique) <span class="help-icon" data-tooltip="${helpTexts.client_mandat_sepa.replace(/"/g,'&quot;')}">?</span></summary>
         <div style="margin-top:12px">
           <div class="form-row">
             <div class="form-group"><label>IBAN</label><input name="iban" value="${client.iban || ''}" placeholder="FR76 0000 0000 0000 0000 0000 000" style="font-family:monospace"/></div>
@@ -2865,13 +2865,24 @@ function updateSelCount() {
   const span = document.getElementById('selCount');
   const btnS = document.getElementById('btnSepaGroupe');
   const spanS = document.getElementById('selCountSepa');
-  if (btn)  btn.style.display  = n > 0 ? '' : 'none';
+  if (btn)  btn.disabled  = n === 0;
   if (span) span.textContent   = n;
-  if (btnS)  btnS.style.display  = n > 0 ? '' : 'none';
+  if (btnS)  btnS.disabled  = n === 0;
   if (spanS) spanS.textContent   = n;
 }
 
 function selectionnerClientsSepa() {
+  const btn = document.getElementById('btnSelectSepa');
+  const active = btn && btn.dataset.active === '1';
+
+  if (active) {
+    // Désélectionner : revenir à l'état initial
+    document.querySelectorAll('.fac-sel').forEach(cb => { cb.checked = false; });
+    updateSelCount();
+    if (btn) { btn.dataset.active = '0'; btn.innerHTML = '🏦 Sélect. SEPA'; }
+    return;
+  }
+
   // Cocher uniquement les factures des clients avec prélèvement SEPA par défaut
   let found = 0;
   document.querySelectorAll('.fac-sel').forEach(cb => {
@@ -2879,7 +2890,11 @@ function selectionnerClientsSepa() {
     if (cb.checked) found++;
   });
   updateSelCount();
-  if (!found) alert('Aucune facture dont le client a "Prélèvement SEPA" comme mode de règlement par défaut.\nVérifiez les fiches clients.');
+  if (!found) {
+    alert('Aucune facture dont le client a "Prélèvement SEPA" comme mode de règlement par défaut.\nVérifiez les fiches clients.');
+    return;
+  }
+  if (btn) { btn.dataset.active = '1'; btn.innerHTML = '🏦 Désélect. SEPA'; }
 }
 
 async function genererSepa() {
@@ -3096,7 +3111,7 @@ async function renderExercices(el) {
             <input type="date" id="inputDateOuv" class="form-control" style="width:150px"
               value="${anneesDispos[0] ?? anneeActuelle}-01-01"/>
           </div>
-          <button class="btn btn-outline" onclick="ouvrirExercice()">+ Ouvrir cet exercice</button>
+          <button class="btn btn-outline" onclick="ouvrirExercice()"${helpAttr('exercice_ouvrir')}>+ Ouvrir cet exercice</button>
         </div>` : ''}
 
         ${exercices.length === 0 ? `<p style="color:var(--text-muted)">Aucun exercice ouvert.</p>` : `
@@ -4788,7 +4803,7 @@ async function renderFournisseurs(el) {
           </div>
         </div>
         <div class="form-group">
-          <label>Compte de charge</label>
+          <label>Compte de charge <span class="help-icon" data-tooltip="${helpTexts.ff_compte_charge.replace(/"/g,'&quot;')}">?</span></label>
           <input name="compte_charge" value="606" placeholder="Ex. 606, 607, 615…"/>
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
@@ -5361,7 +5376,7 @@ async function renderParametres(el) {
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" name="is_EI" id="isEI" style="width:auto" ${entreprise.is_EI ? 'checked' : ''}/>
-          <label for="isEI" style="text-transform:none;margin:0">Entrepreneur individuel (mention "EI" automatique)</label>
+          <label for="isEI" style="text-transform:none;margin:0">Entrepreneur individuel (mention "EI" automatique) <span class="help-icon" data-tooltip="${helpTexts.entreprise_forme_ei.replace(/"/g,'&quot;')}">?</span></label>
         </div>
         <div class="form-row">
           <div class="form-group"><label>SIRET *</label><input name="siret" value="${entreprise.siret || ''}" required/></div>
@@ -5379,7 +5394,7 @@ async function renderParametres(el) {
         </div>
         <div class="form-row">
           <div class="form-group"><label>Site web</label><input name="site_web" value="${entreprise.site_web || ''}"/></div>
-          <div class="form-group"><label>Régime TVA</label>
+          <div class="form-group"><label>Régime TVA <span class="help-icon" data-tooltip="${helpTexts.entreprise_regime_tva.replace(/"/g,'&quot;')}">?</span></label>
             <select name="regime_tva">
               <option value="normal"          ${entreprise.regime_tva === 'normal'          ? 'selected' : ''}>Normal</option>
               <option value="franchise_293b"  ${entreprise.regime_tva === 'franchise_293b'  ? 'selected' : ''}>Franchise art. 293B</option>
@@ -5463,7 +5478,7 @@ async function renderParametres(el) {
         </form>
       </div>
       <div class="card" style="max-width:680px;margin-top:20px">
-        <h3 style="margin-bottom:8px;color:var(--primary)">Mentions légales obligatoires (art. L441-9 et L441-10 CCom)</h3>
+        <h3 style="margin-bottom:8px;color:var(--primary)">Mentions légales obligatoires (art. L441-9 et L441-10 CCom) <span class="help-icon" data-tooltip="${helpTexts.mentions_legales_paiement.replace(/"/g,'&quot;')}">?</span></h3>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Pré-remplies sur chaque nouvelle facture.</p>
         <form id="mentForm">
           <div class="form-row">
@@ -6522,7 +6537,7 @@ async function showUserForm(userId) {
             onchange="document.getElementById('vt_${e.id}').disabled=this.value!=='commercial';if(this.value!=='commercial')document.getElementById('vt_${e.id}').checked=false">${
             roleOptions.replace(`"${role}"`, `"${role}" selected`)
           }</select>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--text-muted)">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--text-muted)"${helpAttr('user_voir_tout')}>
             <input type="checkbox" name="vt_${e.id}" id="vt_${e.id}" ${voirTout ? 'checked' : ''} ${(!ue || role !== 'commercial') ? 'disabled' : ''}/>
             Accès complet
           </label>

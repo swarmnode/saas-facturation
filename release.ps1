@@ -38,7 +38,7 @@ OK "Environnement OK"
 Step "Mise a jour de package.json -> $Version"
 $pkg = Get-Content "$Root\package.json" -Raw
 $pkg = $pkg -replace '"version": "[^"]+"', """version"": ""$Version"""
-Set-Content "$Root\package.json" $pkg -Encoding utf8
+[System.IO.File]::WriteAllText("$Root\package.json", $pkg, [System.Text.UTF8Encoding]::new($false))
 OK "package.json mis a jour"
 
 # -- Build TypeScript ----------------------------------------------------------

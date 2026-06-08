@@ -26,6 +26,35 @@ lettrage compte 411, cycle de vie facture d'achat, chaînage commande/facture
 fournisseur, et structure du formulaire CA3 de déclaration de TVA.
 
 
+### Corrigé
+- Fix: stabiliser la topbar et améliorer les boutons Factures
+
+Topbar — mise en page :
+- Boutons sur 2 lignes (flex-wrap) au lieu du défilement horizontal
+- Hauteur auto (min-height) pour absorber le retour à la ligne
+- Champ de recherche à largeur fixe (flex: 0 0 240px) pour ne jamais changer de taille
+- Titre non rétractable (flex: 0 0 auto sur le wrapper)
+- white-space: nowrap + flex-shrink: 0 sur .btn pour éviter la compression des libellés
+
+Topbar — stabilité au clic :
+- Boutons "Envoyer la sélection" et "Prélèvement SEPA" toujours présents (disabled au lieu de display:none) pour réserver leur place et éviter tout décalage à la sélection
+- Compteurs (N) en display:inline-block + min-width fixe : la largeur du bouton ne change pas selon le nombre de chiffres
+- #btnSelectSepa (min-width 150px) et #btnRetardFilter (min-width 115px) stabilisés pour leurs deux libellés alternants
+- .btn:disabled : style visuel dégradé (opacity .4, pointer-events none)
+- select.btn { width: auto } : corrige le select "Tous les statuts" étiré à 100% par la règle globale de formulaire
+
+Bouton Sélect. SEPA :
+- Bascule entre "Sélect. SEPA" (coche les clients en prélèvement) et "Désélect. SEPA" (décoche tout)
+
+Bulles d'aide contextuelle (audit) :
+- Bulles ajoutées sur Attestation, Avoir, Encaisser, Livré (BL), stats (pipeline, balance âgée, DSO, conversion, marge catalogue, top clients)
+- Bulles sur fiches clients (statut RGPD, mode TVA, mode règlement, mandat SEPA)
+- Bulles sur Exercices, Fournisseurs (compte de charge), Paramètres (régime TVA, EI, mentions légales)
+- Bulle sur le label "Accès complet" dans la gestion des utilisateurs
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
 ### Documentation
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
@@ -61,6 +90,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -69,6 +99,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Couvre le parcours métier critique en testant l'API directement : numérotation
 FAC/DEV-AAAA-NNNN, verrouillage post-émission (403 sur modification), et intégrité
 de la chaîne de scellement SHA-256. Ajoute le script `npm test`.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: bump v3.1.0
+
+- PostgreSQL portable bundle dans l'installateur (~20s au lieu de 5-10 min)
+- Bulles d'aide contextuelle sur toutes les vues (tooltips help-icon)
+- Topbar : boutons sur 2 lignes, largeur fixe, zero saut de mise en page
+- Bouton Sélect. SEPA toggleable (Sélect. / Désélect.)
+- Test de fumée Playwright (parcours login -> devis -> facture -> émission)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 

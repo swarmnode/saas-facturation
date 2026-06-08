@@ -586,11 +586,19 @@ const DocEditor = (() => {
       <div class="e-signature-hint">Précédé de la mention « Bon pour accord »</div>`
     : '';
 
+    const acompteAmt = doc?.acompte_id ? Number(doc.montant_acompte_applique || 0) : 0;
     const bottomRight = !isBL ? `
       <div class="e-totaux-inner">
         <div class="e-total-row e-total-ht-row"><span>Total HT</span><span class="e-ht-val">0,00 €</span></div>
         <div class="e-tva-lines"></div>
-        <div class="e-total-row e-total-ttc-row" style="color:${bc}"><span>Total TTC</span><span class="e-ttc-val">0,00 €</span></div>
+        <div class="e-total-row e-total-ttc-row" style="${doc?.acompte_id ? '' : `color:${bc}`}"><span>Total TTC</span><span class="e-ttc-val">0,00 €</span></div>
+        ${doc?.acompte_id ? `
+        <div class="e-total-row" style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;color:#666">
+          <span>Acompte versé${doc.acompte_numero ? ` (${doc.acompte_numero})` : ''}</span>
+          <span>− ${fmt(acompteAmt)}</span>
+        </div>
+        <div class="e-total-row" style="color:${bc};font-weight:bold"><span>Solde à payer</span><span>${fmt(Math.max(0, Number(doc.montant_ttc || 0) - acompteAmt))}</span></div>
+        ` : ''}
       </div>` : '';
 
     // Footer (conditions/notes) — conditions masquées si facture payée
@@ -1219,6 +1227,8 @@ const DocEditor = (() => {
             <div class="e-dochead-right">
               ${ac.mode_paiement?`<div class="e-meta-row"><span class="e-meta-label">Mode</span><span style="font-size:9pt">${ac.mode_paiement}</span></div>`:''}
               ${ac.pourcentage?`<div class="e-meta-row"><span class="e-meta-label">Pourcentage</span><span style="font-size:9pt">${ac.pourcentage} %</span></div>`:''}
+              ${ac.notes?`<div class="e-meta-row"><span class="e-meta-label">Origine</span><span style="font-size:9pt;color:#666">${ac.notes}</span></div>`:''}
+              ${ac.facture_utilisee_numero?`<div class="e-meta-row"><span class="e-meta-label">Utilisé pour</span><span style="font-size:9pt;color:#1a5c38;font-weight:600">${ac.facture_utilisee_numero}</span></div>`:''}
             </div>
           </div>
           <div class="e-doc-bottom">

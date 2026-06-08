@@ -228,10 +228,12 @@ export class FactureService {
     const fr = await query(`
       SELECT f.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
              c.mode_reglement_defaut,
-             fo.numero AS facture_origine_numero
+             fo.numero AS facture_origine_numero,
+             ac.numero AS acompte_numero
       FROM factures f
       LEFT JOIN clients c ON f.client_id = c.id
       LEFT JOIN factures fo ON fo.id = f.facture_origine_id
+      LEFT JOIN acomptes ac ON ac.id = f.acompte_id
       WHERE f.id = $1 ${tenantFilter}
     `, params);
     const facture = fr.rows[0];
@@ -303,20 +305,99 @@ export class FactureService {
     return this.obtenir(id);
   }
 
-  static async marquerPayee(id: number, datePaiement?: string, modePaiement?: string) {
-    const fr = await query('SELECT entreprise_id FROM factures WHERE id = $1', [id]);
-    const entreprise_id = fr.rows[0]?.entreprise_id;
+  static async marquerPayee(
+    id: number,
+    datePaiement?: string,
+    modePaiement?: string,
+    acompte_id?: number | null
+  ) {
+    const fr = await query('SELECT * FROM factures WHERE id = $1', [id]);
+    const facture = fr.rows[0];
+    if (!facture) throw new Error('Facture introuvable');
+    const entreprise_id = facture.entreprise_id;
+
+    let acompte: any = null;
+    let montantAcompteApplique = 0;
+    let reliquatMontant = 0;
+    let reliquatNumero: string | null = null;
+
+    if (acompte_id) {
+      const ar = await query("SELECT * FROM acomptes WHERE id = $1 AND statut = 'encaisse'", [acompte_id]);
+      acompte = ar.rows[0];
+      if (!acompte) throw new Error('Acompte introuvable ou non encaissé');
+      if (acompte.client_id !== facture.client_id)
+        throw new Error("L'acompte ne correspond pas au client de la facture");
+
+      const mFac = Math.round(Number(facture.montant_ttc) * 100) / 100;
+      const mAc  = Math.round(Number(acompte.montant_ttc) * 100) / 100;
+      montantAcompteApplique = Math.min(mAc, mFac);
+      reliquatMontant        = Math.round((mAc - montantAcompteApplique) * 100) / 100;
+
+      if (reliquatMontant > 0.01) {
+        reliquatNumero = await NumerotationService.getNextNumero('ACOMPTE', entreprise_id);
+      }
+    }
+
+    let reliquatId: number | null = null;
 
     await withTransaction(async (tx) => {
       await tx.query(`
-        UPDATE factures SET statut='payee', date_paiement=$1, mode_paiement=$2, updated_at=NOW()
-        WHERE id=$3 AND locked=1
-      `, [datePaiement ?? new Date().toISOString(), modePaiement ?? null, id]);
+        UPDATE factures
+        SET statut='payee', date_paiement=$1, mode_paiement=$2,
+            acompte_id=$3, montant_acompte_applique=$4, updated_at=NOW()
+        WHERE id=$5 AND locked=1
+      `, [
+        datePaiement ?? new Date().toISOString(),
+        modePaiement ?? null,
+        acompte_id ?? null,
+        montantAcompteApplique || null,
+        id,
+      ]);
+
       await FecExportService.enregistrerPaiement(id, tx);
-      if (entreprise_id) {
-        await LettreService.lettrerPaiement(id, entreprise_id, tx);
+      if (entreprise_id) await LettreService.lettrerPaiement(id, entreprise_id, tx);
+
+      if (reliquatMontant > 0.01 && acompte && reliquatNumero) {
+        const taux = Number(acompte.taux_tva_valeur);
+        const mHT  = Math.round(reliquatMontant / (1 + taux / 100) * 100) / 100;
+        const mTVA = Math.round((reliquatMontant - mHT) * 100) / 100;
+        const dateEnc = datePaiement ?? new Date().toISOString();
+
+        const ins = await tx.query(`
+          INSERT INTO acomptes (numero, client_id, entreprise_id, montant_ht, montant_tva,
+            montant_ttc, taux_tva_valeur, statut, date_encaissement, notes)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,'en_attente',NULL,$8)
+          RETURNING *
+        `, [
+          reliquatNumero, acompte.client_id, entreprise_id,
+          mHT, mTVA, reliquatMontant, taux,
+          `Reliquat — ${acompte.numero}`,
+        ]);
+
+        const reliquat = ins.rows[0];
+        reliquatId = reliquat.id;
+
+        const futur = { ...reliquat, statut: 'encaisse', date_encaissement: dateEnc };
+        const hash  = await ScelleService.scellerDocument('ACOMPTE', reliquat.id, reliquatNumero, futur, tx);
+
+        await tx.query(`
+          UPDATE acomptes
+          SET statut='encaisse', date_encaissement=$1, hash_scellement=$2,
+              locked=1, updated_at=NOW()
+          WHERE id=$3
+        `, [dateEnc, hash, reliquat.id]);
       }
     });
+
+    if (reliquatId && reliquatNumero) {
+      const rr = await query(
+        `SELECT a.*, c.raison_sociale AS client_nom
+         FROM acomptes a LEFT JOIN clients c ON a.client_id = c.id
+         WHERE a.id = $1`,
+        [reliquatId]
+      );
+      if (rr.rows[0]) await ArchiveService.archiver('ACOMPTE', reliquatId, reliquatNumero, rr.rows[0]);
+    }
 
     return this.obtenir(id);
   }

@@ -263,12 +263,12 @@ const DOC_CONFIGS = {
     sortKeys: ['numero','client_nom','montant_ht','montant_tva','montant_ttc','statut','date_encaissement'],
     rowOpen:  a => `DocEditor.openAcompte(${a.id})`,
     cells:    a => [
-      `<strong>${a.numero}</strong>`,
+      `<strong>${a.numero}</strong>${a.notes ? `<br><small style="color:#888;font-size:0.78em">${a.notes}</small>` : ''}`,
       a.client_nom||a.client_nom_part||'—',
       `<span class="text-right">${fmt.money(a.montant_ht)}</span>`,
       `<span class="text-right">${fmt.money(a.montant_tva)}</span>`,
       `<strong>${fmt.money(a.montant_ttc)}</strong>`,
-      fmt.badge(a.statut),
+      `${fmt.badge(a.statut)}${a.facture_utilisee_numero ? `<br><small style="color:#1a5c38;font-size:0.78em">→ ${a.facture_utilisee_numero}</small>` : ''}`,
       fmt.date(a.date_encaissement),
     ],
     actions: a => [
@@ -3015,6 +3015,30 @@ async function emettreEtEnvoyer(id) {
 
 async function payerFacture(id) {
   const today = new Date().toISOString().slice(0, 10);
+  const [facture, acomptes] = await Promise.all([
+    api.get(`/api/factures/${id}`),
+    api.get(`/api/factures/${id}/acomptes-disponibles`),
+  ]);
+  if (!facture) return;
+
+  const fmtE = v => Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  const montantFac = Number(facture.montant_ttc || 0);
+
+  const acompteOptions = (acomptes && acomptes.length)
+    ? `<div class="form-group" style="margin-top:12px">
+        <label>Acompte à déduire</label>
+        <select id="payerAcompteSelect" name="acompte_id" onchange="updateSoldePayer(${montantFac})">
+          <option value="">— Aucun acompte —</option>
+          ${acomptes.map(a => `<option value="${a.id}" data-montant="${a.montant_ttc}">${a.numero} — ${fmtE(a.montant_ttc)}${a.notes ? ' (' + a.notes + ')' : ''}</option>`).join('')}
+        </select>
+      </div>
+      <div id="soldePayer" style="display:none;margin-top:8px;padding:10px;background:#f0f7ff;border-radius:6px;font-size:0.9rem">
+        <div style="display:flex;justify-content:space-between"><span>Total TTC facture</span><span>${fmtE(montantFac)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#666"><span id="soldeAcompteLabel">Acompte versé</span><span id="soldeAcompteMontant"></span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:bold;border-top:1px solid #ddd;margin-top:6px;padding-top:6px"><span>Solde à payer</span><span id="soldeRestant"></span></div>
+      </div>`
+    : '';
+
   modal.open('Enregistrer le paiement', `
     <form id="payerForm">
       <div class="form-row">
@@ -3038,6 +3062,7 @@ async function payerFacture(id) {
           </select>
         </div>
       </div>
+      ${acompteOptions}
       <div style="display:flex;gap:10px;margin-top:16px">
         <button type="submit" class="btn btn-primary">Confirmer</button>
         <button type="button" class="btn btn-outline" onclick="modal.close()">Annuler</button>
@@ -3048,13 +3073,47 @@ async function payerFacture(id) {
   document.getElementById('payerForm').onsubmit = async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const acompte_id = fd.get('acompte_id') ? Number(fd.get('acompte_id')) : null;
     await api.post(`/api/factures/${id}/payer`, {
       date_paiement:  fd.get('date_paiement'),
       mode_paiement:  fd.get('mode_paiement') || null,
+      acompte_id,
     });
     modal.close();
     tabMgr.openViewTab('factures');
   };
+}
+
+function updateSoldePayer(montantFac) {
+  const sel = document.getElementById('payerAcompteSelect');
+  const box = document.getElementById('soldePayer');
+  if (!sel || !box) return;
+  const opt = sel.selectedOptions[0];
+  const acompteId = sel.value;
+  if (!acompteId) { box.style.display = 'none'; return; }
+  const acompteMontant = Number(opt.dataset.montant || 0);
+  const applique = Math.min(acompteMontant, montantFac);
+  const solde    = Math.max(0, montantFac - applique);
+  const fmtE = v => Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  document.getElementById('soldeAcompteLabel').textContent = `Acompte ${opt.text.split(' — ')[0]}`;
+  document.getElementById('soldeAcompteMontant').textContent = `− ${fmtE(applique)}`;
+  document.getElementById('soldeRestant').textContent = fmtE(solde);
+  box.style.display = 'block';
+  if (acompteMontant > montantFac) {
+    const reliquat = acompteMontant - applique;
+    const note = document.getElementById('soldeRestant').parentElement;
+    let reliquatEl = document.getElementById('soldeReliquat');
+    if (!reliquatEl) {
+      reliquatEl = document.createElement('div');
+      reliquatEl.id = 'soldeReliquat';
+      reliquatEl.style.cssText = 'display:flex;justify-content:space-between;color:#1a7a40;margin-top:4px;font-size:0.85rem';
+      note.after(reliquatEl);
+    }
+    reliquatEl.innerHTML = `<span>Reliquat → nouvel acompte</span><span>${fmtE(reliquat)}</span>`;
+  } else {
+    const old = document.getElementById('soldeReliquat');
+    if (old) old.remove();
+  }
 }
 
 async function ouvrirAttestation() {

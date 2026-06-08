@@ -35,8 +35,11 @@ export class AcompteService {
 
   static async obtenir(id: number) {
     const r = await query(`
-      SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
-      FROM acomptes a LEFT JOIN clients c ON a.client_id = c.id
+      SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             f.numero AS facture_utilisee_numero
+      FROM acomptes a
+      LEFT JOIN clients c ON a.client_id = c.id
+      LEFT JOIN factures f ON f.acompte_id = a.id
       WHERE a.id = $1
     `, [id]);
     return r.rows[0] ?? null;
@@ -53,8 +56,11 @@ export class AcompteService {
       : '';
     const r = await query(`
       SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
+             f.numero AS facture_utilisee_numero,
              COUNT(*) OVER() AS _total
-      FROM acomptes a LEFT JOIN clients c ON a.client_id = c.id
+      FROM acomptes a
+      LEFT JOIN clients c ON a.client_id = c.id
+      LEFT JOIN factures f ON f.acompte_id = a.id
       WHERE a.entreprise_id = $1 ${commercialFilter}
       ORDER BY a.created_at DESC ${pagClause}
     `, params);

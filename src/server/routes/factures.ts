@@ -95,9 +95,30 @@ router.post('/:id/emettre', requirePerm('factures:w'), async (req, res, next) =>
   } catch(e) { next(e); }
 });
 
+router.get('/:id/acomptes-disponibles', requirePerm('factures:r'), async (req, res, next) => {
+  try {
+    const facture = await FactureService.obtenir(Number(req.params.id));
+    if (!facture) return res.status(404).json({ error: 'Introuvable' });
+    const r = await query(`
+      SELECT a.* FROM acomptes a
+      WHERE a.client_id = $1
+        AND a.entreprise_id = $2
+        AND a.statut = 'encaisse'
+        AND NOT EXISTS (SELECT 1 FROM factures f WHERE f.acompte_id = a.id)
+      ORDER BY a.created_at DESC
+    `, [(facture as any).client_id, req.user!.entreprise_id]);
+    res.json(r.rows);
+  } catch(e) { next(e); }
+});
+
 router.post('/:id/payer', requirePerm('factures:w'), async (req, res, next) => {
   try {
-    const result = await FactureService.marquerPayee(Number(req.params.id), req.body.date_paiement, req.body.mode_paiement);
+    const result = await FactureService.marquerPayee(
+      Number(req.params.id),
+      req.body.date_paiement,
+      req.body.mode_paiement,
+      req.body.acompte_id ?? null
+    );
     await logAudit(req, 'payer_facture', 'factures', Number(req.params.id), { mode: req.body.mode_paiement });
     res.json(result);
   } catch(e) { next(e); }

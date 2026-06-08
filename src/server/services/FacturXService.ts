@@ -410,15 +410,30 @@ export class FacturXService {
            .text(label, 340, BOTTOM - yOff, { width: 126, align: 'left',  lineBreak: false })
            .text(val,   470, BOTTOM - yOff, { width:  70, align: 'right', lineBreak: false });
       };
-      drawTot('Total HT',  formatMontant(facture.montant_ht),  false, 36);
-      drawTot('Total TVA', formatMontant(facture.montant_tva), false, 18);
-      drawTot('Total TTC', formatMontant(facture.montant_ttc), true,   0);
-      doc.moveTo(340, BOTTOM - 44).lineTo(545, BOTTOM - 44).strokeColor('#CCCCCC').stroke();
+      const hasAcompte = !!(facture.acompte_id && facture.montant_acompte_applique);
+      const acompteAmt = hasAcompte ? Number(facture.montant_acompte_applique) : 0;
+      const acShift    = hasAcompte ? 36 : 0;
+
+      drawTot('Total HT',  formatMontant(facture.montant_ht),  false, 36 + acShift);
+      drawTot('Total TVA', formatMontant(facture.montant_tva), false, 18 + acShift);
+      drawTot('Total TTC', formatMontant(facture.montant_ttc), !hasAcompte, 0 + acShift);
+      doc.moveTo(340, BOTTOM - (44 + acShift)).lineTo(545, BOTTOM - (44 + acShift)).strokeColor('#CCCCCC').stroke();
+
+      if (hasAcompte) {
+        const acLabel = facture.acompte_numero
+          ? `Acompte (${facture.acompte_numero})`
+          : 'Acompte versé';
+        const solde = Math.max(0, Number(facture.montant_ttc) - acompteAmt);
+        doc.moveTo(340, BOTTOM - 28).lineTo(545, BOTTOM - 28).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
+        drawTot(acLabel, `− ${formatMontant(acompteAmt)}`, false, 18);
+        drawTot('Solde à payer', formatMontant(solde), true, 0);
+        doc.lineWidth(1);
+      }
 
       // ── Mention TVA spéciale ─────────────────────────────────────────
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - 60, { width: 260, lineBreak: false });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM - (60 + acShift), { width: 260, lineBreak: false });
       }
 
       // ── Mention acquittée — à gauche des totaux, même niveau ───────────
@@ -860,14 +875,29 @@ export class FacturXService {
            .text(label, 340, BOTTOM_FS - yOff, { width: 126, align: 'left',  lineBreak: false })
            .text(val,   470, BOTTOM_FS - yOff, { width:  70, align: 'right', lineBreak: false });
       };
-      drawTotFS('Total HT',  formatMontant(facture.montant_ht),  false, 36);
-      drawTotFS('Total TVA', formatMontant(facture.montant_tva), false, 18);
-      drawTotFS('Total TTC', formatMontant(facture.montant_ttc), true,   0);
-      doc.moveTo(340, BOTTOM_FS - 44).lineTo(545, BOTTOM_FS - 44).strokeColor('#CCCCCC').stroke();
+      const hasAcompteFS = !!(facture.acompte_id && facture.montant_acompte_applique);
+      const acompteAmtFS = hasAcompteFS ? Number(facture.montant_acompte_applique) : 0;
+      const acShiftFS    = hasAcompteFS ? 36 : 0;
+
+      drawTotFS('Total HT',  formatMontant(facture.montant_ht),  false, 36 + acShiftFS);
+      drawTotFS('Total TVA', formatMontant(facture.montant_tva), false, 18 + acShiftFS);
+      drawTotFS('Total TTC', formatMontant(facture.montant_ttc), !hasAcompteFS, 0 + acShiftFS);
+      doc.moveTo(340, BOTTOM_FS - (44 + acShiftFS)).lineTo(545, BOTTOM_FS - (44 + acShiftFS)).strokeColor('#CCCCCC').stroke();
+
+      if (hasAcompteFS) {
+        const acLabelFS = facture.acompte_numero
+          ? `Acompte (${facture.acompte_numero})`
+          : 'Acompte versé';
+        const soldeFS = Math.max(0, Number(facture.montant_ttc) - acompteAmtFS);
+        doc.moveTo(340, BOTTOM_FS - 28).lineTo(545, BOTTOM_FS - 28).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
+        drawTotFS(acLabelFS, `− ${formatMontant(acompteAmtFS)}`, false, 18);
+        drawTotFS('Solde à payer', formatMontant(soldeFS), true, 0);
+        doc.lineWidth(1);
+      }
 
       if (facture.tva_mode !== 'normal') {
         doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666')
-           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM_FS - 60, { width: 260, lineBreak: false });
+           .text(mentionTVA(facture.tva_mode, 0), 50, BOTTOM_FS - (60 + acShiftFS), { width: 260, lineBreak: false });
       }
 
       if (facture.statut === 'payee' && facture.date_paiement) {

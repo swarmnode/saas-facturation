@@ -71,6 +71,14 @@ Bulles d'aide contextuelle (audit) :
 - Bulle sur le label "Accès complet" dans la gestion des utilisateurs
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: corriger les guillemets Unicode dans release.ps1
+
+Remplace les guillemets typographiques (U+201C/201D) et le tiret em
+(U+2014) par des caracteres ASCII purs -- requis par PowerShell 5.1.
+Ajoute git stash/pull --rebase/pop avant le push pour absorber les
+commits CI changelog intercales.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -106,6 +114,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: documenter les routes commentaires et maintenance dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

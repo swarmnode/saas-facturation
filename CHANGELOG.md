@@ -54,6 +54,17 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: documenter les routes commentaires et maintenance dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+
+
+### Modifications
+- Test: ajouter un test de fumée Playwright (login -> client -> devis -> facture -> émission)
+
+Couvre le parcours métier critique en testant l'API directement : numérotation
+FAC/DEV-AAAA-NNNN, verrouillage post-émission (403 sur modification), et intégrité
+de la chaîne de scellement SHA-256. Ajoute le script `npm test`.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

@@ -19,6 +19,11 @@ d'installation de PostgreSQL à ~20 secondes.
 - FacturPro.iss : bundle tools\pgsql\*, crée {app}\pgdata, met à jour le texte de l'assistant
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: ajouter 5 bulles d'aide contextuelle (TVA, lettrage, achats, exercices)
+
+Couvre des fonctionnalités peu documentées dans l'UI : clôture d'exercice,
+lettrage compte 411, cycle de vie facture d'achat, chaînage commande/facture
+fournisseur, et structure du formulaire CA3 de déclaration de TVA.
 
 
 ### Documentation
@@ -54,6 +59,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: documenter les routes commentaires et maintenance dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
 

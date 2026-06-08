@@ -50,6 +50,10 @@ F9). Ajout de toc-title en francais dans l'entete YAML et activation de
 updateFields pour que la table se calcule automatiquement a l'ouverture.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: documenter les routes commentaires et maintenance dans CLAUDE.md
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

@@ -79,6 +79,14 @@ Ajoute git stash/pull --rebase/pop avant le push pour absorber les
 commits CI changelog intercales.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: synchroniser la version installeur avec package.json
+
+- build.ps1 : lit la version depuis package.json et patche
+  automatiquement #define AppVersion dans FacturPro.iss avant le build,
+  garantissant que l'installeur et le runtime affichent la meme version
+- FacturPro.iss : version corrigee 2.18.5 -> 3.2.1 (sync manuelle initiale)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -114,6 +122,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: documenter les routes commentaires et maintenance dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

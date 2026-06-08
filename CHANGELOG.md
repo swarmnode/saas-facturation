@@ -24,6 +24,24 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Couvre des fonctionnalités peu documentées dans l'UI : clôture d'exercice,
 lettrage compte 411, cycle de vie facture d'achat, chaînage commande/facture
 fournisseur, et structure du formulaire CA3 de déclaration de TVA.
+- Feat: déduction d'acompte sur le paiement de facture
+
+- Migration 027 : colonnes acompte_id + montant_acompte_applique sur
+  factures, notes sur acomptes
+- FactureService.marquerPayee() accepte un acompte_id optionnel ;
+  si l'acompte dépasse la facture, crée un acompte reliquat directement
+  encaissé (scellé + archivé) avec la note "Reliquat — AC-XXXX"
+- Nouveau endpoint GET /api/factures/:id/acomptes-disponibles
+- Modal de paiement : sélecteur d'acomptes disponibles + calcul du
+  solde en temps réel, affichage du reliquat si acompte > facture
+- PDF (genererFacture + genererFactureStream) : lignes "Acompte versé"
+  et "Solde à payer" dans le bloc totaux quand acompte appliqué
+- WYSIWYG editor.js : même affichage dans la vue document
+- Liste acomptes : colonne statut enrichie (→ FAC-XXXX utilisée),
+  numéro enrichi (origine reliquat) ; fiche détail : champs Origine et
+  Utilisé pour
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -88,6 +106,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: documenter les routes commentaires et maintenance dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]

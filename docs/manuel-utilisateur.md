@@ -247,7 +247,18 @@ Depuis **Paramètres > Relances automatiques**, activez l'envoi automatique d'em
 | Relancer après N jours de retard | Ex. `15` — le système attend 15 jours après l'échéance avant la première relance |
 | Heure d'envoi | Ex. `08:00` — heure à laquelle le serveur envoie les relances quotidiennement |
 
-> **Note :** Les relances s'appuient sur le SMTP configuré. Sans SMTP, elles sont envoyées via Ethereal (test uniquement). Le compteur de relances (`nb_relances`) est incrémenté et la date de dernière relance (`derniere_relance`) est enregistrée sur chaque facture.
+> Les relances s'appuient sur le SMTP configuré. Sans SMTP, elles sont envoyées via Ethereal (test uniquement). Le compteur de relances est incrémenté et la date de dernière relance est enregistrée sur chaque facture.
+
+## Notifications avant échéance
+
+En plus des relances après retard, FacturPro peut envoyer un **email de rappel avant l'échéance** :
+
+| Champ | Remarque |
+|---|---|
+| Activer les notifications | Cocher pour activer |
+| Jours avant échéance | Ex. `3` — l'email est envoyé 3 jours avant la date d'échéance |
+
+Le rappel est envoyé **au plus une fois par facture**. Si la facture est payée avant l'envoi, aucun email n'est émis.
 
 ---
 
@@ -258,6 +269,43 @@ Depuis **Paramètres > Relances automatiques**, activez l'envoi automatique d'em
 ![Liste des clients](screenshots/04-clients-liste.png)
 
 La liste affiche tous les clients actifs (les clients anonymisés RGPD n'apparaissent plus). Utilisez la barre de recherche pour filtrer par nom, raison sociale ou ville.
+
+---
+
+## Fiche client — mouvements et KPIs
+
+Cliquez sur le **nom du client** ou sur le bouton **Fiche** pour ouvrir un tableau de bord dédié à ce client.
+
+### Ouvrir la fiche
+
+- **Clic sur le nom** (affiché en bleu dans la liste)
+- **Bouton Fiche** sur la ligne du client
+
+### KPIs par période
+
+Trois onglets permettent de basculer instantanément entre les périodes sans rechargement :
+
+| Onglet | Périmètre |
+|---|---|
+| Année N | Exercice en cours (ex. 2026) |
+| Année N-1 | Exercice précédent (ex. 2025) |
+| Tout | Depuis la création du compte client |
+
+Pour chaque période, quatre indicateurs sont affichés :
+
+| Indicateur | Définition |
+|---|---|
+| CA HT | Montant HT des factures émises et payées (avoirs exclus) |
+| Avoirs HT | Montant HT des avoirs émis |
+| CA Net HT | CA HT − Avoirs HT |
+| Encours TTC | Factures émises non encore payées |
+| En retard TTC | Encours dont la date d'échéance est dépassée |
+
+### Tableau des documents
+
+La fiche liste l'ensemble des devis, factures, acomptes et bons de livraison du client, triés par date décroissante. Cliquer sur une ligne ouvre directement le document.
+
+---
 
 ## Créer un client
 
@@ -708,6 +756,20 @@ Bouton **Enregistrer le paiement** : date de paiement + mode. Déclenche automat
 - Écritures de règlement au FEC (journal BQ — Banque)
 - Lettrage automatique des lignes 411 de l'émission et du règlement
 
+### Déduire un acompte lors du paiement
+
+Si un ou plusieurs acomptes ont été encaissés pour ce client, un sélecteur apparaît dans la modale de paiement :
+
+1. Sélectionnez l'acompte à imputer.
+2. Le **solde restant** est calculé en temps réel : `Montant facture − Acompte`.
+3. Cliquez **Confirmer**.
+
+**Cas particulier — acompte supérieur à la facture** : si l'acompte dépasse le montant de la facture, FacturPro crée automatiquement un **acompte reliquat** immédiatement encaissé (noté `Reliquat — AC-XXXX`), représentant le trop-perçu disponible pour une prochaine facture.
+
+Le PDF de la facture affiche alors deux lignes supplémentaires dans le bloc totaux :
+- *Acompte versé* : montant imputé
+- *Solde à payer* : montant restant dû (ou 0,00 €)
+
 ## Envoyer par email
 
 - **Envoyer** : envoie au email du client en base.
@@ -758,21 +820,41 @@ Plusieurs avoirs partiels sont possibles sur la même facture, mais leur total c
 
 # Acomptes
 
-Les acomptes facturent une partie du montant avant livraison.
+Les acomptes permettent de facturer une partie du montant avant livraison. Ils sont scellés et archivés comme les factures.
 
 ## Créer un acompte
 
-Depuis un devis accepté ou une facture.
+Depuis un devis accepté ou une facture, cliquez **Créer un acompte**.
 
 | Champ | Remarque |
 |---|---|
-| Pourcentage | Calcule automatiquement le montant |
-| Montant HT | Peut être saisi directement |
+| Pourcentage | Calcule automatiquement le montant HT/TVA/TTC |
+| Montant HT | Peut être saisi directement à la place du pourcentage |
 | Taux TVA | Appliqué à la totalité de l'acompte |
+
+Le numéro est attribué automatiquement au format `AC-YYYY-NNNN`.
 
 ## Encaisser
 
-Bouton **Encaisser** → date + mode de paiement → verrouillage + PDF.
+Bouton **Encaisser** → saisir la date et le mode de paiement → l'acompte est verrouillé et son PDF généré.
+
+## Imputer un acompte sur une facture
+
+Une fois encaissé, l'acompte est disponible pour être déduit lors du paiement d'une facture du même client (voir [Déduire un acompte lors du paiement](#déduire-un-acompte-lors-du-paiement)).
+
+## Reliquat automatique
+
+Si un acompte est supérieur au montant de la facture à laquelle il est imputé, FacturPro crée un **acompte reliquat** immédiatement encaissé pour la différence. Ce reliquat porte la mention `Reliquat — AC-XXXX` et peut être utilisé sur une facture suivante.
+
+## Suivi dans la liste
+
+La liste des acomptes affiche :
+
+| Colonne | Contenu |
+|---|---|
+| Numéro | `AC-YYYY-NNNN` ; les reliquats sont identifiés par leur origine |
+| Statut | `encaissé` ou `→ FAC-XXXX` quand l'acompte a été utilisé pour payer une facture |
+| Origine / Utilisé pour | Visibles dans la fiche détail de l'acompte |
 
 ---
 

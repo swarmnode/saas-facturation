@@ -55,6 +55,20 @@ switche les KPI cards sans re-fetch, et tableau de documents avec liens
 directs vers chaque document.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: ameliorer page articles (recherche, tri, fiche article)
+
+- Barre de recherche instantanee (reference, designation, description)
+- Tri par clic d'en-tete sur toutes les colonnes numeriques et texte
+- Fiche article : KPIs (devis, factures, qte vendue, CA HT), tableau
+  des 20 documents recents avec lien direct
+- Migration 028 : article_id (FK nullable) sur devis_lignes et
+  factures_lignes pour relier les lignes a leur article source
+- DevisService, FactureService : sauvegarde article_id dans les lignes
+- editor.js : stocke article_id dans le dataset de la ligne lors
+  de la selection autocomplete ; restaure depuis les lignes existantes
+- LigneInput : champ article_id? optionnel
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -155,6 +169,10 @@ par période (N / N-1 / Tout) et le tableau de documents cliquables.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: ajouter section catalogue articles (recherche, tri, fiche)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications

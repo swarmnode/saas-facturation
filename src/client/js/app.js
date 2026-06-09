@@ -440,7 +440,7 @@ const modal = {
     this.overlay.addEventListener('click', e => { if (e.target === this.overlay) this.hide(); });
   },
   show(title, html, onOpen) {
-    this.title.textContent = title;
+    this.title.innerHTML = title;
     this.body.innerHTML    = html;
     this.overlay.style.display = 'flex';
     if (onOpen) onOpen(this.body);
@@ -460,7 +460,7 @@ const modal2 = {
     this.overlay.addEventListener('click', e => { if (e.target === this.overlay) this.hide(); });
   },
   show(title, html, onOpen) {
-    this.title.textContent = title;
+    this.title.innerHTML = title;
     this.body.innerHTML    = html;
     this.overlay.style.display = 'flex';
     if (onOpen) onOpen(this.body);
@@ -4250,7 +4250,7 @@ async function showArticleFiche(id) {
     const date  = fmt.date(d.date_doc);
     const open  = d.type === 'devis'
       ? `modal.hide();DocEditor.openDevis(${d.id})`
-      : `modal.hide();showFactureDetail(${d.id})`;
+      : `modal.hide();DocEditor.openFacture(${d.id})`;
     return `<tr style="cursor:pointer" onclick="${open}">
       <td>${badge}</td>
       <td><strong>${d.numero}</strong></td>
@@ -4285,7 +4285,7 @@ async function showArticleFiche(id) {
       <button class="btn btn-outline" onclick="modal.hide()">Fermer</button>
     </div>`;
 
-  modal.show(`${art.designation}${art.reference ? ' <small style="font-weight:normal;color:var(--text-muted)">[${art.reference}]</small>' : ''}`, html);
+  modal.show(art.designation + (art.reference ? ' <small style="font-weight:normal;color:var(--text-muted)">[' + art.reference + ']</small>' : ''), html);
 }
 
 async function showArticleForm(id) {

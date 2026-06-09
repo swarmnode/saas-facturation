@@ -84,6 +84,74 @@ router.get('/', requirePerm('articles:r'), async (req, res, next) => {
   try { res.json(await ArticleService.lister(req.user!.entreprise_id)); } catch(e) { next(e); }
 });
 
+router.get('/:id/stats', requirePerm('articles:r'), async (req, res, next) => {
+  try {
+    const articleId    = Number(req.params.id);
+    const entrepriseId = req.user!.entreprise_id;
+
+    const ar = await query('SELECT id FROM articles WHERE id=$1 AND entreprise_id=$2', [articleId, entrepriseId]);
+    if (!ar.rows[0]) return res.status(404).json({ error: 'Introuvable' });
+
+    const [kpiRes, docsRes] = await Promise.all([
+      query(`
+        SELECT
+          (SELECT COUNT(DISTINCT dl.devis_id)
+             FROM devis_lignes dl
+             JOIN devis d ON d.id = dl.devis_id
+             WHERE dl.article_id=$1 AND d.entreprise_id=$2) AS nb_devis,
+          (SELECT COUNT(DISTINCT fl.facture_id)
+             FROM factures_lignes fl
+             JOIN factures f ON f.id = fl.facture_id
+             WHERE fl.article_id=$1 AND f.entreprise_id=$2
+               AND f.type_facture != 'avoir' AND f.statut IN ('emise','payee')) AS nb_factures,
+          (SELECT COALESCE(SUM(fl.quantite),0)
+             FROM factures_lignes fl
+             JOIN factures f ON f.id = fl.facture_id
+             WHERE fl.article_id=$1 AND f.entreprise_id=$2
+               AND f.type_facture != 'avoir' AND f.statut IN ('emise','payee')) AS qte_vendue,
+          (SELECT COALESCE(SUM(fl.montant_ht),0)
+             FROM factures_lignes fl
+             JOIN factures f ON f.id = fl.facture_id
+             WHERE fl.article_id=$1 AND f.entreprise_id=$2
+               AND f.type_facture != 'avoir' AND f.statut IN ('emise','payee')) AS ca_ht,
+          (SELECT GREATEST(
+             COALESCE((SELECT MAX(d.date_creation) FROM devis_lignes dl JOIN devis d ON d.id=dl.devis_id WHERE dl.article_id=$1 AND d.entreprise_id=$2), ''),
+             COALESCE((SELECT MAX(f.date_emission) FROM factures_lignes fl JOIN factures f ON f.id=fl.facture_id WHERE fl.article_id=$1 AND f.entreprise_id=$2), '')
+          )) AS derniere_utilisation
+      `, [articleId, entrepriseId]),
+      query(`
+        SELECT 'devis' AS type, d.id, d.numero, d.statut,
+               d.date_creation AS date_doc,
+               COALESCE(c.raison_sociale, TRIM(COALESCE(c.prenom,'')||' '||COALESCE(c.nom,''))) AS client
+          FROM devis_lignes dl
+          JOIN devis d ON d.id = dl.devis_id
+          JOIN clients c ON c.id = d.client_id
+         WHERE dl.article_id=$1 AND d.entreprise_id=$2
+        UNION ALL
+        SELECT 'facture', f.id, f.numero, f.statut,
+               f.date_emission,
+               COALESCE(c.raison_sociale, TRIM(COALESCE(c.prenom,'')||' '||COALESCE(c.nom,'')))
+          FROM factures_lignes fl
+          JOIN factures f ON f.id = fl.facture_id
+          JOIN clients c ON c.id = f.client_id
+         WHERE fl.article_id=$1 AND f.entreprise_id=$2
+        ORDER BY date_doc DESC NULLS LAST
+        LIMIT 20
+      `, [articleId, entrepriseId]),
+    ]);
+
+    const k = kpiRes.rows[0];
+    res.json({
+      nb_devis:             Number(k.nb_devis),
+      nb_factures:          Number(k.nb_factures),
+      qte_vendue:           Number(k.qte_vendue),
+      ca_ht:                Number(k.ca_ht),
+      derniere_utilisation: k.derniere_utilisation || null,
+      documents:            docsRes.rows,
+    });
+  } catch(e) { next(e); }
+});
+
 router.get('/:id', requirePerm('articles:r'), async (req, res, next) => {
   try {
     const a = await ArticleService.obtenir(Number(req.params.id));

@@ -115,6 +115,7 @@ const DocEditor = (() => {
         taux_tva_id:      parseInt(row.querySelector('.e-tva-sel')?.value) || 1,
         remise_pct:       parseFloat(row.querySelector('.e-remise')?.value) || 0,
         numero_serie:     row.querySelector('.e-serie')?.value.trim() || '',
+        article_id:       row.dataset.articleId ? parseInt(row.dataset.articleId) : undefined,
       });
     });
     return {
@@ -380,6 +381,7 @@ const DocEditor = (() => {
     desig.addEventListener('input',()=>calcTotaux(page));
     desig.addEventListener('article-selected', e => {
       const art = e.detail;
+      if (art?.id) tr.dataset.articleId = art.id;
       calcLigne(tr); calcTotaux(page);
       if (art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}
     });
@@ -835,6 +837,7 @@ const DocEditor = (() => {
     };
     lignes.forEach(l => {
       const row = makeRow(l);
+      if (l.article_id) row.dataset.articleId = l.article_id;
       tbody.appendChild(row);
       if (!isBL && l.type !== 'commentaire') calcLigne(row);
     });
@@ -1085,6 +1088,7 @@ const DocEditor = (() => {
         taux_tva_id:      parseInt(row.querySelector('.e-tva-sel').value)||1,
         remise_pct:       parseFloat(row.querySelector('.e-remise').value)||0,
         numero_serie:     row.querySelector('.e-serie')?.value.trim()||undefined,
+        article_id:       row.dataset.articleId ? parseInt(row.dataset.articleId) : undefined,
       });
     });
 

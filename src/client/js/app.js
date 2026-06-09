@@ -4057,8 +4057,14 @@ async function deleteClient(id) {
 }
 
 // ── Articles ──────────────────────────────────────────────────────────────
+let _articlesData   = [];
+let _articlesSortCol = null;
+let _articlesSortDir = 1; // 1 = asc, -1 = desc
+
 async function renderArticles(el) {
-  const articles = await api.get('/api/articles');
+  _articlesData = await api.get('/api/articles');
+  _articlesSortCol = null;
+  _articlesSortDir = 1;
   document.getElementById('topbarActions').innerHTML = `
     <button class="btn btn-primary" onclick="showArticleForm()">+ Nouvel article</button>
     <button class="btn btn-outline" onclick="exportCSV('/api/articles/export','articles')">⬇ Exporter CSV</button>
@@ -4066,43 +4072,168 @@ async function renderArticles(el) {
       <input type="file" accept=".csv" style="display:none" onchange="importCSV('/api/articles/import',this,()=>renderArticles(el))">
     </label>`;
 
-  el.innerHTML = `<div class="card"><div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>Réf.</th><th>Désignation</th><th>Description</th>
-        <th>Unité</th><th class="text-right">Prix vente HT</th><th class="text-right">Prix achat HT</th>
-        <th class="text-right">Marge</th><th>TVA</th><th class="text-right">Stock</th><th></th>
-      </tr></thead>
-      <tbody>${articles.length ? articles.map(a => {
-        const pv = +a.prix_unitaire_ht || 0;
-        const pa = a.prix_achat_ht != null ? +a.prix_achat_ht : null;
-        const marge = pa != null ? pv - pa : null;
-        const tauxMarque = (marge != null && pv > 0) ? (marge / pv * 100) : null;
-        const margeHtml = marge != null
-          ? `<span style="color:${marge >= 0 ? 'var(--success)' : 'var(--danger)'}">
-               ${fmt.money(marge)} <small>(${tauxMarque.toFixed(1)}%)</small>
-             </span>`
-          : '—';
-        return `<tr>
-          <td><code>${a.reference || '—'}</code></td>
-          <td><strong>${a.designation}</strong></td>
-          <td style="color:var(--text-muted);font-size:12px">${a.description || '—'}</td>
-          <td>${a.unite || '—'}</td>
-          <td class="text-right">${fmt.money(pv)}</td>
-          <td class="text-right">${pa != null ? fmt.money(pa) : '—'}</td>
-          <td class="text-right">${margeHtml}</td>
-          <td>${a.tva_taux}%</td>
-          <td class="text-right">${a.quantite_stock != null ? `<span class="e-stock-badge">${a.quantite_stock}</span>` : '—'}</td>
-          <td>
-            <div style="display:flex;gap:4px">
-              <button class="btn btn-outline btn-sm" onclick="showArticleForm(${a.id})">Éditer</button>
-              <button class="btn-trash" onclick="deleteArticle(${a.id})" title="Supprimer">🗑️</button>
-            </div>
-          </td>
-        </tr>`;
-      }).join('') : '<tr><td colspan="10" class="empty">Aucun article</td></tr>'}</tbody>
-    </table>
-  </div></div>`;
+  el.innerHTML = `
+    <div style="margin-bottom:10px">
+      <input id="articleSearch" type="search" placeholder="Rechercher par référence ou désignation…"
+        style="width:100%;max-width:420px;padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px"
+        oninput="_renderArticlesTable()">
+    </div>
+    <div class="card"><div class="table-wrap">
+      <table id="articlesTable">
+        <thead><tr>
+          <th data-sort="reference" style="cursor:pointer;user-select:none">Réf. <span class="sort-ind"></span></th>
+          <th data-sort="designation" style="cursor:pointer;user-select:none">Désignation <span class="sort-ind"></span></th>
+          <th>Description</th>
+          <th data-sort="unite" style="cursor:pointer;user-select:none">Unité <span class="sort-ind"></span></th>
+          <th data-sort="prix_unitaire_ht" class="text-right" style="cursor:pointer;user-select:none">Prix vente HT <span class="sort-ind"></span></th>
+          <th data-sort="prix_achat_ht" class="text-right" style="cursor:pointer;user-select:none">Prix achat HT <span class="sort-ind"></span></th>
+          <th data-sort="_marge" class="text-right" style="cursor:pointer;user-select:none">Marge <span class="sort-ind"></span></th>
+          <th data-sort="tva_taux" style="cursor:pointer;user-select:none">TVA <span class="sort-ind"></span></th>
+          <th data-sort="quantite_stock" class="text-right" style="cursor:pointer;user-select:none">Stock <span class="sort-ind"></span></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="articlesTableBody"></tbody>
+      </table>
+    </div></div>`;
+
+  el.querySelector('#articlesTable thead').addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+    const col = th.dataset.sort;
+    if (_articlesSortCol === col) _articlesSortDir *= -1;
+    else { _articlesSortCol = col; _articlesSortDir = 1; }
+    _renderArticlesTable();
+  });
+
+  _renderArticlesTable();
+}
+
+function _renderArticlesTable() {
+  const q = (document.getElementById('articleSearch')?.value || '').toLowerCase().trim();
+  let rows = _articlesData.filter(a =>
+    !q ||
+    (a.reference || '').toLowerCase().includes(q) ||
+    (a.designation || '').toLowerCase().includes(q) ||
+    (a.description || '').toLowerCase().includes(q)
+  );
+
+  if (_articlesSortCol) {
+    rows = [...rows].sort((a, b) => {
+      let va, vb;
+      if (_articlesSortCol === '_marge') {
+        va = (a.prix_achat_ht != null) ? (+a.prix_unitaire_ht - +a.prix_achat_ht) : -Infinity;
+        vb = (b.prix_achat_ht != null) ? (+b.prix_unitaire_ht - +b.prix_achat_ht) : -Infinity;
+      } else {
+        va = a[_articlesSortCol] ?? '';
+        vb = b[_articlesSortCol] ?? '';
+      }
+      if (va < vb) return -_articlesSortDir;
+      if (va > vb) return  _articlesSortDir;
+      return 0;
+    });
+  }
+
+  // Mettre à jour les indicateurs de tri dans les en-têtes
+  document.querySelectorAll('#articlesTable thead th[data-sort]').forEach(th => {
+    const ind = th.querySelector('.sort-ind');
+    if (!ind) return;
+    if (th.dataset.sort === _articlesSortCol) ind.textContent = _articlesSortDir > 0 ? ' ▲' : ' ▼';
+    else ind.textContent = '';
+  });
+
+  const tbody = document.getElementById('articlesTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = rows.length ? rows.map(a => {
+    const pv = +a.prix_unitaire_ht || 0;
+    const pa = a.prix_achat_ht != null ? +a.prix_achat_ht : null;
+    const marge = pa != null ? pv - pa : null;
+    const tauxMarque = (marge != null && pv > 0) ? (marge / pv * 100) : null;
+    const margeHtml = marge != null
+      ? `<span style="color:${marge >= 0 ? 'var(--success)' : 'var(--danger)'}">
+           ${fmt.money(marge)} <small>(${tauxMarque.toFixed(1)}%)</small>
+         </span>`
+      : '—';
+    return `<tr>
+      <td><code>${a.reference || '—'}</code></td>
+      <td><strong style="cursor:pointer;color:var(--primary)" onclick="showArticleFiche(${a.id})">${a.designation}</strong></td>
+      <td style="color:var(--text-muted);font-size:12px">${a.description || '—'}</td>
+      <td>${a.unite || '—'}</td>
+      <td class="text-right">${fmt.money(pv)}</td>
+      <td class="text-right">${pa != null ? fmt.money(pa) : '—'}</td>
+      <td class="text-right">${margeHtml}</td>
+      <td>${a.tva_taux}%</td>
+      <td class="text-right">${a.quantite_stock != null ? `<span class="e-stock-badge">${a.quantite_stock}</span>` : '—'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-outline btn-sm" onclick="showArticleFiche(${a.id})">Fiche</button>
+          <button class="btn btn-outline btn-sm" onclick="showArticleForm(${a.id})">Éditer</button>
+          <button class="btn-trash" onclick="deleteArticle(${a.id})" title="Supprimer">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="10" class="empty">Aucun article</td></tr>';
+}
+
+async function showArticleFiche(id) {
+  const [art, stats] = await Promise.all([
+    api.get(`/api/articles/${id}`),
+    api.get(`/api/articles/${id}/stats`),
+  ]);
+
+  const pv = +art.prix_unitaire_ht || 0;
+  const pa = art.prix_achat_ht != null ? +art.prix_achat_ht : null;
+  const marge = pa != null ? pv - pa : null;
+  const tauxMarque = (marge != null && pv > 0) ? (marge / pv * 100).toFixed(1) : null;
+  const tauxMarge  = (marge != null && pa > 0)  ? (marge / pa * 100).toFixed(1) : null;
+
+  const kpiBox = (label, val, sub) => `
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:130px">
+      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${label}</div>
+      <div style="font-size:20px;font-weight:700">${val}</div>
+      ${sub ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">${sub}</div>` : ''}
+    </div>`;
+
+  const docRow = d => {
+    const badge = fmt.badge(d.statut);
+    const date  = fmt.date(d.date_doc);
+    const open  = d.type === 'devis'
+      ? `modal.hide();DocEditor.openDevis(${d.id})`
+      : `modal.hide();showFactureDetail(${d.id})`;
+    return `<tr style="cursor:pointer" onclick="${open}">
+      <td>${badge}</td>
+      <td><strong>${d.numero}</strong></td>
+      <td>${d.client || '—'}</td>
+      <td style="color:var(--text-muted)">${date}</td>
+    </tr>`;
+  };
+
+  const html = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      ${kpiBox('Devis', stats.nb_devis, 'documents')}
+      ${kpiBox('Factures', stats.nb_factures, 'émises / payées')}
+      ${kpiBox('Qté vendue', stats.qte_vendue % 1 === 0 ? stats.qte_vendue : stats.qte_vendue.toFixed(2), art.unite || '')}
+      ${kpiBox('CA HT généré', fmt.money(stats.ca_ht), '')}
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:16px;font-size:13px;flex-wrap:wrap">
+      <span>Prix vente HT : <strong>${fmt.money(pv)}</strong></span>
+      ${pa != null ? `<span>Prix achat HT : <strong>${fmt.money(pa)}</strong></span>` : ''}
+      ${marge != null ? `<span>Marge : <strong style="color:${marge>=0?'var(--success)':'var(--danger)'}">${fmt.money(marge)}</strong> (marque ${tauxMarque}%, marge ${tauxMarge}%)</span>` : ''}
+      <span>TVA : <strong>${art.tva_taux}%</strong></span>
+      ${art.quantite_stock != null ? `<span>Stock : <strong>${art.quantite_stock}</strong></span>` : ''}
+      ${stats.derniere_utilisation ? `<span>Dernière utilisation : <strong>${fmt.date(stats.derniere_utilisation)}</strong></span>` : ''}
+    </div>
+    ${stats.documents.length ? `
+    <div style="font-weight:600;margin-bottom:8px">Documents récents</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Statut</th><th>N°</th><th>Client</th><th>Date</th></tr></thead>
+      <tbody>${stats.documents.map(docRow).join('')}</tbody>
+    </table></div>` : '<p style="color:var(--text-muted);font-size:13px">Cet article n\'a pas encore été utilisé dans un document.</p>'}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="modal.hide();showArticleForm(${id})">Éditer l'article</button>
+      <button class="btn btn-outline" onclick="modal.hide()">Fermer</button>
+    </div>`;
+
+  modal.show(`${art.designation}${art.reference ? ' <small style="font-weight:normal;color:var(--text-muted)">[${art.reference}]</small>' : ''}`, html);
 }
 
 async function showArticleForm(id) {

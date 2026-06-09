@@ -32,6 +32,7 @@ export interface FactureInput {
     taux_tva_id: number;
     remise_pct?: number;
     numero_serie?: string;
+    article_id?: number;
   }>;
 }
 
@@ -99,14 +100,14 @@ export class FactureService {
         await client.query(`
           INSERT INTO factures_lignes (facture_id, position, type, designation, description,
             quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
-            montant_ht, montant_tva, montant_ttc, numero_serie)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+            montant_ht, montant_tva, montant_ttc, numero_serie, article_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
         `, [factureId, l.position, l.type ?? 'ligne', l.designation, l.description ?? null,
             isComment ? 0 : l.quantite, l.unite ?? null,
             isComment ? 0 : l.prix_unitaire_ht,
             isComment ? 1 : l.taux_tva_id, l.taux_tva_valeur,
             l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
-            l.numero_serie ?? null]);
+            l.numero_serie ?? null, l.article_id ?? null]);
       }
 
       const r = await client.query('SELECT * FROM factures WHERE id = $1', [factureId]);
@@ -207,14 +208,14 @@ export class FactureService {
         await client.query(`
           INSERT INTO factures_lignes (facture_id, position, type, designation, description,
             quantite, unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
-            montant_ht, montant_tva, montant_ttc, numero_serie)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+            montant_ht, montant_tva, montant_ttc, numero_serie, article_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
         `, [id, l.position, l.type ?? 'ligne', l.designation, l.description ?? null,
             isComment ? 0 : l.quantite, l.unite ?? null,
             isComment ? 0 : l.prix_unitaire_ht,
             isComment ? 1 : l.taux_tva_id, l.taux_tva_valeur,
             l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
-            l.numero_serie ?? null]);
+            l.numero_serie ?? null, l.article_id ?? null]);
       }
       return this.obtenir(id);
     });

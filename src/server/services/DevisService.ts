@@ -12,6 +12,7 @@ export interface LigneInput {
   prix_unitaire_ht: number;
   taux_tva_id: number;
   remise_pct?: number;
+  article_id?: number;
 }
 
 export interface DevisInput {
@@ -65,14 +66,15 @@ export class DevisService {
         await client.query(`
           INSERT INTO devis_lignes (devis_id, position, type, designation, description, quantite,
             unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
-            montant_ht, montant_tva, montant_ttc)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+            montant_ht, montant_tva, montant_ttc, article_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         `, [devisId, l.position, l.type ?? 'ligne', l.designation, l.description ?? null,
             l.type === 'commentaire' ? 0 : l.quantite,
             l.unite ?? null,
             l.type === 'commentaire' ? 0 : l.prix_unitaire_ht,
             l.type === 'commentaire' ? 1 : l.taux_tva_id, l.taux_tva_valeur,
-            l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc]);
+            l.remise_pct ?? 0, l.montant_ht, l.montant_tva, l.montant_ttc,
+            l.article_id ?? null]);
       }
 
       const r = await client.query('SELECT * FROM devis WHERE id = $1', [devisId]);
@@ -141,14 +143,14 @@ export class DevisService {
           await client.query(`
             INSERT INTO devis_lignes (devis_id, position, type, designation, description, quantite,
               unite, prix_unitaire_ht, taux_tva_id, taux_tva_valeur, remise_pct,
-              montant_ht, montant_tva, montant_ttc)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+              montant_ht, montant_tva, montant_ttc, article_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
           `, [id, i + 1, l.type ?? 'ligne', l.designation, l.description ?? null,
               isComment ? 0 : l.quantite,
               l.unite ?? null,
               isComment ? 0 : l.prix_unitaire_ht,
               isComment ? 1 : l.taux_tva_id, taux, l.remise_pct ?? 0,
-              mHT, mTVA, mHT + mTVA]);
+              mHT, mTVA, mHT + mTVA, l.article_id ?? null]);
         }
         await client.query('UPDATE devis SET montant_ht=$1, montant_tva=$2, montant_ttc=$3 WHERE id=$4',
           [totHT, totTVA, totHT + totTVA, id]);

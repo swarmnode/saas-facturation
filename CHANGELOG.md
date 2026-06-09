@@ -69,6 +69,14 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - LigneInput : champ article_id? optionnel
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: sélection multi-BL pour générer une facture groupée
+
+Ajoute des cases à cocher sur chaque ligne BL, un bouton "Facturer la
+sélection (N)" dans la topbar (désactivé jusqu'à 1 sélection), et la
+logique de fusion des lignes. Valide que tous les BL appartiennent au
+même client avant d'ouvrir l'éditeur facture.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -182,6 +190,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Notifications avant echeance : nouvelle section dans Parametres
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications

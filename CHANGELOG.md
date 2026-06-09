@@ -191,6 +191,10 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: ajouter sélection multi-BL dans le manuel utilisateur
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications

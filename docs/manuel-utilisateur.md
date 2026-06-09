@@ -470,7 +470,7 @@ Cliquez sur le **nom d'un article** ou sur le bouton **Fiche** pour ouvrir un mo
 | Dernière utilisation | Date du document le plus récent utilisant cet article |
 | Documents récents | Tableau des 20 derniers devis et factures, avec lien direct vers chacun |
 
-> Les statistiques ne comptent que les factures de type **emise** ou **payee** (avoirs exclus). Les nouvelles lignes de document mémorisent désormais l'article source — les données historiques antérieures à cette version affichent 0.
+> Les statistiques ne comptent que les factures de type **emise** ou **payee** (avoirs exclus). Cliquer sur une ligne du tableau ouvre directement l'éditeur du document.
 
 ---
 

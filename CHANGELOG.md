@@ -173,6 +173,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: ajouter section catalogue articles (recherche, tri, fiche)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: mettre a jour le manuel pour la demo
+
+- Fiche client (KPIs par periode, tableau des documents) : section restauree
+- Deduction d'acompte lors du paiement de facture : flux complet, reliquat
+- Acomptes : section enrichie (reliquat, suivi statut, imputation)
+- Notifications avant echeance : nouvelle section dans Parametres
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications

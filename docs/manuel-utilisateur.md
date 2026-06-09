@@ -873,7 +873,19 @@ Les BL documentent la remise des biens ou la réalisation des prestations.
 
 ## Créer une facture depuis un BL
 
-Bouton **Créer la facture** → facture pré-remplie avec client et lignes du BL.
+### Depuis un seul BL
+
+Bouton **🧾 → Facture** sur la ligne du BL → facture pré-remplie avec le client et les lignes du BL.
+
+### Depuis plusieurs BL (facture groupée)
+
+Vous pouvez sélectionner plusieurs BL pour les regrouper en une seule facture :
+
+1. Cochez les cases à gauche de chaque BL souhaité.
+2. Le bouton **🧾 Facturer la sélection (N)** apparaît dans la barre et indique le nombre de BL cochés.
+3. Cliquez le bouton → une facture s'ouvre, pré-remplie avec le client commun et toutes les lignes des BL dans l'ordre.
+
+> Tous les BL sélectionnés doivent appartenir au **même client** — un message d'erreur s'affiche si ce n'est pas le cas.
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "saas-facturation",
-  "version": "3.2.3",
+  "version": "3.2.5",
   "description": "SaaS Devis & Facturation France â€” Loi anti-fraude TVA, Factur-X",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server/index.ts",

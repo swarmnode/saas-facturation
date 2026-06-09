@@ -166,6 +166,26 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.2.1
 - Chore: bump v3.2.2
 - Chore: bump v3.2.3
+- Chore: bump v3.2.5
+
+
+## [3.2.5] — 2026-06-09
+
+### Ajouté
+- Feat: fiche client avec mouvements et KPIs par période
+
+  Nouveau endpoint `GET /api/clients/:id/mouvements` calculant en un seul appel SQL
+  les indicateurs financiers sur 3 horizons (année N, N-1, tout temps) et la liste
+  chronologique de tous les documents du client (devis, factures, acomptes, BL).
+
+  Interface : bouton "Fiche" et clic sur le nom du client ouvrent un modal avec :
+  - 4 KPIs : CA HT, Avoirs HT, CA Net HT, Encours TTC, En retard TTC
+  - Sélecteur de période en 3 onglets (Année N / N-1 / Tout) — switch sans re-chargement
+  - Tableau des documents trié par date décroissante avec badges statut et liens directs
+
+- Docs: nouvelle section "Fiche client — mouvements et KPIs" dans le manuel utilisateur
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

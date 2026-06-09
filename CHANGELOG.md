@@ -207,6 +207,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md et manuel pour v3.2.6
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -242,6 +243,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.2.5
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: bump v3.2.6
 
 
 ## [3.0.0] — 2026-06-07

@@ -281,11 +281,15 @@ const DOC_CONFIGS = {
   },
   'bons-livraison': {
     api:      '/api/bons-livraison',
-    topbar:   () => `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button><span class="help-icon" data-tooltip="${helpTexts.bl_statut.replace(/"/g,'&quot;')}" style="margin-left:14px">?</span>`,
-    headers:  ['N°','Client','Date émission','Lieu','Statut'],
-    sortKeys: ['numero','client_nom','date_emission','lieu_livraison','statut'],
+    topbar:   () => {
+      _selBL.clear();
+      return `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button><span class="help-icon" data-tooltip="${helpTexts.bl_statut.replace(/"/g,'&quot;')}" style="margin-left:14px">?</span><button id="btnFacturerSelBL" class="btn btn-success" style="margin-left:10px;opacity:0.5;pointer-events:none" disabled onclick="facturerSelectionBL()">🧾 Facturer la sélection (<span id="selCountBL">0</span>)</button>`;
+    },
+    headers:  ['','N°','Client','Date émission','Lieu','Statut'],
+    sortKeys: ['','numero','client_nom','date_emission','lieu_livraison','statut'],
     rowOpen:  b => `DocEditor.openBL(${b.id})`,
     cells:    b => [
+      `<input type="checkbox" class="bl-sel" data-id="${b.id}" onclick="event.stopPropagation();updateBLSelCount()" style="cursor:pointer;width:16px;height:16px">`,
       `<strong>${b.numero}</strong>`,
       b.client_nom||b.client_nom_part||'—',
       fmt.date(b.date_emission),
@@ -4016,6 +4020,52 @@ async function factureFromBL(blId) {
   });
 }
 
+function updateBLSelCount() {
+  const checked = [...document.querySelectorAll('.bl-sel:checked')];
+  _selBL = new Set(checked.map(c => Number(c.dataset.id)));
+  const btn = document.getElementById('btnFacturerSelBL');
+  const span = document.getElementById('selCountBL');
+  if (!btn) return;
+  if (span) span.textContent = _selBL.size;
+  const enabled = _selBL.size >= 1;
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? '1' : '0.5';
+  btn.style.pointerEvents = enabled ? '' : 'none';
+}
+
+async function facturerSelectionBL() {
+  const ids = [..._selBL];
+  if (!ids.length) return;
+
+  const bls = await Promise.all(ids.map(id => api.get(`/api/bons-livraison/${id}`)));
+  const valid = bls.filter(b => b?.id);
+  if (!valid.length) return;
+
+  const clientIds = [...new Set(valid.map(b => b.client_id))];
+  if (clientIds.length > 1) {
+    alert('Les bons de livraison sélectionnés appartiennent à des clients différents.\nVeuillez sélectionner uniquement des BL du même client.');
+    return;
+  }
+
+  const allLignes = valid.flatMap(bl =>
+    (bl.lignes || []).map(l => ({
+      designation:      l.designation,
+      description:      l.description,
+      quantite:         l.quantite,
+      unite:            l.unite,
+      prix_unitaire_ht: 0,
+      taux_tva_id:      1,
+      remise_pct:       0,
+    }))
+  );
+
+  DocEditor.openFacture(null, {
+    client_id:  clientIds[0],
+    bl_numeros: valid.map(b => b.numero).join(', '),
+    lignes:     allLignes,
+  });
+}
+
 async function supprimerBL(id) {
   if (!confirm('Supprimer ce bon de livraison ?')) return;
   const r = await api.delete(`/api/bons-livraison/${id}`);
@@ -4060,6 +4110,8 @@ async function deleteClient(id) {
 let _articlesData   = [];
 let _articlesSortCol = null;
 let _articlesSortDir = 1; // 1 = asc, -1 = desc
+
+let _selBL = new Set();
 
 async function renderArticles(el) {
   _articlesData = await api.get('/api/articles');

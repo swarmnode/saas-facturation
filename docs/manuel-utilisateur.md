@@ -399,6 +399,33 @@ Import terminé :
 
 ![Liste des articles](screenshots/05-articles-liste.png)
 
+## Rechercher et trier
+
+### Barre de recherche
+
+En haut de la liste, un champ de recherche filtre instantanément les articles sur leur **référence**, leur **désignation** ou leur **description**. Le filtrage est côté client — aucun rechargement réseau.
+
+### Tri par colonne
+
+Cliquez sur n'importe quel en-tête de colonne pour trier la liste (▲ = croissant, ▼ = décroissant). Second clic : inverse le sens. Colonnes triables : Réf., Désignation, Unité, Prix vente HT, Prix achat HT, Marge, TVA, Stock.
+
+---
+
+## Fiche article
+
+Cliquez sur le **nom d'un article** ou sur le bouton **Fiche** pour ouvrir un modal récapitulatif :
+
+| Zone | Contenu |
+|---|---|
+| KPIs | Nombre de devis, nombre de factures émises/payées, quantité vendue totale, CA HT généré |
+| Infos tarifaires | Prix vente, prix achat, marge brute, taux de marque, taux de marge, TVA, stock |
+| Dernière utilisation | Date du document le plus récent utilisant cet article |
+| Documents récents | Tableau des 20 derniers devis et factures, avec lien direct vers chacun |
+
+> Les statistiques ne comptent que les factures de type **emise** ou **payee** (avoirs exclus). Les nouvelles lignes de document mémorisent désormais l'article source — les données historiques antérieures à cette version affichent 0.
+
+---
+
 ## Créer un article
 
 | Champ | Remarque |

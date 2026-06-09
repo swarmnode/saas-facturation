@@ -1570,13 +1570,14 @@ async function renderClients(el) {
         </tr></thead>
         <tbody>${clients.length ? clients.map(c => `
           <tr>
-            <td><strong>${c.raison_sociale || [c.civilite, c.prenom, c.nom].filter(Boolean).join(' ')}</strong></td>
+            <td><strong style="cursor:pointer;color:var(--primary)" onclick="showClientMouvements(${c.id})">${c.raison_sociale || [c.civilite, c.prenom, c.nom].filter(Boolean).join(' ')}</strong></td>
             <td>${c.type_client}</td>
             <td>${c.email || '—'}</td>
             <td>${c.telephone || '—'}</td>
             <td><code>${c.siret || '—'}</code></td>
             <td>${fmt.badge(c.statut_rgpd)}</td>
             <td style="display:flex;gap:4px">
+              <button class="btn btn-outline btn-sm" onclick="showClientMouvements(${c.id})">Fiche</button>
               <button class="btn btn-outline btn-sm" onclick="showClientForm(${c.id})">Éditer</button>
               <button class="btn-trash" onclick="deleteClient(${c.id})" title="Supprimer ce client">🗑️</button>
             </td>
@@ -1771,6 +1772,90 @@ async function showClientForm(id) {
       modal.hide();
       tabMgr.openViewTab('clients');
     };
+  });
+}
+
+async function showClientMouvements(id) {
+  const [client, data] = await Promise.all([
+    api.get(`/api/clients/${id}`),
+    api.get(`/api/clients/${id}/mouvements`),
+  ]);
+  if (!client || client.error || !data || data.error) return;
+
+  const nom = client.raison_sociale || [client.civilite, client.prenom, client.nom].filter(Boolean).join(' ') || `Client #${id}`;
+  const { annee_n, annee_n1, kpis_n, kpis_n1, kpis_all, documents } = data;
+
+  function kpiBox(label, val, sub, color) {
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:130px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${label}</div>
+      <div style="font-size:18px;font-weight:700;color:${color}">${val}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${sub}</div>
+    </div>`;
+  }
+
+  function renderKpis(k) {
+    return `
+      ${kpiBox('CA net HT', fmt.money(k.net_ht), k.avoirs_ht > 0 ? `avoirs : −${fmt.money(k.avoirs_ht)}` : 'factures émises + payées', 'var(--primary)')}
+      ${kpiBox('Encours TTC', fmt.money(k.encours_ttc), 'factures émises non payées', '#f59e0b')}
+      ${kpiBox('En retard TTC', fmt.money(k.retard_ttc), 'échéance dépassée', k.retard_ttc > 0 ? '#ef4444' : '#22c55e')}`;
+  }
+
+  const typeLabel = { devis: 'Devis', facture: 'Facture', acompte: 'Acompte', bl: 'Bon de livraison' };
+  const now = new Date();
+
+  const rows = documents.map(doc => {
+    const isRetard = doc.type === 'facture' && doc.statut === 'emise' && doc.date_echeance && new Date(doc.date_echeance) < now;
+    const montantCell = doc.type === 'bl' ? '—'
+      : `<span style="color:${doc.type_facture === 'avoir' ? '#ef4444' : 'inherit'}">${doc.type_facture === 'avoir' ? '−' : ''}${fmt.money(doc.montant_ttc)}</span>`;
+    let openFn = '';
+    if (doc.type === 'devis')   openFn = `modal.hide();DocEditor.openDevis(${doc.id})`;
+    if (doc.type === 'facture') openFn = `modal.hide();showFactureDetail(${doc.id})`;
+    if (doc.type === 'acompte') openFn = `modal.hide();showAcompteDetail(${doc.id})`;
+    if (doc.type === 'bl')      openFn = `modal.hide();showBLDetail(${doc.id})`;
+    return `<tr style="cursor:pointer" onclick="${openFn}">
+      <td>${fmt.date(doc.date_doc)}</td>
+      <td style="color:var(--text-muted);font-size:12px">${typeLabel[doc.type] || doc.type}</td>
+      <td><strong>${doc.numero}</strong></td>
+      <td>${fmt.badge(doc.statut)}${isRetard ? ' <span style="color:#ef4444;font-size:11px;font-weight:600">⚠ retard</span>' : ''}</td>
+      <td style="text-align:right">${montantCell}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:2px">Période :</span>
+      <button data-kpi-tab="n"   class="btn btn-sm btn-primary">${annee_n}</button>
+      <button data-kpi-tab="n1"  class="btn btn-sm btn-outline">${annee_n1}</button>
+      <button data-kpi-tab="all" class="btn btn-sm btn-outline">Tout</button>
+    </div>
+    <div id="kpiCards" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      ${renderKpis(kpis_n)}
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Type</th><th>Numéro</th><th>Statut</th><th style="text-align:right">Montant TTC</th>
+          </tr></thead>
+          <tbody>${rows || '<tr><td colspan="5" class="empty">Aucun document</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="modal.hide();DocEditor.openDevis()">+ Nouveau devis</button>
+      <button class="btn btn-outline" onclick="modal.hide();showClientForm(${id})">Modifier la fiche</button>
+    </div>`;
+
+  modal.show(`Fiche client — ${nom}`, html, body => {
+    const kpisMap = { n: kpis_n, n1: kpis_n1, all: kpis_all };
+    body.querySelectorAll('[data-kpi-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        body.querySelectorAll('[data-kpi-tab]').forEach(b => {
+          b.className = b === btn ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
+        });
+        body.querySelector('#kpiCards').innerHTML = renderKpis(kpisMap[btn.dataset.kpiTab]);
+      });
+    });
   });
 }
 

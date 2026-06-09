@@ -31,7 +31,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–026 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–027 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
 - 005: `clients.adresse2` (complement d'adresse)
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
@@ -53,6 +53,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - 024: `type` column on `devis_lignes` / `factures_lignes` / `avenants_lignes` / `bons_livraison_lignes` to support comment-only lines
 - 025: creates `commentaires_predefinis` table (per-company catalogue of reusable comment texts; served via `GET/POST/DELETE /api/commentaires`)
 - 026: creates `fournisseurs` (supplier directory, CRUD mirrors `clients` incl. CSV export/import) and `commandes_fournisseurs` (purchase orders, numbered `CMD-YYYY-NNNN`); adds `factures_fournisseurs.fournisseur_id` (nullable FK). Purchase-side chaining (commande ↔ facture d'achat ↔ fournisseur) is **intentionally non-blocking**: no legal obligation to chain on the purchase side (unlike emitted documents), so all FKs are nullable and freely editable — do not add locking/sealing here
+- 027: `factures.acompte_id` (FK → `acomptes`) + `factures.montant_acompte_applique` — links a facture to the deposit (acompte) applied against it; `acomptes.notes` (free text, e.g. "Reliquat — AC-2025-0001")
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -121,7 +122,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `csv.ts` — `toCSV(headers, rows)` produces UTF-8 BOM `;`-separated CSV (Excel FR compatible); `parseCSV(text)` auto-detects `;`/`,` separator; `rowToObj(headers, row)` zips a header array and a row into a plain object. Used by FEC export and CSV import routes.
 - `paginate.ts` — `paginateParams(q)` reads `?page=&limit=&all=1` from query string (default limit 50, cap 200); `buildPage(rows, page, limit)` shapes the response as `{ data, total, page, pages, limit }`. Rows must carry a `_total` column (window count from SQL) which is stripped before returning.
 
-**Tests**: `@playwright/test` is installed as a devDependency but there is no `npm test` script configured. Playwright tests (if any) must be run directly with `npx playwright test`.
+**Tests**: `npm test` runs `playwright test` (E2E). Run a single spec with `npx playwright test <file>`.
 
 ## Document lifecycle and auto-locking
 

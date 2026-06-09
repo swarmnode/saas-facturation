@@ -142,6 +142,84 @@ router.get('/taux-tva', async (_req, res, next) => {
   } catch(e) { next(e); }
 });
 
+router.get('/:id/mouvements', requirePerm('clients:r'), async (req, res, next) => {
+  try {
+    const clientId     = Number(req.params.id);
+    const entrepriseId = req.user!.entreprise_id;
+
+    const cr = await query(
+      "SELECT id FROM clients WHERE id=$1 AND entreprise_id=$2 AND statut_rgpd!='anonymise'",
+      [clientId, entrepriseId]
+    );
+    if (!cr.rows[0]) return res.status(404).json({ error: 'Introuvable' });
+
+    const anneeN  = new Date().getFullYear();
+    const anneeN1 = anneeN - 1;
+    const now     = `to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
+
+    const [kpiRes, docsRes] = await Promise.all([
+      query(`
+        SELECT
+          -- Année N
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$3 AND type_facture != 'avoir' AND statut IN ('emise','payee') THEN montant_ht  ELSE 0 END),0) AS n_ca_ht,
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$3 AND type_facture  = 'avoir' AND statut IN ('emise','payee') THEN montant_ht  ELSE 0 END),0) AS n_avoirs_ht,
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$3 AND type_facture != 'avoir' AND statut = 'emise' THEN montant_ttc ELSE 0 END),0) AS n_encours_ttc,
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$3 AND type_facture != 'avoir' AND statut = 'emise'
+                            AND date_echeance IS NOT NULL AND date_echeance < ${now}
+                       THEN montant_ttc ELSE 0 END),0) AS n_retard_ttc,
+          -- Année N-1
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$4 AND type_facture != 'avoir' AND statut IN ('emise','payee') THEN montant_ht  ELSE 0 END),0) AS n1_ca_ht,
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$4 AND type_facture  = 'avoir' AND statut IN ('emise','payee') THEN montant_ht  ELSE 0 END),0) AS n1_avoirs_ht,
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$4 AND type_facture != 'avoir' AND statut = 'emise' THEN montant_ttc ELSE 0 END),0) AS n1_encours_ttc,
+          COALESCE(SUM(CASE WHEN LEFT(date_emission,4)=$4 AND type_facture != 'avoir' AND statut = 'emise'
+                            AND date_echeance IS NOT NULL AND date_echeance < ${now}
+                       THEN montant_ttc ELSE 0 END),0) AS n1_retard_ttc,
+          -- Tout temps
+          COALESCE(SUM(CASE WHEN type_facture != 'avoir' AND statut IN ('emise','payee') THEN montant_ht  ELSE 0 END),0) AS all_ca_ht,
+          COALESCE(SUM(CASE WHEN type_facture  = 'avoir' AND statut IN ('emise','payee') THEN montant_ht  ELSE 0 END),0) AS all_avoirs_ht,
+          COALESCE(SUM(CASE WHEN type_facture != 'avoir' AND statut = 'emise' THEN montant_ttc ELSE 0 END),0) AS all_encours_ttc,
+          COALESCE(SUM(CASE WHEN type_facture != 'avoir' AND statut = 'emise'
+                            AND date_echeance IS NOT NULL AND date_echeance < ${now}
+                       THEN montant_ttc ELSE 0 END),0) AS all_retard_ttc
+        FROM factures WHERE client_id=$1 AND entreprise_id=$2
+      `, [clientId, entrepriseId, String(anneeN), String(anneeN1)]),
+      query(`
+        SELECT 'devis'   AS type, id, numero, statut, montant_ht, montant_ttc,
+               date_creation AS date_doc, NULL::text AS date_echeance, NULL::text AS type_facture
+        FROM devis WHERE client_id=$1 AND entreprise_id=$2
+        UNION ALL
+        SELECT 'facture', id, numero, statut, montant_ht, montant_ttc,
+               date_emission, date_echeance, type_facture
+        FROM factures WHERE client_id=$1 AND entreprise_id=$2
+        UNION ALL
+        SELECT 'acompte', id, numero, statut, montant_ht, montant_ttc,
+               to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), NULL, NULL
+        FROM acomptes WHERE client_id=$1 AND entreprise_id=$2
+        UNION ALL
+        SELECT 'bl', id, numero, statut, 0::float8, 0::float8,
+               date_emission, NULL, NULL
+        FROM bons_livraison WHERE client_id=$1 AND entreprise_id=$2
+        ORDER BY date_doc DESC NULLS LAST
+      `, [clientId, entrepriseId]),
+    ]);
+
+    const k = kpiRes.rows[0];
+    function parseKpis(prefix: string) {
+      const ca   = Number(k[`${prefix}ca_ht`]);
+      const av   = Number(k[`${prefix}avoirs_ht`]);
+      return { ca_ht: ca, avoirs_ht: av, net_ht: ca - av, encours_ttc: Number(k[`${prefix}encours_ttc`]), retard_ttc: Number(k[`${prefix}retard_ttc`]) };
+    }
+    res.json({
+      annee_n:  anneeN,
+      annee_n1: anneeN1,
+      kpis_n:   parseKpis('n_'),
+      kpis_n1:  parseKpis('n1_'),
+      kpis_all: parseKpis('all_'),
+      documents: docsRes.rows,
+    });
+  } catch(e) { next(e); }
+});
+
 router.get('/:id', requirePerm('clients:r'), async (req, res, next) => {
   try {
     const r = await query(

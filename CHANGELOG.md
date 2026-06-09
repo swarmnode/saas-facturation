@@ -42,6 +42,19 @@ fournisseur, et structure du formulaire CA3 de déclaration de TVA.
   Utilisé pour
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: fiche client avec mouvements et KPIs par période
+
+Ajoute GET /api/clients/:id/mouvements qui retourne en une seule requête
+SQL les KPIs pour l'année N, N-1 et tout temps (CA net HT, encours TTC,
+retard TTC) ainsi que la liste chronologique de tous les documents du
+client (devis, factures, acomptes, bons de livraison).
+
+Côté SPA : bouton "Fiche" sur chaque ligne de la liste clients + nom
+cliquable ; modale avec sélecteur de période (2026 / 2025 / Tout) qui
+switche les KPI cards sans re-fetch, et tableau de documents avec liens
+directs vers chaque document.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -134,6 +147,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: ajouter section fiche client dans le manuel utilisateur
+
+Documente le bouton Fiche, la modale de mouvements client, les KPIs
+par période (N / N-1 / Tout) et le tableau de documents cliquables.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications

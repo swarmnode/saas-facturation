@@ -203,6 +203,10 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md et manuel pour v3.2.6
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications
@@ -238,18 +242,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.2.5
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Chore: bump v3.2.6
 
-## [3.2.6] — 2026-06-09
-
-### Ajouté
-- Sélection multi-BL pour générer une facture groupée : cases à cocher sur chaque ligne de la liste BL, bouton « 🧾 Facturer la sélection (N) » dans la topbar, validation même client, fusion des lignes de tous les BL sélectionnés
-- Fiche article : KPIs (nb devis, nb factures, qté vendue, CA HT), tableau des 20 documents récents cliquables, marge brute / taux de marque / taux de marge si prix d'achat renseigné
-- Migration 028 : colonne `article_id` (FK nullable) sur `devis_lignes` et `factures_lignes` — backfill automatique par correspondance de désignation sur l'historique
-
-### Corrigé
-- Fiche article : titre de modale affiché en HTML (référence `[REF]` correctement stylée)
-- Fiche article : clic sur une facture dans les documents récents ouvre l'éditeur WYSIWYG plutôt qu'une modale de résumé
 
 ## [3.0.0] — 2026-06-07
 

@@ -123,6 +123,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: corriger ecriture BOM dans package.json (release.ps1) + lecture defensive dans update.ts
+- Fix: fiche article — reference et ouverture facture dans l'editeur
+
+- modal.show : textContent -> innerHTML pour rendre le HTML du titre
+- docRow facture : showFactureDetail -> DocEditor.openFacture
+- Correction backtick imbrique dans le titre de la modale fiche article
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -195,6 +202,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: ajouter sélection multi-BL dans le manuel utilisateur
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications

@@ -95,6 +95,34 @@ Teste : Playwright (masquage/survol/hauteur/sauts de page) + verification
 croisee editeur vs PDF (41 lignes -> 2 pages de contenu des deux cotes)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+- Feat: editeurs WYSIWYG pour les documents d'achat (commandes et factures fournisseurs)
+
+Aligne les achats sur le modele des ventes — DocEditor gere deux nouveaux
+types : 'commande' (bon de commande) et 'facture-achat'.
+
+- Migration 029 : commandes_fournisseurs_lignes et factures_fournisseurs_lignes
+  (miroir devis_lignes, ON DELETE CASCADE — pas de verrou cote achats) ;
+  montant_tva/montant_ttc/notes sur commandes_fournisseurs
+- CommandeFournisseurService : lignes avec totaux calcules comme DevisService,
+  compat saisie sans lignes (montant HT seul) ; route GET /:id/apercu
+- FacturXService.genererCommandeStream : PDF « BON DE COMMANDE » avec
+  destinataire fournisseur, hauteurs dynamiques, totaux, notes (sans CGV
+  de vente ni cadre signature)
+- FournisseurService : lignes detaillees sur les factures d'achats + nouveau
+  mettreAJour (statut recue uniquement) qui regenere les ecritures FEC et
+  resynchronise la TVA deductible (anciennes et nouvelles periodes) ;
+  fix : syncTvaDeductible ecrasait pas un total retombe a zero
+- DocEditor : destinataire fournisseur (annuaire ou nom libre), prix d'achat
+  depuis le catalogue article, numero libre pour la facture d'achat, pas de
+  boutons PDF sur la facture d'achat (document de reference = celui du
+  fournisseur), lecture seule une fois payee, bouton Payer, brouillons
+- Listes achats : ouverture des editeurs, modale de paiement partagee,
+  chainage commande<->facture conserve via bouton dedie, restauration session
+
+Teste : API (totaux, PDF, regeneration FEC 401 294->360, suppression) +
+Playwright (ouverture editeurs, saisie, numerotation CMD, capture verifiee)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -251,6 +279,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -291,6 +320,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.7
+- Chore: bump v3.2.8
 
 
 ## [3.0.0] — 2026-06-07

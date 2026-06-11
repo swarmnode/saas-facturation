@@ -33,3 +33,10 @@ Manuel_FacturPro.docx
 installer/payload/
 installer/tools/
 installer/FacturPro-Setup.exe
+
+# Artefacts runtime et fichiers temporaires
+.tmp/
+Sauvegardes/
+updates/
+FacturPro-Patch.zip
+storage/jwt_secret.key

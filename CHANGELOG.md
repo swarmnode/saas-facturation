@@ -77,6 +77,24 @@ logique de fusion des lignes. Valide que tous les BL appartiennent au
 même client avant d'ouvrir l'éditeur facture.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: editeur — sous-champs masques au survol, hauteurs dynamiques, pagination PDF
+
+- Les champs description et n° de serie disparaissent quand ils sont vides
+  (ligne compacte) et se revelent au survol ou au focus de la ligne pour
+  etre remplis ; jamais reveles en lecture seule
+- Sauts de page de l'editeur recalcules en miroir du PDF : base fixe 20pt
+  par ligne + hauteur DOM reelle des parties variables (description
+  multi-ligne, n° de serie, commentaires) convertie px->pt
+- PDF : genererFactureStream et genererBLStream passent en hauteurs
+  dynamiques (heightOfString) comme genererFacture/genererDevisStream —
+  descriptions completes au lieu d'etre tronquees
+- PDF : le n° de serie est desormais imprime (« N° serie : X », 7pt gris)
+  sous la description dans les 4 generateurs, hauteur comptee dans rowH
+
+Teste : Playwright (masquage/survol/hauteur/sauts de page) + verification
+croisee editeur vs PDF (41 lignes -> 2 pages de contenu des deux cotes)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -130,6 +148,29 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Correction backtick imbrique dans le titre de la modale fiche article
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: securite — isolation multi-tenant, signature devis, secret JWT, erreurs, CORS
+
+- Isolation multi-tenant : tous les obtenir() et mutations (PUT, emettre,
+  payer, encaisser, delete, chorus-pro, envois email/PDF) verifient
+  desormais l'appartenance du document a l'entreprise du JWT (404 sinon)
+  sur factures, devis, acomptes, BL et articles
+- DevisService.dupliquer copiait vers une entreprise arbitraire
+  (SELECT id FROM entreprise LIMIT 1) — utilise l'entreprise du devis source
+- Signature devis : le GET public affiche une page de confirmation,
+  la signature ne se fait plus qu'en POST (les precharcheurs de liens
+  Outlook/antivirus suivaient le GET et signaient a l'insu du client)
+- JWT : suppression du defaut 'change_me' — secret aleatoire genere au
+  premier demarrage et persiste dans storage/jwt_secret.key (utils/secret.ts)
+- errorHandler : les erreurs PostgreSQL/systeme (err.code) renvoient un 500
+  generique sans details internes ; les erreurs metier renvoient 400 avec
+  leur message ; INALTER/ISCA restent en 403
+- CORS desactive par defaut (SPA same-origin), configurable via CORS_ORIGIN
+- initDb() refactore : boucle sur un tableau MIGRATIONS au lieu de 28 blocs
+- envoyer-email sans email renvoie 400 au lieu d'un succes silencieux
+- Fixes annexes : DELETE /api/devis/:id etait casse (syntaxe UNION/LIMIT
+  invalide en PG, 500 systematique) ; AcompteService.lister parametre
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -208,6 +249,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -244,6 +286,9 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.2.6
+- Chore: gitignore — artefacts runtime (.tmp, Sauvegardes, updates, secret JWT)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 
 ## [3.0.0] — 2026-06-07

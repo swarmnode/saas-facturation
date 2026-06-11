@@ -250,6 +250,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -289,6 +290,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: gitignore — artefacts runtime (.tmp, Sauvegardes, updates, secret JWT)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+- Chore: bump v3.2.7
 
 
 ## [3.0.0] — 2026-06-07

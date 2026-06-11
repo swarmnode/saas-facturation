@@ -294,6 +294,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - docx regenere via pandoc (28 images embarquees)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -335,6 +336,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.7
 - Chore: bump v3.2.8
+- Chore: bump v3.2.9
 
 
 ## [3.0.0] — 2026-06-07

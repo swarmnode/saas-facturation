@@ -565,7 +565,7 @@ HEB-MENS;Hébergement mensuel;Serveur dédié - 99,9% disponibilité;mois;299;18
 
 # Éditeur de documents (WYSIWYG)
 
-Tous les documents s'ouvrent dans un éditeur visuel A4 qui reproduit l'aspect exact du PDF final.
+Tous les documents s'ouvrent dans un éditeur visuel A4 qui reproduit l'aspect exact du PDF final — côté ventes (devis, factures, avoirs, bons de livraison) comme côté achats (bons de commande et factures d'achats, voir le chapitre *Achats*).
 
 ## Devis
 
@@ -933,34 +933,63 @@ Bouton **+ Nouveau fournisseur** pour ouvrir la fiche de création :
 
 Les boutons **⬇ Exporter CSV** et **⬆ Importer CSV** permettent d'échanger votre liste de fournisseurs au format tableur.
 
-## Commandes
+## Commandes (bons de commande)
 
 ![Liste des commandes](screenshots/22-commandes-liste.png)
 
-**Achats > Commandes** liste les commandes passées auprès de vos fournisseurs, filtrables par statut (**Toutes**, **En cours**, **Réceptionnées**, **Annulées**).
+**Achats > Commandes** liste les bons de commande passés auprès de vos fournisseurs, filtrables par statut (**Toutes**, **En cours**, **Réceptionnées**, **Annulées**).
 
-Bouton **+ Nouvelle commande** :
+### Éditeur de bon de commande (v3.2.8)
 
-![Fiche commande](screenshots/23-commande-fiche.png)
+Depuis la v3.2.8, les commandes s'éditent dans le **même éditeur WYSIWYG que les devis** : page A4 fidèle au PDF, lignes détaillées, totaux calculés en temps réel.
+
+![Éditeur de bon de commande](screenshots/27-commande-editeur.png)
+
+**+ Nouvelle commande** (ou **Éditer** sur une ligne de la liste) ouvre l'éditeur :
 
 | Champ | Remarque |
 |---|---|
-| Fournisseur * | Sélection dans la liste des fournisseurs |
-| Statut | En cours / Réceptionnée / Annulée |
+| Fournisseur * | Recherche dans l'annuaire fournisseurs, **ou nom libre** (tapez simplement le nom sans sélectionner) |
 | Date de commande * | Date de passation |
 | Livraison prévue | Date estimée de réception |
-| Montant HT | Montant prévisionnel de la commande |
-| Description | Objet de la commande |
-| Facture d'achat liée | Chaînage **non bloquant** : facultatif, modifiable à tout moment, sans incidence sur le scellement |
+| Objet | Objet de la commande |
+| Statut | En cours / Réceptionnée / Annulée |
+| Lignes | Désignation, description, quantité, P.U. HT, remise %, TVA — comme sur un devis |
+| Notes | Instructions au fournisseur, imprimées en bas du PDF |
 
-> Le lien entre une commande et une facture d'achat est purement informatif : il aide à suivre le cycle commande → réception → facturation, sans imposer de contrainte d'ordre ni verrouiller les documents.
+Le numéro `CMD-2026-0001` est attribué au premier enregistrement. **👁 Aperçu PDF** et **🖨️ Imprimer** génèrent le bon de commande à envoyer au fournisseur (sans CGV de vente ni cadre signature — ce sont des mentions de documents émis aux clients).
+
+> **Prix d'achat automatique** : en insérant un article du catalogue dans une ligne, c'est son **prix d'achat HT** (et non son prix de vente) qui est pré-rempli, s'il est renseigné dans la fiche article.
+
+### Chaînage avec une facture d'achat
+
+Le bouton **🔗** de la liste associe une commande à une facture d'achat. Ce chaînage est **non bloquant** : facultatif, modifiable à tout moment, sans incidence sur le scellement. Il aide à suivre le cycle commande → réception → facturation, sans imposer de contrainte d'ordre ni verrouiller les documents.
 
 ## Factures d'achats
 
 **Achats > Factures d'achats** liste les factures reçues de vos fournisseurs, filtrables par statut **reçue** / **payée**.
 
-- **+ Nouvelle facture** saisit une facture fournisseur et génère automatiquement les écritures FEC du journal **AC** (compte 401 au crédit, charge 6xx au débit, TVA déductible 44566 au débit), tout en alimentant la déclaration de TVA déductible du mois correspondant.
-- **Marquer payée** écrit les écritures de règlement (journal **BQ**) et déclenche le lettrage du compte 401.
+### Éditeur de facture d'achat (v3.2.8)
+
+La saisie se fait elle aussi dans l'éditeur WYSIWYG, sur une page A4 reprenant la structure de la facture reçue :
+
+![Éditeur de facture d'achat](screenshots/28-facture-achat-editeur.png)
+
+| Champ | Remarque |
+|---|---|
+| Fournisseur * | Annuaire ou nom libre |
+| N° facture fournisseur * | Le numéro **figurant sur la facture reçue** (saisie libre — pas de numérotation FacturPro) |
+| Date de facture * / Échéance | Dates du document reçu |
+| Compte de charge | Compte 6xx imputé au débit (606 par défaut) |
+| Lignes | Détail de la facture — les montants HT / TVA / TTC sont calculés depuis les lignes |
+
+L'éditeur ne propose **ni aperçu ni impression PDF** : le document de référence est celui émis par le fournisseur, FacturPro ne fait que l'enregistrer.
+
+### Comptabilité automatique
+
+- L'**enregistrement** génère les écritures FEC du journal **AC** (compte 401 au crédit, charge 6xx au débit, TVA déductible 44566 au débit) et alimente la déclaration de TVA déductible du mois correspondant.
+- Une facture **reçue** reste **modifiable** : la modification régénère les écritures FEC et resynchronise la TVA déductible (y compris en cas de changement de mois). C'est permis côté achats — contrairement aux documents émis, aucune obligation légale de verrouillage ne s'applique aux documents reçus.
+- **💳 Payer** (dans l'éditeur ou la liste) écrit les écritures de règlement (journal **BQ**). Une facture **payée** passe en lecture seule.
 - **Import CSV** permet d'importer un lot de factures au format FEC (lignes du compte 401).
 - La suppression n'est possible que sur les factures au statut **reçue** : elle annule les écritures FEC et recalcule la TVA déductible du mois concerné.
 

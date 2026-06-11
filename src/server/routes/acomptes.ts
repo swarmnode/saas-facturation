@@ -22,7 +22,7 @@ router.get('/', requirePerm('acomptes:r'), async (req, res, next) => {
 
 router.get('/:id', requirePerm('acomptes:r'), async (req, res, next) => {
   try {
-    const a = await AcompteService.obtenir(Number(req.params.id));
+    const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     res.json(a);
   } catch(e) { next(e); }
@@ -34,8 +34,11 @@ router.post('/', requirePerm('acomptes:w'), async (req, res, next) => {
 
 router.post('/:id/encaisser', requirePerm('acomptes:w'), async (req, res, next) => {
   try {
+    const id = Number(req.params.id);
+    const a  = await AcompteService.obtenir(id, req.user!.entreprise_id);
+    if (!a) return res.status(404).json({ error: 'Introuvable' });
     res.json(await AcompteService.encaisser(
-      Number(req.params.id),
+      id,
       req.body.date_encaissement,
       req.body.mode_paiement
     ));
@@ -45,9 +48,11 @@ router.post('/:id/encaisser', requirePerm('acomptes:w'), async (req, res, next) 
 router.post('/:id/envoyer-email', requirePerm('acomptes:r'), async (req, res, next) => {
   try {
     const { EmailService } = await import('../services/EmailService');
-    const id    = Number(req.params.id);
+    const id = Number(req.params.id);
+    const a  = await AcompteService.obtenir(id, req.user!.entreprise_id);
+    if (!a) return res.status(404).json({ error: 'Introuvable' });
     const email = req.body?.email_client as string | undefined;
-    if (!email) return res.json({ ok: true });
+    if (!email) return res.status(400).json({ error: 'Email requis' });
     const result = await EmailService.envoyerAcompte(id, email);
     res.json({ ok: true, preview_url: result.previewUrl ?? null });
   } catch(e: any) { next(e); }
@@ -55,7 +60,7 @@ router.post('/:id/envoyer-email', requirePerm('acomptes:r'), async (req, res, ne
 
 router.get('/:id/apercu', requirePerm('acomptes:r'), async (req, res, next) => {
   try {
-    const a = await AcompteService.obtenir(Number(req.params.id));
+    const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(a as any).client_id]);
@@ -67,7 +72,7 @@ router.get('/:id/apercu', requirePerm('acomptes:r'), async (req, res, next) => {
 
 router.get('/:id/eml', requirePerm('acomptes:r'), async (req, res, next) => {
   try {
-    const a = await AcompteService.obtenir(Number(req.params.id));
+    const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(a as any).client_id]);
@@ -123,7 +128,7 @@ router.get('/:id/eml', requirePerm('acomptes:r'), async (req, res, next) => {
 
 router.post('/:id/mapi', requirePerm('acomptes:r'), async (req, res, next) => {
   try {
-    const a = await AcompteService.obtenir(Number(req.params.id));
+    const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(a as any).client_id]);
@@ -230,10 +235,11 @@ if ($r -ne 0) { throw "MAPISendMail code $r" }
 router.delete('/:id', requirePerm('acomptes:w'), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const ar = await query('SELECT locked FROM acomptes WHERE id=$1', [id]);
+    const ar = await query('SELECT locked FROM acomptes WHERE id=$1 AND entreprise_id=$2',
+      [id, req.user!.entreprise_id]);
     if (!ar.rows[0]) return res.status(404).json({ error: 'Introuvable' });
     if (ar.rows[0].locked) return res.status(400).json({ error: 'Impossible de supprimer un acompte encaissé.' });
-    await query('DELETE FROM acomptes WHERE id=$1', [id]);
+    await query('DELETE FROM acomptes WHERE id=$1 AND entreprise_id=$2', [id, req.user!.entreprise_id]);
     res.json({ ok: true });
   } catch(e) { next(e); }
 });

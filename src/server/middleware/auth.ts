@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { jwtSecret } from '../utils/secret';
 
 export interface AuthUser {
   id: number;
@@ -66,7 +67,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
   const token = header.slice(7);
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET ?? 'change_me') as AuthUser;
+    const payload = jwt.verify(token, jwtSecret()) as AuthUser;
     req.user = payload;
     next();
   } catch {

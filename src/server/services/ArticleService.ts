@@ -34,8 +34,12 @@ export class ArticleService {
     return r.rows;
   }
 
-  static async obtenir(id: number) {
-    const r = await query('SELECT * FROM articles WHERE id = $1', [id]);
+  static async obtenir(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id
+      ? `AND entreprise_id = $${params.push(entreprise_id)}`
+      : '';
+    const r = await query(`SELECT * FROM articles WHERE id = $1 ${tenantFilter}`, params);
     return r.rows[0] ?? null;
   }
 
@@ -51,8 +55,8 @@ export class ArticleService {
     return r.rows[0];
   }
 
-  static async mettreAJour(id: number, input: Partial<ArticleInput>) {
-    const cur = await this.obtenir(id);
+  static async mettreAJour(id: number, input: Partial<ArticleInput>, entreprise_id?: number) {
+    const cur = await this.obtenir(id, entreprise_id);
     if (!cur) throw new Error('Article introuvable');
     const r = await query(`
       UPDATE articles SET reference=$1, designation=$2, description=$3, unite=$4,
@@ -75,7 +79,11 @@ export class ArticleService {
     return r.rows[0];
   }
 
-  static async supprimer(id: number) {
-    await query("UPDATE articles SET actif=0, updated_at=NOW() WHERE id=$1", [id]);
+  static async supprimer(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id
+      ? `AND entreprise_id = $${params.push(entreprise_id)}`
+      : '';
+    await query(`UPDATE articles SET actif=0, updated_at=NOW() WHERE id=$1 ${tenantFilter}`, params);
   }
 }

@@ -84,20 +84,28 @@ router.post('/', requirePerm('factures:w'), async (req, res, next) => {
 });
 
 router.put('/:id', requirePerm('factures:w'), async (req, res, next) => {
-  try { res.json(await FactureService.mettreAJour(Number(req.params.id), req.body)); } catch(e) { next(e); }
+  try {
+    const id = Number(req.params.id);
+    const f  = await FactureService.obtenir(id, req.user!.entreprise_id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
+    res.json(await FactureService.mettreAJour(id, req.body));
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/emettre', requirePerm('factures:w'), async (req, res, next) => {
   try {
-    const result = await FactureService.emettre(Number(req.params.id));
-    await logAudit(req, 'emettre_facture', 'factures', Number(req.params.id), { numero: (result as any)?.numero });
+    const id = Number(req.params.id);
+    const f  = await FactureService.obtenir(id, req.user!.entreprise_id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
+    const result = await FactureService.emettre(id);
+    await logAudit(req, 'emettre_facture', 'factures', id, { numero: (result as any)?.numero });
     res.json(result);
   } catch(e) { next(e); }
 });
 
 router.get('/:id/acomptes-disponibles', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const facture = await FactureService.obtenir(Number(req.params.id));
+    const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const r = await query(`
       SELECT a.* FROM acomptes a
@@ -113,6 +121,8 @@ router.get('/:id/acomptes-disponibles', requirePerm('factures:r'), async (req, r
 
 router.post('/:id/payer', requirePerm('factures:w'), async (req, res, next) => {
   try {
+    const f = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
     const result = await FactureService.marquerPayee(
       Number(req.params.id),
       req.body.date_paiement,
@@ -143,7 +153,7 @@ router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) =
     if (!email) return res.status(400).json({ error: 'Email requis' });
 
     const { EmailService } = await import('../services/EmailService');
-    const facture = await FactureService.obtenir(id);
+    const facture = await FactureService.obtenir(id, req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
 
     // Joindre le PDF de la facture
@@ -173,7 +183,7 @@ router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) =
 // Lettre de relance imprimable — GET /api/factures/:id/relance-courrier
 router.get('/:id/relance-courrier', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const facture = await FactureService.obtenir(Number(req.params.id));
+    const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const f  = facture as any;
     const er = await query('SELECT * FROM entreprise WHERE id=$1', [f.entreprise_id]);
@@ -257,7 +267,7 @@ router.get('/:id/relance-courrier', requirePerm('factures:r'), async (req, res, 
 
 router.get('/:id/apercu', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const facture = await FactureService.obtenir(Number(req.params.id));
+    const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(facture as any).client_id]);
@@ -273,7 +283,7 @@ router.post('/:id/envoyer', requirePerm('factures:r'), async (req, res, next) =>
     const { EmailService } = await import('../services/EmailService');
     const { query } = await import('../db/database');
     const id  = Number(req.params.id);
-    const fr  = await FactureService.obtenir(id);
+    const fr  = await FactureService.obtenir(id, req.user!.entreprise_id);
     if (!fr) return res.status(404).json({ error: 'Introuvable' });
     const cr  = await query('SELECT email FROM clients WHERE id=$1', [fr.client_id]);
     const email = cr.rows[0]?.email;
@@ -287,8 +297,10 @@ router.post('/:id/envoyer-email', requirePerm('factures:r'), async (req, res, ne
   try {
     const { EmailService } = await import('../services/EmailService');
     const id    = Number(req.params.id);
+    const f     = await FactureService.obtenir(id, req.user!.entreprise_id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
     const email = req.body?.email_client as string | undefined;
-    if (!email) return res.json({ ok: true });
+    if (!email) return res.status(400).json({ error: 'Email requis' });
     const result = await EmailService.envoyerFacture(id, email);
     res.json({ ok: true, preview_url: result.previewUrl ?? null });
   } catch(e: any) { next(e); }
@@ -296,7 +308,7 @@ router.post('/:id/envoyer-email', requirePerm('factures:r'), async (req, res, ne
 
 router.get('/:id/eml', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const facture = await FactureService.obtenir(Number(req.params.id));
+    const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(facture as any).client_id]);
@@ -353,7 +365,7 @@ router.get('/:id/eml', requirePerm('factures:r'), async (req, res, next) => {
 
 router.post('/:id/mapi', requirePerm('factures:r'), async (req, res, next) => {
   try {
-    const facture = await FactureService.obtenir(Number(req.params.id));
+    const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(facture as any).client_id]);
@@ -463,6 +475,8 @@ router.post('/:id/chorus-pro/deposer', requirePerm('factures:w'), async (req, re
   try {
     if (!ChorusProService.isConfigured())
       return res.status(503).json({ error: 'Chorus Pro non configuré (CHORUS_PRO_CLIENT_ID/SECRET manquants dans .env)' });
+    const f = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
     const result = await ChorusProService.deposerFacture(Number(req.params.id));
     await logAudit(req, 'chorus_pro_depot', 'factures', Number(req.params.id), result);
     res.json(result);
@@ -473,6 +487,8 @@ router.get('/:id/chorus-pro/statut', requirePerm('factures:r'), async (req, res,
   try {
     if (!ChorusProService.isConfigured())
       return res.status(503).json({ error: 'Chorus Pro non configuré' });
+    const f = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+    if (!f) return res.status(404).json({ error: 'Introuvable' });
     res.json(await ChorusProService.consulterStatut(Number(req.params.id)));
   } catch(e: any) { next(e); }
 });
@@ -481,12 +497,13 @@ router.get('/:id/chorus-pro/statut', requirePerm('factures:r'), async (req, res,
 router.delete('/:id', requirePerm('factures:w'), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const fr = await query('SELECT type_facture, locked, statut FROM factures WHERE id=$1', [id]);
+    const fr = await query('SELECT type_facture, locked, statut FROM factures WHERE id=$1 AND entreprise_id=$2',
+      [id, req.user!.entreprise_id]);
     if (!fr.rows[0]) return res.status(404).json({ error: 'Introuvable' });
     const f = fr.rows[0];
     if (f.type_facture !== 'avoir') return res.status(400).json({ error: 'Seuls les avoirs peuvent être supprimés. Pour annuler une facture, créez un avoir.' });
     if (f.locked) return res.status(400).json({ error: 'Impossible de supprimer un avoir déjà émis.' });
-    await query('DELETE FROM factures WHERE id=$1', [id]);
+    await query('DELETE FROM factures WHERE id=$1 AND entreprise_id=$2', [id, req.user!.entreprise_id]);
     res.json({ ok: true });
   } catch(e) { next(e); }
 });

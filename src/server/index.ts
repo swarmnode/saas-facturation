@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import dotenv from 'dotenv';
 import { initDb } from './db/database';
+import { ensureJwtSecret } from './utils/secret';
 import { errorHandler } from './middleware/errorHandler';
 import { authenticate } from './middleware/auth';
 import authRouter         from './routes/auth';
@@ -35,12 +36,17 @@ import commentairesRouter         from './routes/commentaires';
 import maintenanceRouter          from './routes/maintenance';
 
 dotenv.config();
+ensureJwtSecret();
 
 const app  = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(helmet({ contentSecurityPolicy: false })); // CSP désactivé : SPA inline scripts
-app.use(cors());
+// SPA servie par ce même serveur : pas de cross-origin par défaut.
+// Définir CORS_ORIGIN (liste séparée par des virgules) pour autoriser d'autres origines.
+if (process.env.CORS_ORIGIN) {
+  app.use(cors({ origin: process.env.CORS_ORIGIN.split(',').map(s => s.trim()) }));
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -63,23 +69,57 @@ app.use('/storage', express.static(path.resolve(process.cwd(), 'storage')));
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRouter);
 
-// Route publique signature devis — doit être montée avant le middleware JWT
+// Routes publiques signature devis — montées avant le middleware JWT.
+// GET = page de confirmation uniquement : les préchargeurs de liens (antivirus,
+// Outlook SafeLinks) suivent les GET, la signature ne doit donc se faire qu'en POST.
+const SIGNATURE_STYLE = `body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f0fdf4}
+.box{background:#fff;border:1px solid #a7f3d0;border-radius:12px;padding:40px;max-width:480px;text-align:center}
+h2{color:#065f46;margin:0 0 12px}p{color:#374151;margin:4px 0}
+input{width:100%;box-sizing:border-box;padding:10px;margin:16px 0 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}
+button{background:#059669;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:15px;cursor:pointer}
+button:hover{background:#047857}`;
+
+async function getDevisParToken(token: string) {
+  const dr = await dbQuery(
+    `SELECT d.*, e.raison_sociale AS e_nom FROM devis d
+     JOIN entreprise e ON e.id = d.entreprise_id
+     WHERE d.signature_token = $1`,
+    [token]
+  );
+  return dr.rows[0];
+}
+
 app.get('/api/devis/signer/:token', async (req, res, next) => {
   try {
-    const { token } = req.params;
-    const nom = (req.query.nom as string) || '';
-    const ip  = req.ip ?? (req.socket as any)?.remoteAddress ?? '';
-
-    const dr = await dbQuery(
-      `SELECT d.*, e.raison_sociale AS e_nom FROM devis d
-       JOIN entreprise e ON e.id = d.entreprise_id
-       WHERE d.signature_token = $1`,
-      [token]
-    );
-    const devis = dr.rows[0];
+    const devis = await getDevisParToken(req.params.token);
     if (!devis) return res.status(404).send('<p>Lien de signature invalide ou expiré.</p>');
     if (devis.statut === 'signe')
       return res.send(`<p>Ce devis (${devis.numero}) a déjà été signé le ${new Date(devis.signature_date).toLocaleString('fr-FR')}.</p>`);
+
+    const nom = (req.query.nom as string) || '';
+    res.send(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Signature du devis</title>
+<style>${SIGNATURE_STYLE}</style></head>
+<body><div class="box"><h2>Signature électronique</h2>
+<p><strong>${devis.numero}</strong> — ${devis.e_nom}</p>
+<p>Montant TTC : ${Number(devis.montant_ttc).toFixed(2)} €</p>
+<form method="POST">
+  <input type="text" name="nom" placeholder="Votre nom (optionnel)" value="${nom.replace(/"/g, '&quot;')}" maxlength="120">
+  <button type="submit">Signer ce devis</button>
+</form>
+<p style="margin-top:16px;color:#6b7280;font-size:12px">En cliquant sur « Signer ce devis », vous acceptez les termes du devis. Cette signature a valeur d'engagement.</p>
+</div></body></html>`);
+  } catch(e) { next(e); }
+});
+
+app.post('/api/devis/signer/:token', async (req, res, next) => {
+  try {
+    const devis = await getDevisParToken(req.params.token);
+    if (!devis) return res.status(404).send('<p>Lien de signature invalide ou expiré.</p>');
+    if (devis.statut === 'signe')
+      return res.send(`<p>Ce devis (${devis.numero}) a déjà été signé le ${new Date(devis.signature_date).toLocaleString('fr-FR')}.</p>`);
+
+    const nom = typeof req.body?.nom === 'string' ? req.body.nom.slice(0, 120) : '';
+    const ip  = req.ip ?? (req.socket as any)?.remoteAddress ?? '';
 
     await dbQuery(`
       UPDATE devis SET statut='signe', signature_date=NOW(), signature_ip=$2, signature_nom=$3, updated_at=NOW()
@@ -87,9 +127,7 @@ app.get('/api/devis/signer/:token', async (req, res, next) => {
     `, [devis.id, ip, nom || null]);
 
     res.send(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Devis signé</title>
-<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f0fdf4}
-.box{background:#fff;border:1px solid #a7f3d0;border-radius:12px;padding:40px;max-width:480px;text-align:center}
-h2{color:#065f46;margin:0 0 12px}p{color:#374151;margin:4px 0}</style></head>
+<style>${SIGNATURE_STYLE}</style></head>
 <body><div class="box"><h2>✓ Devis signé électroniquement</h2>
 <p><strong>${devis.numero}</strong> — ${devis.e_nom}</p>
 <p style="margin-top:16px;color:#6b7280;font-size:13px">Signé le ${new Date().toLocaleString('fr-FR')}</p></div></body></html>`);

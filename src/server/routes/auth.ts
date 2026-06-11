@@ -3,12 +3,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { query } from '../db/database';
 import { authenticate } from '../middleware/auth';
+import { jwtSecret } from '../utils/secret';
 import { logAudit } from './audit';
 
 const router = Router();
 const JWT_EXPIRY = '8h';
-
-function jwtSecret() { return process.env.JWT_SECRET ?? 'change_me'; }
 
 function issueToken(payload: object) {
   return jwt.sign(payload, jwtSecret(), { expiresIn: JWT_EXPIRY });

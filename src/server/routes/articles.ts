@@ -154,7 +154,7 @@ router.get('/:id/stats', requirePerm('articles:r'), async (req, res, next) => {
 
 router.get('/:id', requirePerm('articles:r'), async (req, res, next) => {
   try {
-    const a = await ArticleService.obtenir(Number(req.params.id));
+    const a = await ArticleService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     res.json(a);
   } catch(e) { next(e); }
@@ -167,11 +167,11 @@ router.post('/', requirePerm('articles:w'), async (req, res, next) => {
 });
 
 router.put('/:id', requirePerm('articles:w'), async (req, res, next) => {
-  try { res.json(await ArticleService.mettreAJour(Number(req.params.id), req.body)); } catch(e) { next(e); }
+  try { res.json(await ArticleService.mettreAJour(Number(req.params.id), req.body, req.user!.entreprise_id)); } catch(e) { next(e); }
 });
 
 router.delete('/:id', requirePerm('articles:w'), async (req, res, next) => {
-  try { await ArticleService.supprimer(Number(req.params.id)); res.json({ ok: true }); } catch(e) { next(e); }
+  try { await ArticleService.supprimer(Number(req.params.id), req.user!.entreprise_id); res.json({ ok: true }); } catch(e) { next(e); }
 });
 
 export default router;

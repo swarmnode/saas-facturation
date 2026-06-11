@@ -36,13 +36,23 @@ router.post('/', requirePerm('devis:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+async function devisOuIntrouvable(req: any, res: any): Promise<any | null> {
+  const d = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+  if (!d) res.status(404).json({ error: 'Introuvable' });
+  return d;
+}
+
 router.put('/:id', requirePerm('devis:w'), async (req, res, next) => {
-  try { res.json(await DevisService.mettreAJour(Number(req.params.id), req.body)); } catch(e) { next(e); }
+  try {
+    if (!await devisOuIntrouvable(req, res)) return;
+    res.json(await DevisService.mettreAJour(Number(req.params.id), req.body));
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/envoyer', requirePerm('devis:w'), async (req, res, next) => {
   try {
     const id    = Number(req.params.id);
+    if (!await devisOuIntrouvable(req, res)) return;
     const email = req.body?.email_client as string | undefined;
     const devis = await DevisService.changerStatut(id, 'envoye');
     let previewUrl: string | undefined;
@@ -56,6 +66,7 @@ router.post('/:id/envoyer', requirePerm('devis:w'), async (req, res, next) => {
 
 router.post('/:id/accepter', requirePerm('devis:w'), async (req, res, next) => {
   try {
+    if (!await devisOuIntrouvable(req, res)) return;
     const devis = await DevisService.changerStatut(Number(req.params.id), 'accepte');
     // Passer le client de "prospect" à "client" si c'est encore un prospect
     if ((devis as any)?.client_id) {
@@ -72,20 +83,26 @@ router.post('/:id/accepter', requirePerm('devis:w'), async (req, res, next) => {
 });
 
 router.post('/:id/signer', requirePerm('devis:w'), async (req, res, next) => {
-  try { res.json(await DevisService.changerStatut(Number(req.params.id), 'signe')); } catch(e) { next(e); }
+  try {
+    if (!await devisOuIntrouvable(req, res)) return;
+    res.json(await DevisService.changerStatut(Number(req.params.id), 'signe'));
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/refuser', requirePerm('devis:w'), async (req, res, next) => {
-  try { res.json(await DevisService.changerStatut(Number(req.params.id), 'refuse')); } catch(e) { next(e); }
+  try {
+    if (!await devisOuIntrouvable(req, res)) return;
+    res.json(await DevisService.changerStatut(Number(req.params.id), 'refuse'));
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/dupliquer', requirePerm('devis:w'), async (req, res, next) => {
-  try { res.status(201).json(await DevisService.dupliquer(Number(req.params.id))); } catch(e) { next(e); }
+  try { res.status(201).json(await DevisService.dupliquer(Number(req.params.id), req.user!.entreprise_id)); } catch(e) { next(e); }
 });
 
 router.get('/:id/apercu', requirePerm('devis:r'), async (req, res, next) => {
   try {
-    const devis = await DevisService.obtenir(Number(req.params.id));
+    const devis = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(devis as any).client_id]);
@@ -98,7 +115,7 @@ router.get('/:id/apercu', requirePerm('devis:r'), async (req, res, next) => {
 router.get('/:id/eml', requirePerm('devis:r'), async (req, res, next) => {
   try {
     const id    = Number(req.params.id);
-    const devis = await DevisService.obtenir(id);
+    const devis = await DevisService.obtenir(id, req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(devis as any).client_id]);
@@ -155,7 +172,7 @@ router.get('/:id/eml', requirePerm('devis:r'), async (req, res, next) => {
 router.post('/:id/mapi', requirePerm('devis:r'), async (req, res, next) => {
   try {
     const id    = Number(req.params.id);
-    const devis = await DevisService.obtenir(id);
+    const devis = await DevisService.obtenir(id, req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(devis as any).client_id]);
@@ -307,13 +324,17 @@ router.post('/:id/envoyer-lien-signature', requirePerm('devis:w'), async (req, r
 
 router.post('/:id/avenant', requirePerm('devis:w'), async (req, res, next) => {
   try {
+    if (!await devisOuIntrouvable(req, res)) return;
     const { motif, lignes } = req.body;
     res.status(201).json(await AvenantService.creer(Number(req.params.id), motif, lignes));
   } catch(e) { next(e); }
 });
 
 router.get('/:id/avenants', requirePerm('devis:r'), async (req, res, next) => {
-  try { res.json(await AvenantService.lister(Number(req.params.id))); } catch(e) { next(e); }
+  try {
+    if (!await devisOuIntrouvable(req, res)) return;
+    res.json(await AvenantService.lister(Number(req.params.id)));
+  } catch(e) { next(e); }
 });
 
 router.get('/:id/pdf', requirePerm('devis:r'), async (req, res, next) => {
@@ -330,19 +351,20 @@ router.get('/:id/pdf', requirePerm('devis:r'), async (req, res, next) => {
 router.delete('/:id', requirePerm('devis:w'), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const dr = await query('SELECT locked, statut FROM devis WHERE id=$1', [id]);
+    const dr = await query('SELECT locked, statut FROM devis WHERE id=$1 AND entreprise_id=$2',
+      [id, req.user!.entreprise_id]);
     if (!dr.rows[0]) return res.status(404).json({ error: 'Introuvable' });
     if (dr.rows[0].locked) return res.status(400).json({ error: 'Impossible de supprimer un devis signé.' });
 
     const chaines = await query(
-      `SELECT 1 FROM factures WHERE devis_id=$1 LIMIT 1
-       UNION ALL SELECT 1 FROM acomptes WHERE devis_id=$1 LIMIT 1
-       UNION ALL SELECT 1 FROM bons_livraison WHERE devis_id=$1 LIMIT 1`,
+      `(SELECT 1 FROM factures WHERE devis_id=$1 LIMIT 1)
+       UNION ALL (SELECT 1 FROM acomptes WHERE devis_id=$1 LIMIT 1)
+       UNION ALL (SELECT 1 FROM bons_livraison WHERE devis_id=$1 LIMIT 1)`,
       [id]
     );
     if (chaines.rows.length) return res.status(400).json({ error: 'Ce devis est lié à une facture, un acompte ou un BL. Supprimez-les d\'abord.' });
 
-    await query('DELETE FROM devis WHERE id=$1', [id]);
+    await query('DELETE FROM devis WHERE id=$1 AND entreprise_id=$2', [id, req.user!.entreprise_id]);
     res.json({ ok: true });
   } catch(e) { next(e); }
 });

@@ -66,12 +66,16 @@ export class BonLivraisonService {
     return r.rows;
   }
 
-  static async obtenir(id: number) {
+  static async obtenir(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id
+      ? `AND bl.entreprise_id = $${params.push(entreprise_id)}`
+      : '';
     const br = await query(`
       SELECT bl.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part
       FROM bons_livraison bl LEFT JOIN clients c ON bl.client_id = c.id
-      WHERE bl.id = $1
-    `, [id]);
+      WHERE bl.id = $1 ${tenantFilter}
+    `, params);
     const bl = br.rows[0];
     if (!bl) return null;
     const lr = await query('SELECT * FROM bons_livraison_lignes WHERE bl_id = $1 ORDER BY position', [id]);
@@ -99,10 +103,10 @@ export class BonLivraisonService {
         for (const [i, l] of input.lignes.entries()) {
           const isComment = l.type === 'commentaire';
           await client.query(`
-            INSERT INTO bons_livraison_lignes (bl_id, position, type, designation, description, quantite, unite, article_id)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            INSERT INTO bons_livraison_lignes (bl_id, position, type, designation, description, quantite, unite, article_id, numero_serie)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
           `, [id, i + 1, l.type ?? 'ligne', l.designation, l.description ?? null,
-              isComment ? 0 : l.quantite, l.unite ?? null, l.article_id ?? null]);
+              isComment ? 0 : l.quantite, l.unite ?? null, l.article_id ?? null, l.numero_serie ?? null]);
         }
       }
     });

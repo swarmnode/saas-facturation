@@ -159,14 +159,12 @@ export class DevisService {
     return this.obtenir(id);
   }
 
-  static async dupliquer(id: number) {
-    const source = await this.obtenir(id) as any;
+  static async dupliquer(id: number, entreprise_id?: number) {
+    const source = await this.obtenir(id, entreprise_id) as any;
     if (!source) throw new Error('Devis introuvable');
-    const er = await query('SELECT id FROM entreprise LIMIT 1');
-    const entreprise = er.rows[0];
     return this.creer({
       client_id:           source.client_id,
-      entreprise_id:       entreprise?.id ?? source.entreprise_id,
+      entreprise_id:       source.entreprise_id,
       objet:               source.objet ? `Copie — ${source.objet}` : undefined,
       date_validite:       source.date_validite,
       conditions_paiement: source.conditions_paiement,

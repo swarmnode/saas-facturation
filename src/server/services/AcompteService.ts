@@ -33,24 +33,28 @@ export class AcompteService {
     return r.rows[0];
   }
 
-  static async obtenir(id: number) {
+  static async obtenir(id: number, entreprise_id?: number) {
+    const params: any[] = [id];
+    const tenantFilter = entreprise_id
+      ? `AND a.entreprise_id = $${params.push(entreprise_id)}`
+      : '';
     const r = await query(`
       SELECT a.*, c.raison_sociale AS client_nom, c.nom AS client_nom_part,
              f.numero AS facture_utilisee_numero
       FROM acomptes a
       LEFT JOIN clients c ON a.client_id = c.id
       LEFT JOIN factures f ON f.acompte_id = a.id
-      WHERE a.id = $1
-    `, [id]);
+      WHERE a.id = $1 ${tenantFilter}
+    `, params);
     return r.rows[0] ?? null;
   }
 
   static async lister(entreprise_id: number, commercial_id?: number,
                       page?: number, limit?: number) {
-    const commercialFilter = commercial_id
-      ? `AND a.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = ${commercial_id} AND entreprise_id = ${entreprise_id})`
-      : '';
     const params: any[] = [entreprise_id];
+    const commercialFilter = commercial_id
+      ? `AND a.client_id IN (SELECT DISTINCT client_id FROM devis WHERE created_by = $${params.push(commercial_id)} AND entreprise_id = $1)`
+      : '';
     const pagClause = (page && limit)
       ? `LIMIT $${params.push(limit)} OFFSET $${params.push((page - 1) * limit)}`
       : '';

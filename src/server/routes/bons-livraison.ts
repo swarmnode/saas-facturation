@@ -21,7 +21,7 @@ router.get('/', requirePerm('bl:r'), async (req, res, next) => {
 
 router.get('/:id', requirePerm('bl:r'), async (req, res, next) => {
   try {
-    const bl = await BonLivraisonService.obtenir(Number(req.params.id));
+    const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     res.json(bl);
   } catch(e) { next(e); }
@@ -33,25 +33,44 @@ router.post('/', requirePerm('bl:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+async function blOuIntrouvable(req: any, res: any): Promise<any | null> {
+  const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
+  if (!bl) res.status(404).json({ error: 'Introuvable' });
+  return bl;
+}
+
 router.put('/:id', requirePerm('bl:w'), async (req, res, next) => {
-  try { res.json(await BonLivraisonService.mettreAJour(Number(req.params.id), req.body)); } catch(e) { next(e); }
+  try {
+    if (!await blOuIntrouvable(req, res)) return;
+    res.json(await BonLivraisonService.mettreAJour(Number(req.params.id), req.body));
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/emettre', requirePerm('bl:w'), async (req, res, next) => {
-  try { res.json(await BonLivraisonService.changerStatut(Number(req.params.id), 'emis')); } catch(e) { next(e); }
+  try {
+    if (!await blOuIntrouvable(req, res)) return;
+    res.json(await BonLivraisonService.changerStatut(Number(req.params.id), 'emis'));
+  } catch(e) { next(e); }
 });
 
 router.post('/:id/livrer', requirePerm('bl:w'), async (req, res, next) => {
-  try { res.json(await BonLivraisonService.changerStatut(Number(req.params.id), 'livre')); } catch(e) { next(e); }
+  try {
+    if (!await blOuIntrouvable(req, res)) return;
+    res.json(await BonLivraisonService.changerStatut(Number(req.params.id), 'livre'));
+  } catch(e) { next(e); }
 });
 
 router.delete('/:id', requirePerm('bl:w'), async (req, res, next) => {
-  try { await BonLivraisonService.supprimer(Number(req.params.id)); res.json({ ok: true }); } catch(e) { next(e); }
+  try {
+    if (!await blOuIntrouvable(req, res)) return;
+    await BonLivraisonService.supprimer(Number(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { next(e); }
 });
 
 router.get('/:id/apercu', requirePerm('bl:r'), async (req, res, next) => {
   try {
-    const bl = await BonLivraisonService.obtenir(Number(req.params.id));
+    const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(bl as any).client_id]);
@@ -66,9 +85,10 @@ router.get('/:id/apercu', requirePerm('bl:r'), async (req, res, next) => {
 router.post('/:id/envoyer-email', requirePerm('bl:r'), async (req, res, next) => {
   try {
     const { EmailService } = await import('../services/EmailService');
-    const id    = Number(req.params.id);
+    const id = Number(req.params.id);
+    if (!await blOuIntrouvable(req, res)) return;
     const email = req.body?.email_client as string | undefined;
-    if (!email) return res.json({ ok: true });
+    if (!email) return res.status(400).json({ error: 'Email requis' });
     const result = await EmailService.envoyerBL(id, email);
     res.json({ ok: true, preview_url: result.previewUrl ?? null });
   } catch(e: any) { next(e); }
@@ -76,7 +96,7 @@ router.post('/:id/envoyer-email', requirePerm('bl:r'), async (req, res, next) =>
 
 router.get('/:id/eml', requirePerm('bl:r'), async (req, res, next) => {
   try {
-    const bl = await BonLivraisonService.obtenir(Number(req.params.id));
+    const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(bl as any).client_id]);
@@ -135,7 +155,7 @@ router.get('/:id/eml', requirePerm('bl:r'), async (req, res, next) => {
 
 router.post('/:id/mapi', requirePerm('bl:r'), async (req, res, next) => {
   try {
-    const bl = await BonLivraisonService.obtenir(Number(req.params.id));
+    const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id = $1', [(bl as any).client_id]);

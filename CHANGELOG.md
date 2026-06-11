@@ -280,6 +280,20 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: manuel utilisateur — editeurs WYSIWYG des achats (v3.2.8)
+
+- Section Commandes : editeur de bon de commande (fournisseur annuaire ou
+  nom libre, lignes detaillees, prix d'achat auto depuis le catalogue,
+  apercu PDF), chainage non bloquant via le bouton dedie
+- Section Factures d'achats : editeur de saisie (n° fournisseur libre,
+  compte de charge, lignes), comptabilite automatique (FEC AC/BQ,
+  regeneration a la modification, TVA deductible), lecture seule si payee
+- Nouvelles captures 27-commande-editeur et 28-facture-achat-editeur ;
+  suppression de 23-commande-fiche (ancienne modale)
+- docx regenere via pandoc (28 images embarquees)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 
 ### Modifications

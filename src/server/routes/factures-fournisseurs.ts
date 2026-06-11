@@ -25,10 +25,17 @@ router.get('/:id', requirePerm('factures:r'), async (req, res, next) => {
 router.post('/', requirePerm('factures:w'), async (req, res, next) => {
   try {
     const b = req.body;
-    if (!b.numero || !b.fournisseur_nom || !b.date_facture || !b.montant_ht) {
-      return res.status(400).json({ error: 'Champs obligatoires : numero, fournisseur_nom, date_facture, montant_ht' });
+    if (!b.numero || !b.fournisseur_nom || !b.date_facture || (!b.montant_ht && !b.lignes?.length)) {
+      return res.status(400).json({ error: 'Champs obligatoires : numero, fournisseur_nom, date_facture, montant_ht ou lignes' });
     }
     res.status(201).json(await FournisseurService.creer(b, req.user!.entreprise_id));
+  } catch(e) { next(e); }
+});
+
+// Modification d'une facture d'achat non payée (régénère les écritures FEC)
+router.put('/:id', requirePerm('factures:w'), async (req, res, next) => {
+  try {
+    res.json(await FournisseurService.mettreAJour(Number(req.params.id), req.body, req.user!.entreprise_id));
   } catch(e) { next(e); }
 });
 

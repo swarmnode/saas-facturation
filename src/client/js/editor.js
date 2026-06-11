@@ -7,34 +7,45 @@ const DocEditor = (() => {
   // ── Configuration par type de document ───────────────────────────────────
 
   const ROUTES = {
-    devis:   'devis',
-    facture: 'factures',
-    avoir:   'factures',
-    bl:      'bons-livraison',
-    acompte: 'acomptes',
+    devis:           'devis',
+    facture:         'factures',
+    avoir:           'factures',
+    bl:              'bons-livraison',
+    acompte:         'acomptes',
+    commande:        'commandes-fournisseurs',
+    'facture-achat': 'factures-fournisseurs',
   };
 
   const LIST_VIEWS = {
-    devis:   'devis',
-    facture: 'factures',
-    avoir:   'avoirs',
-    bl:      'bons-livraison',
-    acompte: 'acomptes',
+    devis:           'devis',
+    facture:         'factures',
+    avoir:           'avoirs',
+    bl:              'bons-livraison',
+    acompte:         'acomptes',
+    commande:        'commandes-fournisseurs',
+    'facture-achat': 'factures-fournisseurs',
   };
 
   const DOC_LABELS = {
-    devis:   'DEVIS',
-    facture: 'FACTURE',
-    avoir:   'FACTURE D\'AVOIR',
-    bl:      'BON DE LIVRAISON',
-    acompte: 'ACOMPTE',
+    devis:           'DEVIS',
+    facture:         'FACTURE',
+    avoir:           'FACTURE D\'AVOIR',
+    bl:              'BON DE LIVRAISON',
+    acompte:         'ACOMPTE',
+    commande:        'BON DE COMMANDE',
+    'facture-achat': 'FACTURE D\'ACHAT',
   };
+
+  // Documents d'achat : destinataire = fournisseur, pas de verrou/scellement
+  // (cf. migration 026 — chaînage non bloquant côté achats)
+  const isTypeAchat = type => type === 'commande' || type === 'facture-achat';
 
   // ── État module ───────────────────────────────────────────────────────────
 
-  let _entreprise = null;
-  let _brandColor = '#1A3A5C';
-  let _comments   = [];
+  let _entreprise   = null;
+  let _brandColor   = '#1A3A5C';
+  let _comments     = [];
+  let _fournisseurs = [];
 
   // ── Utilitaires ───────────────────────────────────────────────────────────
 
@@ -132,6 +143,16 @@ const DocEditor = (() => {
       mode_paiement:       page.querySelector('[name=mode_paiement]')?.value || '',
       lieu_livraison:      page.querySelector('[name=lieu_livraison]')?.value || '',
       facture_origine_id:  page.dataset.factureOrigineId ? parseInt(page.dataset.factureOrigineId) : undefined,
+      // Documents d'achat (absents des autres types : sélecteurs → null/'' sans effet)
+      fournisseur_id:      parseInt(page.querySelector('[name=fournisseur_id]')?.value) || null,
+      fournisseur_nom:     isTypeAchat(type) ? (page.querySelector('.ss-wrap .ss-input')?.value || '') : undefined,
+      numero:              isTypeAchat(type) ? (page.querySelector('[name=numero_achat]')?.value || '') : undefined,
+      date_commande:       page.querySelector('[name=date_commande]')?.value || '',
+      date_livraison_prevue: page.querySelector('[name=date_livraison_prevue]')?.value || '',
+      date_facture:        page.querySelector('[name=date_facture]')?.value || '',
+      compte_charge:       page.querySelector('[name=compte_charge]')?.value || '',
+      statut:              page.querySelector('[name=statut]')?.value || undefined,
+      description:         isTypeAchat(type) ? (page.querySelector('[name=objet]')?.value || '') : undefined,
       lignes,
     };
   }
@@ -328,6 +349,29 @@ const DocEditor = (() => {
     }
   }
 
+  // Destinataire des documents d'achat : annuaire fournisseurs ; un nom libre
+  // (texte tapé sans sélection) reste accepté — fournisseur_id restera vide
+  function initFournisseurSearch(wrap, preview, doc) {
+    if (!wrap) return;
+    const initVal = parseInt(wrap.dataset.initClient) || undefined;
+    const sel = SearchSelect(wrap, {
+      items:        _fournisseurs,
+      labelFn:      f => f.raison_sociale,
+      valueFn:      f => f.id,
+      placeholder:  'Fournisseur… (annuaire ou nom libre)',
+      initialValue: initVal,
+      align:        'right',
+      onSelect:     f => renderClientPreview(f, preview),
+    });
+    sel.hidden.name = 'fournisseur_id';
+    if (initVal) {
+      const found = _fournisseurs.find(f => f.id == initVal);
+      if (found) renderClientPreview(found, preview);
+    } else if (doc?.fournisseur_nom) {
+      sel.input.value = doc.fournisseur_nom; // nom libre hors annuaire
+    }
+  }
+
   // ── Ligne rows ────────────────────────────────────────────────────────────
 
   function calcLigne(row) {
@@ -380,6 +424,8 @@ const DocEditor = (() => {
     desig.addEventListener('article-selected', e => {
       const art = e.detail;
       if (art?.id) tr.dataset.articleId = art.id;
+      // Documents d'achat : le prix pertinent est le prix d'achat du catalogue
+      if (opts.achat && art?.prix_achat_ht != null) tr.querySelector('.e-pu').value = art.prix_achat_ht;
       calcLigne(tr); calcTotaux(page);
       if (art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}
     });
@@ -512,18 +558,28 @@ const DocEditor = (() => {
   ];
 
   function buildDocHTML(type, entreprise, doc) {
-    const isBL      = type === 'bl';
-    const isFacture = type === 'facture' || type === 'avoir';
-    const isAvoir   = type === 'avoir';
-    const isPaid    = doc?.statut === 'payee';
-    const bc        = _brandColor;
-    const numero    = doc?.numero || '—';
-    const today     = new Date().toISOString().slice(0,10);
-    const label     = DOC_LABELS[type] || type.toUpperCase();
+    const isBL       = type === 'bl';
+    const isFacture  = type === 'facture' || type === 'avoir';
+    const isAvoir    = type === 'avoir';
+    const isCommande = type === 'commande';
+    const isFA       = type === 'facture-achat';
+    const isAchat    = isCommande || isFA;
+    const isPaid     = doc?.statut === 'payee';
+    const bc         = _brandColor;
+    const numero     = doc?.numero || '—';
+    const today      = new Date().toISOString().slice(0,10);
+    const label      = DOC_LABELS[type] || type.toUpperCase();
 
     // Champs de dates selon le type
     const dateFields = isBL ? `
       <div class="e-date-row"><span class="e-date-label">Date d'émission</span><input class="e-date-inp" type="date" name="date_emission" value="${doc?.date_emission?.slice(0,10)||today}"></div>`
+    : isCommande ? `
+      <div class="e-date-row"><span class="e-date-label">Date de commande</span><input class="e-date-inp" type="date" name="date_commande" value="${doc?.date_commande?.slice(0,10)||today}"></div>
+      <div class="e-date-row"><span class="e-date-label">Livraison prévue</span><input class="e-date-inp" type="date" name="date_livraison_prevue" value="${doc?.date_livraison_prevue?.slice(0,10)||''}"></div>`
+    : isFA ? `
+      <div class="e-date-row"><span class="e-date-label">Date de facture</span><input class="e-date-inp" type="date" name="date_facture" value="${doc?.date_facture?.slice(0,10)||today}"></div>
+      <div class="e-date-row"><span class="e-date-label">Échéance</span><input class="e-date-inp" type="date" name="date_echeance" value="${doc?.date_echeance?.slice(0,10)||''}"></div>
+      ${isPaid && doc?.date_paiement ? `<div class="e-date-row"><span class="e-date-label" style="color:#2e7d32">Payée le</span><span style="font-size:9pt;font-weight:600;color:#2e7d32">${new Date(doc.date_paiement).toLocaleDateString('fr-FR')}</span></div>` : ''}`
     : isFacture ? `
       <div class="e-date-row"><span class="e-date-label">Date d'émission</span><input class="e-date-inp" type="date" name="date_emission" value="${doc?.date_emission?.slice(0,10)||today}"></div>
       ${!isAvoir && !isPaid && (doc?.date_echeance || !doc?.locked) ? `<div class="e-date-row"><span class="e-date-label">Échéance</span><input class="e-date-inp" type="date" name="date_echeance" value="${doc?.date_echeance?.slice(0,10)||''}"></div>` : ''}
@@ -537,6 +593,19 @@ const DocEditor = (() => {
     const metaFields = isBL ? `
       <div class="e-meta-row"><span class="e-meta-label">Lieu de livraison</span><input class="e-meta-inp" name="lieu_livraison" value="${(doc?.lieu_livraison||'').replace(/"/g,'&quot;')}" placeholder="Adresse ou lieu…"></div>
       ${doc?.devis_id || doc?.facture_id ? `<div class="e-meta-row"><span class="e-meta-label">Réf.</span><span style="font-size:9pt;color:#555">${doc.devis_ref||doc.facture_ref||''}</span></div>` : ''}`
+    : isCommande ? `
+      <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.description||'').replace(/"/g,'&quot;')}" placeholder="Objet de la commande…"></div>
+      <div class="e-meta-row"><span class="e-meta-label">Statut</span><select class="e-meta-sel" name="statut">
+        <option value="en_cours"     ${(doc?.statut||'en_cours')==='en_cours' ?'selected':''}>En cours</option>
+        <option value="receptionnee" ${doc?.statut==='receptionnee'?'selected':''}>Réceptionnée</option>
+        <option value="annulee"      ${doc?.statut==='annulee'     ?'selected':''}>Annulée</option>
+      </select></div>
+      ${doc?.facture_numero ? `<div class="e-meta-row"><span class="e-meta-label">Facture d'achat liée</span><span style="font-size:9pt;color:#555" title="Chaînage non bloquant — modifiable depuis la liste des commandes">${doc.facture_numero}</span></div>` : ''}`
+    : isFA ? `
+      <div class="e-meta-row"><span class="e-meta-label">N° facture fournisseur</span><input class="e-meta-inp" name="numero_achat" value="${(doc?.numero||'').replace(/"/g,'&quot;')}" placeholder="N° figurant sur la facture reçue…"></div>
+      <div class="e-meta-row"><span class="e-meta-label">Compte de charge <span class="help-icon" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.ff_compte_charge || '').replace(/"/g,'&quot;')}">?</span></span><input class="e-meta-inp" name="compte_charge" value="${(doc?.compte_charge||'606').replace(/"/g,'&quot;')}" placeholder="606, 607, 615…" style="width:90px"></div>
+      <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.description||'').replace(/"/g,'&quot;')}" placeholder="Objet de la facture…"></div>
+      ${isPaid ? `<div class="e-meta-row"><span class="e-meta-label">Mode de règlement</span><span style="font-size:9pt;color:#2e7d32;font-weight:600">${(MODES_PAIEMENT.find(([,v])=>v===doc?.mode_paiement)||[doc?.mode_paiement||'—'])[0]}</span></div>` : ''}`
     : isFacture ? `
       <div class="e-meta-row"><span class="e-meta-label">Objet</span><input class="e-meta-inp" name="objet" value="${(doc?.objet||'').replace(/"/g,'&quot;')}" placeholder="Objet du document…"></div>
       <div class="e-meta-row"><span class="e-meta-label">N° commande</span><input class="e-meta-inp" name="numero_commande" value="${(doc?.numero_commande||'').replace(/"/g,'&quot;')}" placeholder="Réf. bon de commande client…"></div>
@@ -578,11 +647,11 @@ const DocEditor = (() => {
       ? `<th class="e-th-desig">Désignation</th><th class="e-th-num">Qté</th><th class="e-th-tva" style="width:10%">Unité</th><th class="e-th-del"></th>`
       : `<th class="e-th-desig">Désignation</th><th class="e-th-num">Qté</th><th class="e-th-num">P.U. HT</th><th class="e-th-num">Remise %</th><th class="e-th-tva">TVA</th><th class="e-th-total">Total HT</th><th class="e-th-del"></th>`;
 
-    // Zone bas : totaux + signature
+    // Zone bas : totaux + signature (aucune signature côté achats)
     const bottomLeft = isBL ? `
       <div class="e-signature-label">Signature du destinataire</div>
       <div class="e-sig-dated-box"><div class="e-sig-date-row"><span class="e-sig-date-label">Date :</span><span class="e-sig-date-line"></span></div><div class="e-sig-space"></div></div>`
-    : !isFacture ? `
+    : (!isFacture && !isAchat) ? `
       <div class="e-signature-label">Bon pour accord — Signature du client</div>
       <div class="e-sig-dated-box"><div class="e-sig-date-row"><span class="e-sig-date-label">Date :</span><span class="e-sig-date-line"></span></div><div class="e-sig-space"></div></div>
       <div class="e-signature-hint">Précédé de la mention « Bon pour accord »</div>`
@@ -608,7 +677,11 @@ const DocEditor = (() => {
       <div class="e-footer">
         <div class="e-footer-label">Notes / Instructions de livraison</div>
         <div class="e-footer-editable" contenteditable="true" name="notes" data-placeholder="Remarques…">${doc?.notes||''}</div>
-      </div>` : (isPaid && isFacture) ? `
+      </div>` : isCommande ? `
+      <div class="e-footer">
+        <div class="e-footer-label">Notes</div>
+        <div class="e-footer-editable" contenteditable="true" name="notes" data-placeholder="Instructions au fournisseur…">${doc?.notes||''}</div>
+      </div>` : isFA ? '' : (isPaid && isFacture) ? `
       <div class="e-footer">
         <div class="e-footer-label">Notes</div>
         <div class="e-footer-editable" contenteditable="true" name="notes" data-placeholder="Notes complémentaires…">${doc?.notes||''}</div>
@@ -620,6 +693,10 @@ const DocEditor = (() => {
         <div class="e-footer-editable" contenteditable="true" name="notes" data-placeholder="Notes complémentaires…">${doc?.notes||''}</div>
       </div>`;
 
+    // Pas de PDF pour une facture d'achat : le document de référence est
+    // celui émis par le fournisseur, on ne fait que le saisir
+    const hasPdf = !isFA;
+
     return `
     <div class="e-toolbar">
       <div class="e-tb-left">
@@ -627,8 +704,8 @@ const DocEditor = (() => {
         <span class="e-tb-title">${numero==='—'?`Nouveau ${label.toLowerCase()}`:`${label} ${numero}`}</span>
       </div>
       <div class="e-tb-right">
-        ${doc?.id?`<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>`:''}
-        <button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>
+        ${hasPdf && doc?.id?`<button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>`:''}
+        ${hasPdf?`<button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>`:''}
         <button class="btn btn-primary btn-sm e-save-btn" data-tooltip="${(typeof helpTexts !== 'undefined' && helpTexts.doc_enregistrer) || ''}">Enregistrer</button>
       </div>
     </div>
@@ -636,8 +713,8 @@ const DocEditor = (() => {
       <div class="a4-page">
         ${buildCompanyHeader(entreprise)}
         <div class="e-client-block">
-          <div class="e-client-label">Destinataire</div>
-          <div class="ss-wrap" data-init-client="${doc?.client_id||''}"></div>
+          <div class="e-client-label">${isAchat ? 'Fournisseur' : 'Destinataire'}</div>
+          <div class="ss-wrap" data-init-client="${isAchat ? (doc?.fournisseur_id||'') : (doc?.client_id||'')}"></div>
           <div class="e-client-preview"></div>
         </div>
         <div class="e-separator" style="border-top-color:${bc}"></div>
@@ -738,10 +815,11 @@ const DocEditor = (() => {
   // ── Init unifié ────────────────────────────────────────────────────────────
 
   function initDoc(type, id, el, doc) {
-    const isBL   = type === 'bl';
-    const page   = el.querySelector('.a4-page');
-    const tbody  = el.querySelector('.e-lignes-body');
-    const docKey = el.dataset.docKey;
+    const isBL    = type === 'bl';
+    const isAchat = isTypeAchat(type);
+    const page    = el.querySelector('.a4-page');
+    const tbody   = el.querySelector('.e-lignes-body');
+    const docKey  = el.dataset.docKey;
     page.dataset.docType = type;
     if (id) page.dataset.docId = String(id);
 
@@ -815,8 +893,9 @@ const DocEditor = (() => {
 
 
 
-    // Client search
-    initClientSearch(el.querySelector('.ss-wrap'), el.querySelector('.e-client-preview'));
+    // Destinataire : client (ventes) ou fournisseur (achats)
+    if (isAchat) initFournisseurSearch(el.querySelector('.ss-wrap'), el.querySelector('.e-client-preview'), doc);
+    else         initClientSearch(el.querySelector('.ss-wrap'), el.querySelector('.e-client-preview'));
 
     // Auto-save brouillons
     if (!id && docKey) {
@@ -828,12 +907,12 @@ const DocEditor = (() => {
       el.querySelector('.e-close-btn')?.addEventListener('click', () => window.removeEventListener('beforeunload', flush), { once: true });
     }
 
-    // Lignes
-    const readonly = !!(doc?.locked);
+    // Lignes — une facture d'achat payée est figée (écritures FEC de règlement passées)
+    const readonly = !!(doc?.locked) || (type === 'facture-achat' && doc?.statut === 'payee');
     const lignes   = doc?.lignes?.length ? doc.lignes : (readonly ? [] : [{}]);
     const makeRow  = l => {
       if (l.type === 'commentaire') return makeCommentRow(l, page, isBL);
-      return isBL ? makeBLRow(l, page) : makeLigneRow(l, page, { showSerie: type==='facture'||type==='avoir' });
+      return isBL ? makeBLRow(l, page) : makeLigneRow(l, page, { showSerie: type==='facture'||type==='avoir', achat: isAchat });
     };
     lignes.forEach(l => {
       const row = makeRow(l);
@@ -952,6 +1031,11 @@ const DocEditor = (() => {
     const isFac    = type==='facture'||type==='avoir';
     const isAvoir  = doc?.type_facture==='avoir';
     const route    = ROUTES[type];
+    if (type === 'facture-achat') {
+      // Facture d'achat payée : pas de PDF (document du fournisseur), pas d'envoi
+      toolbar.innerHTML = `<button class="btn btn-success btn-sm" disabled style="cursor:default;opacity:1">✓ Payée</button>`;
+      return;
+    }
     toolbar.innerHTML = `
       <button class="btn btn-outline btn-sm e-preview-btn">👁 Aperçu PDF</button>
       <button class="btn btn-outline btn-sm" onclick="imprimerDocEditor(this.closest('.e-editor-panel'))">🖨️ Imprimer</button>
@@ -1035,6 +1119,18 @@ const DocEditor = (() => {
       insHelp(ins(mkBtn('🧾 → Facture', 'btn-outline', () => factureFromBL(id))), 'bl_facture');
     }
 
+    // Facture d'achat non payée : règlement depuis l'éditeur (FEC banque écrites)
+    if (type === 'facture-achat' && id && doc?.statut === 'recue') {
+      ins(mkBtn('💳 Payer', 'btn-primary', () => {
+        if (typeof window.payerFactureAchat === 'function') {
+          window.payerFactureAchat(id, () => {
+            tabMgr.closeTab(el.dataset.tid);
+            tabMgr.openViewTab('factures-fournisseurs');
+          });
+        }
+      }));
+    }
+
     // Document existant : commencer en état "sauvegardé" jusqu'à la 1ère modification
     if (id) {
       saveBtn.textContent = '✓ Enregistré';
@@ -1092,11 +1188,41 @@ const DocEditor = (() => {
       });
     });
 
+    const isAchat = isTypeAchat(type);
+    let data;
+
+    if (isAchat) {
+      // Destinataire fournisseur : id de l'annuaire si sélectionné, sinon nom libre
+      const fournisseurId  = parseInt(page.querySelector('[name=fournisseur_id]')?.value) || null;
+      const fournisseurNom = (page.querySelector('.ss-wrap .ss-input')?.value || '').trim();
+      if (!fournisseurId && !fournisseurNom) { alert('Veuillez sélectionner ou saisir un fournisseur.'); return false; }
+      if (!lignes.length) { alert('Ajoutez au moins une ligne.'); return false; }
+      data = { fournisseur_id: fournisseurId, fournisseur_nom: fournisseurNom || undefined, lignes };
+
+      if (type === 'commande') {
+        data.date_commande = page.querySelector('[name=date_commande]')?.value || undefined;
+        if (!data.date_commande) { alert('Date de commande requise.'); return false; }
+        data.date_livraison_prevue = page.querySelector('[name=date_livraison_prevue]')?.value || null;
+        data.description = page.querySelector('[name=objet]')?.value.trim() || null;
+        data.statut      = page.querySelector('[name=statut]')?.value || 'en_cours';
+        data.notes       = page.querySelector('[name=notes]')?.innerText.trim() || null;
+      } else {
+        data.numero = page.querySelector('[name=numero_achat]')?.value.trim();
+        if (!data.numero) { alert('N° de facture fournisseur requis.'); return false; }
+        data.date_facture = page.querySelector('[name=date_facture]')?.value || undefined;
+        if (!data.date_facture) { alert('Date de facture requise.'); return false; }
+        data.date_echeance = page.querySelector('[name=date_echeance]')?.value || null;
+        data.compte_charge = page.querySelector('[name=compte_charge]')?.value.trim() || '606';
+        data.description   = page.querySelector('[name=objet]')?.value.trim() || null;
+      }
+      return apiSave();
+    }
+
     const clientId = parseInt(page.querySelector('[name=client_id]')?.value);
     if (!clientId)      { alert('Veuillez sélectionner un client.'); return false; }
     if (!lignes.length) { alert('Ajoutez au moins une ligne.'); return false; }
 
-    const data = { client_id: clientId, lignes };
+    data = { client_id: clientId, lignes };
 
     if (isBL) {
       data.date_livraison = undefined;
@@ -1131,45 +1257,51 @@ const DocEditor = (() => {
       }
     }
 
-    try {
-      const result = id
-        ? await api.put(`/api/${route}/${id}`, data)
-        : await api.post(`/api/${route}`, { ...data, entreprise_id: _entreprise.id });
-      if (result?.error) { alert(result.error); return false; }
-      if (el.dataset.docKey) clearDraft(el.dataset.docKey);
-      if (result?.id) {
-        page.dataset.docId = result.id;
-        // Promouvoir le tab : remplace le docKey 'new-...' par le vrai ID
-        // pour que la restauration de session retrouve le bon document
-        if (el.dataset.docKey?.startsWith('new-')) {
-          el.dataset.docKey = String(result.id);
-          const label = result.numero || `${DOC_LABELS[type]} ${result.id}`;
-          tabMgr.promoteTab(el.dataset.tid, result.id, label);
-          page.dataset.docId = String(result.id); // pour imprimerDocEditor
+    return apiSave();
+
+    async function apiSave() {
+      try {
+        const result = id
+          ? await api.put(`/api/${route}/${id}`, data)
+          : await api.post(`/api/${route}`, { ...data, entreprise_id: _entreprise.id });
+        if (result?.error) { alert(result.error); return false; }
+        if (el.dataset.docKey) clearDraft(el.dataset.docKey);
+        if (result?.id) {
+          page.dataset.docId = result.id;
+          // Promouvoir le tab : remplace le docKey 'new-...' par le vrai ID
+          // pour que la restauration de session retrouve le bon document
+          if (el.dataset.docKey?.startsWith('new-')) {
+            el.dataset.docKey = String(result.id);
+            const label = result.numero || `${DOC_LABELS[type]} ${result.id}`;
+            tabMgr.promoteTab(el.dataset.tid, result.id, label);
+            page.dataset.docId = String(result.id); // pour imprimerDocEditor
+          }
         }
-      }
-      if (result?.numero) {
-        const titleEl = el.querySelector('.e-tb-title');
-        const numEl   = page.querySelector('.e-doc-numero');
-        if (titleEl) titleEl.textContent = `${DOC_LABELS[type]||type.toUpperCase()} ${result.numero}`;
-        if (numEl)   numEl.textContent   = `N° ${result.numero}`;
-        document.querySelectorAll(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`).forEach(t => { t.textContent = result.numero; });
-      }
-      return true;
-    } catch(e) { alert('Erreur lors de l\'enregistrement'); return false; }
+        if (result?.numero) {
+          const titleEl = el.querySelector('.e-tb-title');
+          const numEl   = page.querySelector('.e-doc-numero');
+          if (titleEl) titleEl.textContent = `${DOC_LABELS[type]||type.toUpperCase()} ${result.numero}`;
+          if (numEl)   numEl.textContent   = `N° ${result.numero}`;
+          document.querySelectorAll(`.tab-btn[data-tid="${el.dataset.tid}"] .tab-title`).forEach(t => { t.textContent = result.numero; });
+        }
+        return true;
+      } catch(e) { alert('Erreur lors de l\'enregistrement'); return false; }
+    }
   }
 
   // ── Entrée unique ─────────────────────────────────────────────────────────
 
   async function open(type, id=null, prefill={}) {
-    const [entreprise, doc, comments] = await Promise.all([
+    const [entreprise, doc, comments, fournisseurs] = await Promise.all([
       api.get('/api/entreprise'),
       id ? api.get(`/api/${ROUTES[type]}/${id}`) : Promise.resolve(null),
       api.get('/api/commentaires').catch(() => []),
+      isTypeAchat(type) ? api.get('/api/fournisseurs').catch(() => []) : Promise.resolve([]),
     ]);
 
-    _entreprise = entreprise;
-    _comments   = Array.isArray(comments) ? comments : [];
+    _entreprise   = entreprise;
+    _comments     = Array.isArray(comments) ? comments : [];
+    _fournisseurs = Array.isArray(fournisseurs) ? fournisseurs : [];
     if (entreprise.logo_path) _brandColor = await extractBrandColor(logoPdfUrl(entreprise));
 
     // Résolution du document effectif (avoir, draft, prefill)
@@ -1260,6 +1392,8 @@ const DocEditor = (() => {
     openAvoirById: (id=null)       => open('avoir', id||null),
     openBL:      (id=null,p={})    => open('bl', id||null, p),
     openAcompte: id                => openAcompte(id),
+    openCommande:     (id=null)    => open('commande', id||null),
+    openFactureAchat: (id=null)    => open('facture-achat', id||null),
     restoreDraft:(type,docKey)     => { const d=loadDraft(docKey); if(!d)return; open(type,null,{docKey,draft:d}); },
   };
 })();

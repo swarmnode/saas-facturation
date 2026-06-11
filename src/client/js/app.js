@@ -490,7 +490,7 @@ const tabMgr = (() => {
     archives:         { title: 'Archives',         icon: '🗄️' },
     parametres:       { title: 'Paramètres',       icon: '⚙️' },
   };
-  const DOC_ICONS = { devis: '📋', facture: '🧾', acompte: '💰', bl: '🚚' };
+  const DOC_ICONS = { devis: '📋', facture: '🧾', acompte: '💰', bl: '🚚', commande: '📝', 'facture-achat': '🛒' };
 
   let tabs     = [];
   let activeId = null;
@@ -4944,6 +4944,36 @@ function showAcompteForm() {
 }
 
 // ── Factures fournisseurs ─────────────────────────────────────────────────
+
+// Règlement d'une facture d'achat — modale partagée entre la liste et l'éditeur WYSIWYG
+window.payerFactureAchat = (id, onDone) => {
+  const today = new Date().toISOString().slice(0, 10);
+  modal.show('Enregistrer le paiement', `
+    <div class="form-group"><label>Date de paiement</label>
+      <input id="ffDatePaie" type="date" value="${today}"/></div>
+    <div class="form-group"><label>Mode de paiement</label>
+      <select id="ffModePaie">
+        <option value="virement">Virement</option>
+        <option value="cheque">Chèque</option>
+        <option value="especes">Espèces</option>
+        <option value="prelevement">Prélèvement</option>
+        <option value="cb">Carte bancaire</option>
+      </select></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" id="btnConfirmPaie">Confirmer</button>
+      <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+    </div>`, body => {
+    body.querySelector('#btnConfirmPaie').onclick = async () => {
+      await api.post(`/api/factures-fournisseurs/${id}/payer`, {
+        date_paiement: body.querySelector('#ffDatePaie').value,
+        mode_paiement: body.querySelector('#ffModePaie').value,
+      });
+      modal.hide();
+      if (onDone) onDone();
+    };
+  });
+};
+
 async function renderFournisseurs(el) {
   let filtreStatut = 'all';
 
@@ -4964,10 +4994,11 @@ async function renderFournisseurs(el) {
         : enRetard
           ? `<span class="badge badge-danger">En retard</span>`
           : `<span class="badge badge-warning">À payer</span>`;
-      const actions = f.statut === 'recue'
-        ? `<button class="btn-sm btn-primary" onclick="payerFournisseur(${f.id})">Payer</button>
-           <button class="btn-sm btn-danger"  onclick="supprimerFournisseur(${f.id})">Supprimer</button>`
-        : '';
+      const actions = `<button class="btn-sm btn-outline" onclick="DocEditor.openFactureAchat(${f.id})">${f.statut === 'payee' ? 'Voir' : 'Éditer'}</button>`
+        + (f.statut === 'recue'
+          ? ` <button class="btn-sm btn-primary" onclick="payerFournisseur(${f.id})">Payer</button>
+              <button class="btn-sm btn-danger"  onclick="supprimerFournisseur(${f.id})">Supprimer</button>`
+          : '');
       return `<tr>
         <td>${new Date(f.date_facture).toLocaleDateString('fr-FR')}</td>
         <td><strong>${f.fournisseur_nom}</strong>${f.fournisseur_siret ? `<br><small style="color:var(--text-muted)">${f.fournisseur_siret}</small>` : ''}</td>
@@ -5020,7 +5051,7 @@ async function renderFournisseurs(el) {
         </table>
       </div>`;
 
-    el.querySelector('#btnNouveauFF').onclick = () => ouvrirFormulaireFF();
+    el.querySelector('#btnNouveauFF').onclick = () => DocEditor.openFactureAchat();
 
     el.querySelector('#ffCsvInput').onchange = async function() {
       const file = this.files[0]; if (!file) return;
@@ -5040,127 +5071,13 @@ async function renderFournisseurs(el) {
 
   window._ffFiltre = (s) => { filtreStatut = s; reload(); };
 
-  window.payerFournisseur = async (id) => {
-    const today = new Date().toISOString().slice(0, 10);
-    modal.show('Enregistrer le paiement', `
-      <div class="form-group"><label>Date de paiement</label>
-        <input id="ffDatePaie" type="date" value="${today}"/></div>
-      <div class="form-group"><label>Mode de paiement</label>
-        <select id="ffModePaie">
-          <option value="virement">Virement</option>
-          <option value="cheque">Chèque</option>
-          <option value="especes">Espèces</option>
-          <option value="prelevement">Prélèvement</option>
-          <option value="cb">Carte bancaire</option>
-        </select></div>
-      <div style="display:flex;gap:8px;margin-top:16px">
-        <button class="btn btn-primary" id="btnConfirmPaie">Confirmer</button>
-        <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
-      </div>`, body => {
-      body.querySelector('#btnConfirmPaie').onclick = async () => {
-        await api.post(`/api/factures-fournisseurs/${id}/payer`, {
-          date_paiement: body.querySelector('#ffDatePaie').value,
-          mode_paiement: body.querySelector('#ffModePaie').value,
-        });
-        modal.hide();
-        reload();
-      };
-    });
-  };
+  window.payerFournisseur = (id) => window.payerFactureAchat(id, reload);
 
   window.supprimerFournisseur = async (id) => {
     if (!confirm('Supprimer cette facture fournisseur ? Les écritures FEC associées seront également supprimées.')) return;
     await api.delete(`/api/factures-fournisseurs/${id}`);
     reload();
   };
-
-  function ouvrirFormulaireFF() {
-    const today = new Date().toISOString().slice(0, 10);
-    modal.show('Nouvelle facture fournisseur', `
-      <form id="ffForm" style="display:grid;gap:12px">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Fournisseur *</label>
-            <input name="fournisseur_nom" required placeholder="Nom ou raison sociale"/>
-          </div>
-          <div class="form-group">
-            <label>SIRET</label>
-            <input name="fournisseur_siret" placeholder="Facultatif"/>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>N° de facture *</label>
-            <input name="numero" required placeholder="Ex. FA-2024-001"/>
-          </div>
-          <div class="form-group">
-            <label>Date *</label>
-            <input name="date_facture" type="date" value="${today}" required/>
-          </div>
-          <div class="form-group">
-            <label>Échéance</label>
-            <input name="date_echeance" type="date"/>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <input name="description" placeholder="Objet de la facture"/>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Montant HT * (€)</label>
-            <input name="montant_ht" type="number" step="0.01" min="0" required id="ffHT"/>
-          </div>
-          <div class="form-group">
-            <label>Taux TVA *</label>
-            <select name="taux_tva" id="ffTaux">
-              <option value="20">20 %</option>
-              <option value="10">10 %</option>
-              <option value="5.5">5,5 %</option>
-              <option value="0">0 % (exonéré)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Montant TVA</label>
-            <input id="ffTVA" readonly style="background:var(--bg-alt)" placeholder="Calculé"/>
-          </div>
-          <div class="form-group">
-            <label>Montant TTC</label>
-            <input id="ffTTC" readonly style="background:var(--bg-alt)" placeholder="Calculé"/>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Compte de charge <span class="help-icon" data-tooltip="${helpTexts.ff_compte_charge.replace(/"/g,'&quot;')}">?</span></label>
-          <input name="compte_charge" value="606" placeholder="Ex. 606, 607, 615…"/>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button type="submit" class="btn btn-primary">Enregistrer</button>
-          <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
-        </div>
-      </form>`, body => {
-      const htInput   = body.querySelector('#ffHT');
-      const tauxSel   = body.querySelector('#ffTaux');
-      const tvaInput  = body.querySelector('#ffTVA');
-      const ttcInput  = body.querySelector('#ffTTC');
-      function recalc() {
-        const ht   = parseFloat(htInput.value) || 0;
-        const taux = parseFloat(tauxSel.value) || 0;
-        const tva  = Math.round(ht * taux) / 100;
-        tvaInput.value = tva.toFixed(2);
-        ttcInput.value = (ht + tva).toFixed(2);
-      }
-      htInput.addEventListener('input', recalc);
-      tauxSel.addEventListener('change', recalc);
-
-      body.querySelector('#ffForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target));
-        await api.post('/api/factures-fournisseurs', data);
-        modal.hide();
-        reload();
-      };
-    });
-  }
 
   await reload();
 }
@@ -5308,7 +5225,8 @@ async function renderCommandes(el) {
         <td><span class="badge ${st.badge}">${st.label}</span></td>
         <td>${lien}</td>
         <td style="white-space:nowrap">
-          <button class="btn-sm btn-outline" onclick="showCommandeForm(${c.id})">Éditer</button>
+          <button class="btn-sm btn-outline" onclick="DocEditor.openCommande(${c.id})">Éditer</button>
+          <button class="btn-sm btn-outline" onclick="lierCommandeFacture(${c.id})" title="Facture d'achat liée (chaînage non bloquant)">🔗</button>
           <button class="btn-sm btn-danger" onclick="deleteCommande(${c.id})">Supprimer</button>
         </td>
       </tr>`;
@@ -5340,7 +5258,7 @@ async function renderCommandes(el) {
         </table>
       </div>`;
 
-    el.querySelector('#btnNouvelleCmd').onclick = () => showCommandeForm();
+    el.querySelector('#btnNouvelleCmd').onclick = () => DocEditor.openCommande();
   }
 
   window._cmdFiltre = (s) => { filtreStatut = s; reload(); };
@@ -5351,80 +5269,31 @@ async function renderCommandes(el) {
     reload();
   };
 
-  window.showCommandeForm = async (id) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const [commande, fournisseurs, facturesAchat] = await Promise.all([
-      id ? api.get(`/api/commandes-fournisseurs/${id}`) : Promise.resolve({}),
-      api.get('/api/fournisseurs') ?? [],
-      api.get('/api/factures-fournisseurs') ?? [],
+  // Chaînage non bloquant commande ↔ facture d'achat (le contenu de la
+  // commande s'édite dans l'éditeur WYSIWYG, DocEditor.openCommande)
+  window.lierCommandeFacture = async (id) => {
+    const [commande, facturesAchat] = await Promise.all([
+      api.get(`/api/commandes-fournisseurs/${id}`),
+      api.get('/api/factures-fournisseurs'),
     ]);
-
-    const fournOpts = (fournisseurs || []).map(f =>
-      `<option value="${f.id}" ${commande.fournisseur_id === f.id ? 'selected' : ''}>${f.raison_sociale}</option>`).join('');
     const factureOpts = (facturesAchat || []).map(f =>
       `<option value="${f.id}" ${commande.facture_fournisseur_id === f.id ? 'selected' : ''}>${f.numero} — ${f.fournisseur_nom} (${Number(f.montant_ttc).toFixed(2)} €)</option>`).join('');
 
-    modal.show(id ? 'Modifier la commande' : 'Nouvelle commande', `
-      <form id="cmdForm" style="display:grid;gap:12px">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Fournisseur *</label>
-            <select name="fournisseur_id" id="cmdFournSelect" required>
-              <option value="">Sélectionner…</option>
-              ${fournOpts}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Statut</label>
-            <select name="statut">
-              <option value="en_cours"     ${(commande.statut||'en_cours')==='en_cours'     ? 'selected' : ''}>En cours</option>
-              <option value="receptionnee" ${commande.statut==='receptionnee' ? 'selected' : ''}>Réceptionnée</option>
-              <option value="annulee"      ${commande.statut==='annulee'      ? 'selected' : ''}>Annulée</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Date de commande *</label>
-            <input name="date_commande" type="date" value="${commande.date_commande ? commande.date_commande.slice(0,10) : today}" required/>
-          </div>
-          <div class="form-group"><label>Livraison prévue</label>
-            <input name="date_livraison_prevue" type="date" value="${commande.date_livraison_prevue ? commande.date_livraison_prevue.slice(0,10) : ''}"/>
-          </div>
-          <div class="form-group"><label>Montant HT (€)</label>
-            <input name="montant_ht" type="number" step="0.01" min="0" value="${commande.montant_ht ?? ''}"/>
-          </div>
-        </div>
-        <div class="form-group"><label>Description</label>
-          <input name="description" value="${commande.description || ''}" placeholder="Objet de la commande"/>
-        </div>
-        <div class="form-group">
-          <label>Facture d'achat liée <small style="font-weight:normal;color:var(--text-muted)">— chaînage non bloquant : facultatif, modifiable à tout moment, sans incidence sur le scellement</small></label>
-          <select name="facture_fournisseur_id">
-            <option value="">— Aucune —</option>
-            ${factureOpts}
-          </select>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
-          <button type="button" class="btn btn-outline" onclick="modal.hide()">Annuler</button>
-          <button type="submit" class="btn btn-primary">${id ? 'Enregistrer' : 'Créer'}</button>
-        </div>
-      </form>`, body => {
-      body.querySelector('#cmdForm').onsubmit = async e => {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        const select = body.querySelector('#cmdFournSelect');
-        const fournisseur_nom = select.selectedOptions[0]?.textContent || commande.fournisseur_nom || '';
-        const data = {
-          fournisseur_id: fd.get('fournisseur_id') || null,
-          fournisseur_nom,
-          date_commande: fd.get('date_commande'),
-          date_livraison_prevue: fd.get('date_livraison_prevue') || null,
-          montant_ht: fd.get('montant_ht') || 0,
-          statut: fd.get('statut'),
-          description: fd.get('description') || null,
-          facture_fournisseur_id: fd.get('facture_fournisseur_id') || null,
-        };
-        const r = id ? await api.put(`/api/commandes-fournisseurs/${id}`, data) : await api.post('/api/commandes-fournisseurs', data);
+    modal.show(`Facture d'achat liée — ${commande.numero}`, `
+      <p style="color:var(--text-muted);font-size:13px;margin-top:0">Chaînage non bloquant : facultatif, modifiable à tout moment, sans incidence sur le scellement.</p>
+      <div class="form-group">
+        <select id="cmdLienFF">
+          <option value="">— Aucune —</option>
+          ${factureOpts}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+        <button class="btn btn-primary" id="btnLienOk">Enregistrer</button>
+      </div>`, body => {
+      body.querySelector('#btnLienOk').onclick = async () => {
+        const v = body.querySelector('#cmdLienFF').value;
+        const r = await api.put(`/api/commandes-fournisseurs/${id}`, { facture_fournisseur_id: v || null });
         if (r?.error) return alert(r.error);
         modal.hide();
         reload();
@@ -7035,10 +6904,12 @@ async function _openSavedTab(t) {
     return;
   }
   switch (t.docType) {
-    case 'devis':                 await DocEditor.openDevis(id);   break;
-    case 'facture': case 'avoir': await DocEditor.openFacture(id); break;
-    case 'bl':                    await DocEditor.openBL(id);      break;
-    case 'acompte':               await DocEditor.openAcompte(id); break;
+    case 'devis':                 await DocEditor.openDevis(id);        break;
+    case 'facture': case 'avoir': await DocEditor.openFacture(id);      break;
+    case 'bl':                    await DocEditor.openBL(id);           break;
+    case 'acompte':               await DocEditor.openAcompte(id);      break;
+    case 'commande':              await DocEditor.openCommande(id);     break;
+    case 'facture-achat':         await DocEditor.openFactureAchat(id); break;
     default: break;
   }
 }

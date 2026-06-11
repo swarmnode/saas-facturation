@@ -24,14 +24,16 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 
 ## Architecture
 
-**Entry point**: `src/server/index.ts` — Express app. All routes are under `/api/*` and protected by the `authenticate` JWT middleware, except `/api/auth`. Uses `helmet` (CSP disabled — SPA has inline scripts) and `express-rate-limit` on `/api/auth/login` (10 req / 15 min window, bypassed for loopback addresses).
+**Entry point**: `src/server/index.ts` — Express app. All routes are under `/api/*` and protected by the `authenticate` JWT middleware, except `/api/auth`. Uses `helmet` (CSP disabled — SPA has inline scripts) and `express-rate-limit` on `/api/auth/login` (10 req / 15 min window, bypassed for loopback addresses). CORS is **disabled by default** (same-origin SPA); set `CORS_ORIGIN` (comma-separated list) in `.env` to allow cross-origin callers.
+
+**JWT secret**: if `JWT_SECRET` is not set in `.env`, a random secret is generated at first startup and persisted to `storage/jwt_secret.key` (`src/server/utils/secret.ts`). There is no hardcoded fallback — never reintroduce one.
 
 **Database layer**: `src/server/db/database.ts`
 - Exports `query()`, `getPool()`, and `withTransaction<T>(fn)` (use for multi-step atomic operations).
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
 
-**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–027 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
+**Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–028 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
 - 005: `clients.adresse2` (complement d'adresse)
 - 006/007: SEPA fields on `clients` (`iban`, `bic`, `mandat_rum`, `mandat_date`, `mandat_type`) and on `entreprise`
@@ -54,6 +56,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - 025: creates `commentaires_predefinis` table (per-company catalogue of reusable comment texts; served via `GET/POST/DELETE /api/commentaires`)
 - 026: creates `fournisseurs` (supplier directory, CRUD mirrors `clients` incl. CSV export/import) and `commandes_fournisseurs` (purchase orders, numbered `CMD-YYYY-NNNN`); adds `factures_fournisseurs.fournisseur_id` (nullable FK). Purchase-side chaining (commande ↔ facture d'achat ↔ fournisseur) is **intentionally non-blocking**: no legal obligation to chain on the purchase side (unlike emitted documents), so all FKs are nullable and freely editable — do not add locking/sealing here
 - 027: `factures.acompte_id` (FK → `acomptes`) + `factures.montant_acompte_applique` — links a facture to the deposit (acompte) applied against it; `acomptes.notes` (free text, e.g. "Reliquat — AC-2025-0001")
+- 028: `article_id` (FK → `articles`) on `devis_lignes` / `factures_lignes` — links line items back to their source article catalogue entry
 
 **Type augmentation**: `src/server/types/express.d.ts` extends `Express.Request` with `user?: AuthUser`. Import `AuthUser` from `middleware/auth` when you need the type elsewhere.
 
@@ -108,15 +111,17 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 - `POST /:id/mapi` — Windows-only: spawns `powershell.exe` to invoke `MAPISendMail`, opening the user's local mail client. Uses temp files in `os.tmpdir()` and cleans them up automatically.
 - `GET /:id/relance-courrier` — generates a printable dunning letter PDF (PDFKit, streamed inline) with the full formal letter layout (objet, coordonnées, corps récapitulatif, pied de page).
 
-**Public routes (no JWT)**: `/api/auth` and `GET /api/devis/signer/:token` (e-signature endpoint). The signature route is mounted **before** the global `authenticate` middleware — it accepts the token from the URL, validates the devis, stamps `statut='signe'`, `signature_ip`, `signature_nom`, and returns an HTML confirmation page.
+**Public routes (no JWT)**: `/api/auth` and `/api/devis/signer/:token` (e-signature endpoint, mounted **before** the global `authenticate` middleware). The `GET` only renders a confirmation page with a "Signer ce devis" button; the actual signature (stamping `statut='signe'`, `signature_ip`, `signature_nom`) happens on `POST` to the same URL. **Never sign on GET** — link prefetchers (Outlook SafeLinks, antivirus) follow GET links and would auto-sign the devis.
 
-**Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing. `js/editor.js` exports a `DocEditor` IIFE that is the shared WYSIWYG editor for all document types (devis, facture, avoir, bon de livraison, acompte); it handles line rendering, totals calculation, comment-type lines, and save/lock logic. `js/app.js` contains the rest of the SPA (routing, view rendering, global state).
+**Frontend**: `src/client/` — plain HTML/CSS/JS SPA served as static files by Express. All API calls use `fetch` with a `Bearer` token stored in `localStorage`. The catch-all `app.get('*')` route returns `index.html` for client-side routing. `js/editor.js` exports a `DocEditor` IIFE that is the shared WYSIWYG editor for all document types (devis, facture, avoir, bon de livraison, acompte); it handles line rendering, totals calculation, comment-type lines, and save/lock logic. Line sub-fields (description, n° de série) carry the `e-sub-field` class and are hidden when empty (`e-sub-empty`), revealed on row hover/focus. Page-break indicators (`refreshPageBreaks`) mirror the PDF: fixed 20pt base per row (editor input padding does not exist in the PDF) **plus the real DOM height of variable parts** (description, n° série, comment textarea) converted px→pt (595pt / page width), against the same thresholds as the PDF (642pt devis/facture, 690pt BL) — all four PDF generators in `FacturXService` use dynamic per-line heights (`heightOfString` for designation, description, and n° série); keep both sides consistent when changing row layout. `js/app.js` contains the rest of the SPA (routing, view rendering, global state).
 
 **PDF storage**: `storage/pdf/` — served at `/storage`. Logo is read from `storage/logo/logo_pdf.png` (preferred) or the path in `entreprise.logo_path`.
 
 **File uploads**: Logo is uploaded via `multer` at `POST /api/entreprise/logo` — stored to `storage/logo/logo_pdf.png`.
 
-**Error responses**: All errors go through `src/server/middleware/errorHandler.ts`. Messages containing `INALTÉR` or `ISCA` (immutability/sealing violations from DB triggers) return HTTP 403; everything else returns 500. Response body is always `{ error: string }`.
+**Error responses**: All errors go through `src/server/middleware/errorHandler.ts`. Messages containing `INALTÉR` or `ISCA` (immutability/sealing violations from DB triggers) return HTTP 403 with the message. Errors carrying a `code` property (PostgreSQL `23505`-style codes, Node `ENOENT`-style codes) return a generic 500 — internal details are only logged server-side. Plain `Error`s thrown by services (French business messages meant for the user) return 400 with the message. Response body is always `{ error: string }`.
+
+**Multi-tenant scoping convention**: service `obtenir(id, entreprise_id?)` methods accept an optional tenant filter — routes **must always pass `req.user!.entreprise_id`**; the parameter is only omitted by system jobs (schedulers) and internal service calls that already verified ownership. Mutation routes (PUT, emettre, payer, DELETE…) pre-check ownership with a tenant-scoped `obtenir()` (404 if not owned) before calling the mutation.
 
 **Shared utilities** (`src/server/utils/`):
 - `csv.ts` — `toCSV(headers, rows)` produces UTF-8 BOM `;`-separated CSV (Excel FR compatible); `parseCSV(text)` auto-detects `;`/`,` separator; `rowToObj(headers, row)` zips a header array and a row into a plain object. Used by FEC export and CSV import routes.

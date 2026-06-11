@@ -154,8 +154,10 @@ const DocEditor = (() => {
   }
 
   // Insère des indicateurs visuels de saut de page A4 dans le tableau des lignes.
-  // - devis/facture/avoir : calcul en points PDF (miroir de FacturXService)
-  // - bl : mesure DOM réelle (les descriptions sont visibles et rendent les lignes plus hautes)
+  // Miroir des hauteurs dynamiques (heightOfString) de FacturXService : base fixe
+  // de 20pt par ligne (le padding px des inputs de l'éditeur ne compte pas dans le
+  // PDF), plus la hauteur DOM réelle des parties variables — description multi-
+  // ligne, n° de série, commentaires — convertie en points (595pt / largeur px).
   function refreshPageBreaks(el, type) {
     const page  = el.querySelector('.a4-page');
     const tbody = el.querySelector('.e-lignes-body');
@@ -167,66 +169,63 @@ const DocEditor = (() => {
     const rows = Array.from(tbody.querySelectorAll('tr:not(.e-page-break)'));
     if (!rows.length) return;
 
+    const pxToPt = 595 / (page.offsetWidth || 794); // A4 = 595 pt
+    const ROW_H  = 20;
+    const heights = rows.map(row => {
+      if (row.dataset.type === 'commentaire') {
+        const ta = row.querySelector('.e-comment-inp');
+        return Math.max(ROW_H, (ta ? (ta.offsetHeight || 19) : 0) * pxToPt + 4);
+      }
+      let h = ROW_H;
+      const desc = row.querySelector('.e-description-inp');
+      if (desc && desc.innerText.trim()) h += (desc.offsetHeight || 14) * pxToPt + 4;
+      const serie = row.querySelector('.e-serie');
+      if (serie && serie.value.trim()) h += (serie.offsetHeight || 14) * pxToPt + 2;
+      return h;
+    });
+
+    const isBL          = type === 'bl';
+    const PAGE_SAFE_BOT = isBL ? 690 : 642; // BL : sigY=695 − 5pt de marge
+    const CONT_TOP      = 60 + 22;          // reprise page suivante + en-tête tableau
+    const NOTES_MARGIN  = 50;               // BL : séparateur + "Notes:" + signature
+    const hasLogo = !!page.querySelector('.e-logo');
+    const startY  = (hasLogo ? 185 : 150) + 100 + 22;
+
     let pageNum = 1;
+    const addBreak = before => {
+      pageNum++;
+      const brk = document.createElement('tr');
+      brk.className = 'e-page-break';
+      brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
+      if (before) tbody.insertBefore(brk, before); else tbody.appendChild(brk);
+    };
 
-    if (type === 'bl') {
-      // Calcul PDF en points — miroir de genererBLStream
-      // PAGE_SAFE_BOT = 690pt (sigY=695 − 5pt marge)
-      // Après la boucle, vérification supplémentaire : si notes+signature
-      // débordent (y + ~50pt > 690pt), on insère le break après la dernière ligne.
-      const PAGE_SAFE_BOT = 690;
-      const CONT_TOP      = 60;
-      const ROW_H         = 20;
-      const NOTES_MARGIN  = 50; // estimation : séparateur + "Notes:" + texte
-      const hasLogo = !!page.querySelector('.e-logo');
-      const startY  = (hasLogo ? 185 : 150) + 100;
+    let y = startY;
+    rows.forEach((row, i) => {
+      if (y + heights[i] > PAGE_SAFE_BOT) { addBreak(row); y = CONT_TOP; }
+      y += heights[i];
+    });
 
-      let y = startY + 22; // après l'en-tête du tableau
+    // BL : toutes les lignes tiennent mais notes + cadre signature débordent
+    if (isBL && y + NOTES_MARGIN > PAGE_SAFE_BOT) addBreak(null);
+  }
 
-      for (const row of rows) {
-        if (y + ROW_H > PAGE_SAFE_BOT) {
-          pageNum++;
-          const brk = document.createElement('tr');
-          brk.className = 'e-page-break';
-          brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
-          tbody.insertBefore(brk, row);
-          y = CONT_TOP + 22;
-        }
-        y += ROW_H;
-      }
+  // Re-calcul différé des sauts de page (hauteurs modifiées par la saisie)
+  const refreshBreaksDebounced = debounce(page => {
+    const edEl = page.closest('.e-editor-panel');
+    if (edEl) refreshPageBreaks(edEl, page.dataset.docType);
+  }, 250);
 
-      // Débordement notes/signature : toutes les lignes tiennent mais le contenu
-      // qui suit (notes + cadre sig à y≥695pt) passe sur la page suivante
-      if (rows.length && y + NOTES_MARGIN > PAGE_SAFE_BOT) {
-        pageNum++;
-        const brk = document.createElement('tr');
-        brk.className = 'e-page-break';
-        brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
-        tbody.appendChild(brk);
-      }
-    } else {
-      // Calcul PDF en points (miroir de FacturXService) pour devis/facture/avoir
-      const PAGE_SAFE_BOT = 642;
-      const CONT_TOP      = 60;
-      const ROW_H_PT      = 20;
-      const ROW_H_DESC_PT = 32;
-      const hasLogo = !!page.querySelector('.e-logo');
-      const startY  = (hasLogo ? 185 : 150) + 100;
-
-      let y = startY;
-      for (const row of rows) {
-        const rowH = row.dataset.desc ? ROW_H_DESC_PT : ROW_H_PT;
-        if (y + rowH > PAGE_SAFE_BOT) {
-          pageNum++;
-          const brk = document.createElement('tr');
-          brk.className = 'e-page-break';
-          brk.innerHTML = `<td colspan="${cols}"><div class="e-page-break-inner"><span class="e-page-break-label">— Page ${pageNum} —</span></div></td>`;
-          tbody.insertBefore(brk, row);
-          y = CONT_TOP;
-        }
-        y += rowH;
-      }
-    }
+  // Sous-champs (description, n° de série) : masqués quand vides, révélés au
+  // survol de la ligne (CSS .e-sub-empty) — la hauteur de ligne suit le contenu
+  function bindSubFields(tr, page) {
+    tr.querySelectorAll('.e-sub-field').forEach(f => {
+      const isCE  = f.hasAttribute('contenteditable');
+      const sync  = () => f.classList.toggle('e-sub-empty', !(isCE ? f.innerText : f.value).trim());
+      sync();
+      f.addEventListener('input', () => { sync(); refreshBreaksDebounced(page); });
+      f.addEventListener('blur', sync);
+    });
   }
 
   function buildCompanyHeader(entreprise) {
@@ -358,12 +357,11 @@ const DocEditor = (() => {
     const tvaOpts=tvaOptions.map(t=>`<option value="${t.id}" ${t.id==(l.taux_tva_id||1)?'selected':''}>${tvaLabel(t)}</option>`).join('');
     const stockBadge=l._stock!=null?`<span class="e-stock-badge" title="Stock">${l._stock}</span>`:'';
     const tr=document.createElement('tr'); tr.className='e-ligne-row';
-    if (l.description) tr.dataset.desc = '1'; // utilisé par refreshPageBreaks
     tr.innerHTML=`
       <td class="e-td-desig">
         <div style="display:flex;align-items:center;gap:4px"><input class="e-cell e-desig" value="${(l.designation||'').replace(/"/g,'&quot;')}" placeholder="Désignation…" style="flex:1">${stockBadge}</div>
-        <div class="e-description-inp" contenteditable="true" data-placeholder="Description…">${l.description||''}</div>
-        ${showSerie?`<input class="e-cell e-serie" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">`:''}
+        <div class="e-description-inp e-sub-field" contenteditable="true" data-placeholder="Description…">${l.description||''}</div>
+        ${showSerie?`<input class="e-cell e-serie e-sub-field" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">`:''}
       </td>
       <td class="e-td-num"><input class="e-cell e-qty" type="number" style="text-align:right" value="${l.quantite||1}" min="0.001" step="0.001"></td>
       <td class="e-td-num"><input class="e-cell e-pu" type="number" style="text-align:right" value="${l.prix_unitaire_ht ?? 1}" step="0.01" placeholder="0,00"></td>
@@ -385,18 +383,18 @@ const DocEditor = (() => {
       calcLigne(tr); calcTotaux(page);
       if (art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}
     });
+    bindSubFields(tr, page);
     return tr;
   }
 
   function makeBLRow(l={}, page) {
     const stockBadge=l._stock!=null?`<span class="e-stock-badge" title="Stock">${l._stock}</span>`:'';
     const tr=document.createElement('tr'); tr.className='e-ligne-row';
-    if (l.description) tr.dataset.desc = '1';
     tr.innerHTML=`
       <td class="e-td-desig">
         <div style="display:flex;align-items:center;gap:4px"><input class="e-cell e-desig" value="${(l.designation||'').replace(/"/g,'&quot;')}" placeholder="Désignation…" style="flex:1">${stockBadge}</div>
-        <div class="e-description-inp" contenteditable="true" data-placeholder="Description…">${l.description||''}</div>
-        <input class="e-cell e-serie" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">
+        <div class="e-description-inp e-sub-field" contenteditable="true" data-placeholder="Description…">${l.description||''}</div>
+        <input class="e-cell e-serie e-sub-field" value="${(l.numero_serie||'').replace(/"/g,'&quot;')}" placeholder="N° de série…" style="font-size:8pt;color:#888;margin-top:2px">
       </td>
       <td class="e-td-num"><input class="e-cell e-qty" type="number" style="text-align:right" value="${l.quantite||1}" min="0.001" step="0.001"${l._stock!=null?` max="${l._stock}"`:''}></td>
       <td class="e-td-tva"><input class="e-cell e-unite" value="${l.unite||''}" placeholder="heure…"></td>
@@ -408,6 +406,7 @@ const DocEditor = (() => {
     const desig=tr.querySelector('.e-desig');
     attachArticleAutocomplete(desig,null,null,tr.querySelector('.e-unite'));
     desig.addEventListener('article-selected',e=>{const art=e.detail;if(art?.quantite_stock!=null){tr.querySelector('.e-qty').max=art.quantite_stock;let badge=tr.querySelector('.e-stock-badge');if(!badge){badge=document.createElement('span');badge.className='e-stock-badge';badge.title='Stock';desig.parentNode.insertBefore(badge,desig.nextSibling);}badge.textContent=art.quantite_stock;}});
+    bindSubFields(tr, page);
     return tr;
   }
 
@@ -441,6 +440,7 @@ const DocEditor = (() => {
     function autoResize() {
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
+      refreshBreaksDebounced(page); // la hauteur du commentaire influe sur la pagination
     }
 
     if (l.designation) { textarea.value = l.designation; requestAnimationFrame(autoResize); }

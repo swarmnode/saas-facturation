@@ -524,6 +524,15 @@ select.e-cell { cursor:pointer; }
 .e-description-inp:empty::before { content:attr(data-placeholder); color:#bbb; }
 .e-description-inp:focus { border-bottom-color:#ccc; }
 
+/* Sous-champs (description, n° série) : masqués quand vides — la ligne reste
+   compacte et sa hauteur reflète le rendu PDF. Révélés au survol ou au focus
+   de la ligne pour pouvoir les remplir. Jamais révélés en lecture seule. */
+.e-sub-field.e-sub-empty { display:none; }
+.e-ligne-row:hover .e-sub-field.e-sub-empty,
+.e-ligne-row:focus-within .e-sub-field.e-sub-empty { display:block; }
+.e-readonly .e-ligne-row:hover .e-sub-field.e-sub-empty,
+.e-readonly .e-ligne-row:focus-within .e-sub-field.e-sub-empty { display:none; }
+
 .e-del-btn { background:none; border:none; cursor:pointer; color:#ccc; font-size:12px; padding:2px 4px; border-radius:3px; }
 .e-del-btn:hover { color:var(--danger); background:#fee2e2; }
 

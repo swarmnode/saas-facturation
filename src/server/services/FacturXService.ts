@@ -787,6 +787,153 @@ export class FacturXService {
     });
   }
 
+  // Bon de commande fournisseur — document émis côté achats : pas de CGV de
+  // vente ni de cadre signature, pas de scellement (cf. migration 026)
+  static async genererCommandeStream(commande: any, entreprise: any, fournisseur: any, outputStream: NodeJS.WritableStream): Promise<void> {
+    let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
+    if (entreprise.logo_path) {
+      const logoAbs = resolveLogoAbsPath(entreprise);
+      if (logoAbs) {
+        try {
+          const meta  = await sharp(logoAbs).metadata();
+          const imgW  = meta.width ?? 200; const imgH = meta.height ?? 80;
+          const scale = Math.min(240 / imgW, 90 / imgH);
+          const drawW = imgW * scale; const drawH = imgH * scale;
+          logoInfo = { abs: logoAbs, drawW, drawH, x: 545 - drawW, y: 35 + (90 - drawH) / 2 };
+        } catch {}
+      }
+    }
+
+    const brandColor      = logoInfo ? await extractDominantColor(logoInfo.abs) : '#1A3A5C';
+    const brandColorLight = lightenColor(brandColor);
+
+    return new Promise<void>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      doc.pipe(outputStream);
+      const W = 495;
+
+      if (logoInfo) {
+        try { doc.image(logoInfo.abs, logoInfo.x, logoInfo.y, { width: logoInfo.drawW, height: logoInfo.drawH }); } catch {}
+      }
+
+      // En-tête acheteur (l'entreprise émettrice de la commande)
+      doc.fontSize(18).font('Helvetica-Bold').text(entreprise.raison_sociale + (entreprise.is_EI ? ' EI' : ''), 50, 50);
+      const _a2off = entreprise.adresse2 ? 12 : 0;
+      doc.fontSize(9).font('Helvetica')
+         .text(entreprise.adresse, 50, 75);
+      if (entreprise.adresse2) doc.text(entreprise.adresse2, 50, 87);
+      doc.text(`${entreprise.code_postal} ${entreprise.ville}`, 50, 87 + _a2off)
+         .text(`SIRET : ${formatSiret(entreprise.siret)}`, 50, 99 + _a2off);
+      if (entreprise.tva_intracom) doc.text(`TVA Intracom : ${entreprise.tva_intracom}`, 50, 111 + _a2off);
+      doc.text(entreprise.email, 50, 123 + _a2off);
+
+      // Destinataire : le fournisseur (fiche annuaire ou nom libre, champs optionnels)
+      let fy = logoInfo ? 130 : 75;
+      doc.fontSize(11).font('Helvetica-Bold')
+         .text(fournisseur.raison_sociale || commande.fournisseur_nom || '', 350, fy, { width: 195, lineBreak: false });
+      doc.fontSize(10).font('Helvetica');
+      if (fournisseur.adresse)  { fy += 16; doc.text(fournisseur.adresse,  350, fy, { width: 195, lineBreak: false }); }
+      if (fournisseur.adresse2) { fy += 12; doc.text(fournisseur.adresse2, 350, fy, { width: 195, lineBreak: false }); }
+      if (fournisseur.code_postal || fournisseur.ville) {
+        fy += 12; doc.text(`${fournisseur.code_postal ?? ''} ${fournisseur.ville ?? ''}`.trim(), 350, fy, { width: 195, lineBreak: false });
+      }
+      if (fournisseur.tva_intracom) { fy += 12; doc.text(`TVA Intracom : ${fournisseur.tva_intracom}`, 350, fy, { width: 195, lineBreak: false }); }
+
+      // Titre
+      const sepY = logoInfo ? 185 : 150;
+      doc.moveTo(50, sepY).lineTo(545, sepY).strokeColor('#CCCCCC').stroke();
+      const titleY = sepY + 10;
+      doc.fontSize(16).font('Helvetica-Bold').fillColor(brandColor).text('BON DE COMMANDE', 50, titleY);
+      doc.fontSize(10).font('Helvetica').fillColor('#000000')
+         .text(`N° ${commande.numero}`, 50, titleY + 22)
+         .text(`Date : ${formatDate(commande.date_commande)}`, 50, titleY + 34);
+      if (commande.date_livraison_prevue)
+        doc.text(`Livraison prévue : ${formatDate(commande.date_livraison_prevue)}`, 50, titleY + 46);
+      if (commande.description)
+        doc.text(`Objet : ${commande.description}`, 50, titleY + (commande.date_livraison_prevue ? 58 : 46));
+
+      // Tableau des lignes — hauteurs dynamiques (miroir devis/éditeur)
+      let y = sepY + 100;
+      const colX = [50, 240, 300, 355, 410, 470];
+      const headers = ['Désignation', 'Qté', 'P.U. HT', 'Remise', 'TVA', 'Total HT'];
+      const PAGE_SAFE_BOT_C = 642;
+      const CONT_TOP_C      = 60;
+      const ROW_H_C         = 20;
+
+      const drawCmdHeader = () => {
+        doc.rect(50, y, W, 18).fill(brandColor);
+        doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
+        headers.forEach((h, i) => doc.text(h, colX[i], y + 5, { width: colX[i + 1] ? colX[i + 1] - colX[i] - 4 : 70 }));
+        y += 22;
+        doc.fillColor('#000000').font('Helvetica').fontSize(8);
+      };
+      drawCmdHeader();
+
+      (commande.lignes ?? []).forEach((l: any, idx: number) => {
+        if (l.type === 'commentaire') {
+          const commentH = doc.heightOfString(l.designation, { width: W, fontSize: 8 } as any) + 4;
+          const commentRowH = Math.max(ROW_H_C, commentH);
+          if (y + commentRowH > PAGE_SAFE_BOT_C) { doc.addPage(); y = CONT_TOP_C; drawCmdHeader(); }
+          doc.rect(50, y - 2, W, commentRowH).fill('#FFFFFF');
+          doc.fillColor('#1A1A1A').font('Helvetica-Oblique').fontSize(8)
+             .text(l.designation, colX[0], y, { width: W, lineBreak: true });
+          doc.font('Helvetica').fillColor('#000000');
+          y += commentRowH;
+          return;
+        }
+        const desigH = doc.heightOfString(l.designation, { width: 186, fontSize: 8 } as any) + 4;
+        const baseH  = Math.max(ROW_H_C, desigH);
+        const descH  = l.description ? doc.heightOfString(l.description, { width: 184, fontSize: 7 } as any) + 4 : 0;
+        const rowH   = baseH + descH;
+        if (y + rowH > PAGE_SAFE_BOT_C) { doc.addPage(); y = CONT_TOP_C; drawCmdHeader(); }
+        if (idx % 2 === 0) doc.rect(50, y - 2, W, rowH).fill(brandColorLight);
+        doc.fillColor('#000000');
+        doc.text(l.designation, colX[0], y, { width: 186, lineBreak: true });
+        doc.text(String(l.quantite) + (l.unite ? ` ${l.unite}` : ''), colX[1], y, { width: 54,  lineBreak: false });
+        doc.text(formatMontant(l.prix_unitaire_ht), colX[2], y, { width: 50,  lineBreak: false });
+        doc.text(l.remise_pct ? `${l.remise_pct}%` : '—', colX[3], y, { width: 50,  lineBreak: false });
+        doc.text(mentionTVA('normal', l.taux_tva_valeur), colX[4], y, { width: 56,  lineBreak: false });
+        doc.text(formatMontant(l.montant_ht), colX[5], y, { width: 70,  lineBreak: false, align: 'right' });
+        if (l.description) {
+          doc.fontSize(7).fillColor('#666666')
+             .text(l.description, colX[0] + 2, y + baseH - 2, { width: 184, lineBreak: true });
+          doc.fontSize(8).fillColor('#000000');
+        }
+        y += rowH;
+      });
+
+      // Notes
+      if (commande.notes) {
+        y += 10;
+        if (y > PAGE_SAFE_BOT_C) { doc.addPage(); y = CONT_TOP_C; }
+        doc.moveTo(50, y).lineTo(545, y).strokeColor('#CCCCCC').stroke();
+        y += 10;
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000').text('Notes :', 50, y);
+        y += 14;
+        doc.fontSize(9).font('Helvetica').text(commande.notes, 50, y, { width: W });
+        y += doc.heightOfString(commande.notes, { width: W }) + 10;
+      }
+
+      if (y > PAGE_SAFE_BOT_C) doc.addPage();
+
+      // Totaux ancrés en bas à droite — même position que devis/facture
+      const BOTTOM_C = 744;
+      const drawTotC = (label: string, val: string, bold: boolean, yOff: number) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000000')
+           .text(label, 340, BOTTOM_C - yOff, { width: 126, align: 'left',  lineBreak: false })
+           .text(val,   470, BOTTOM_C - yOff, { width:  70, align: 'right', lineBreak: false });
+      };
+      drawTotC('Total HT',  formatMontant(commande.montant_ht),  false, 36);
+      drawTotC('Total TVA', formatMontant(commande.montant_tva), false, 18);
+      drawTotC('Total TTC', formatMontant(commande.montant_ttc), true,   0);
+      doc.moveTo(340, BOTTOM_C - 44).lineTo(545, BOTTOM_C - 44).strokeColor('#CCCCCC').stroke();
+
+      doc.end();
+      outputStream.on('finish', resolve);
+      outputStream.on('error', reject);
+    });
+  }
+
   static async genererFactureStream(facture: any, entreprise: any, client: any, outputStream: NodeJS.WritableStream): Promise<void> {
     let logoInfo: { abs: string; drawW: number; drawH: number; x: number; y: number } | null = null;
     if (entreprise.logo_path) {

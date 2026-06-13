@@ -39,5 +39,6 @@ installer/FacturPro-Setup.exe
 Sauvegardes/
 updates/
 FacturPro-Patch.zip
+.release-notes.tmp.md
 storage/jwt_secret.key
 storage/tls/

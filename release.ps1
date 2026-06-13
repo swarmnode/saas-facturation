@@ -83,13 +83,36 @@ git push origin $Tag
 if ($LASTEXITCODE -ne 0) { Fail "git push tag a echoue" }
 OK "Push OK"
 
+# -- Notes de release (extraites de CHANGELOG.md) ------------------------------
+Step "Extraction des notes de version depuis CHANGELOG.md"
+$changelogLines = Get-Content "$Root\CHANGELOG.md" -Encoding UTF8
+$noteLines = @()
+$inSection = $false
+foreach ($line in $changelogLines) {
+    if ($line -match '^## \[Non publi') { $inSection = $true; continue }
+    if ($inSection -and $line -match '^## \[') { break }
+    if ($inSection) { $noteLines += $line }
+}
+while ($noteLines.Count -gt 0 -and $noteLines[0].Trim() -eq '') { $noteLines = $noteLines[1..($noteLines.Count - 1)] }
+while ($noteLines.Count -gt 0 -and $noteLines[-1].Trim() -eq '') { $noteLines = $noteLines[0..($noteLines.Count - 2)] }
+
+$NotesPath = "$Root\.release-notes.tmp.md"
+if ($noteLines.Count -gt 0) {
+    [System.IO.File]::WriteAllText($NotesPath, ($noteLines -join "`n"), [System.Text.UTF8Encoding]::new($false))
+    OK "Notes extraites ($($noteLines.Count) lignes)"
+} else {
+    [System.IO.File]::WriteAllText($NotesPath, "Release $Tag - voir CHANGELOG.md pour le detail.", [System.Text.UTF8Encoding]::new($false))
+    OK "Section [Non publie] vide, notes generiques"
+}
+
 # -- Release GitHub ------------------------------------------------------------
 Step "Publication de la release GitHub $Tag"
-& $GH release create $Tag --title $Tag --notes "Release $Tag - voir CHANGELOG.md pour le detail." --latest
+& $GH release create $Tag --title $Tag --notes-file $NotesPath --latest
 if ($LASTEXITCODE -ne 0) { Fail "gh release create a echoue" }
 
 & $GH release upload $Tag $ZipPath --clobber
 if ($LASTEXITCODE -ne 0) { Fail "gh release upload a echoue" }
+Remove-Item $NotesPath -Force -ErrorAction SilentlyContinue
 OK "Release GitHub publiee"
 
 Write-Host ""

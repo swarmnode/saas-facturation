@@ -141,23 +141,42 @@ function runPsqlCommand(targetDb: string, sql: string): Promise<string> {
   });
 }
 
-// Restaure un dump .sql.gz dans la base indiquée via psql.
+// Restaure un dump .sql ou .sql.gz dans la base indiquée via psql.
 function restoreDumpInto(targetDb: string, filePath: string): Promise<void> {
   const { user, pass, host, port } = pgConn();
   return new Promise((resolve, reject) => {
     let err = '';
+    let settled = false;
+    const fail = (e: Error) => {
+      if (settled) return;
+      settled = true;
+      proc.kill();
+      reject(e);
+    };
+
     const proc = spawn(path.join(pgBin(), 'psql.exe'), [
       '-U', user, '-h', host, '-p', port, '-d', targetDb, '-v', 'ON_ERROR_STOP=1', '-q',
     ], { env: { ...process.env, PGPASSWORD: pass } });
 
     const src = fs.createReadStream(filePath);
-    src.pipe(createGunzip()).pipe(proc.stdin);
-    src.on('error', reject);
+    src.on('error', fail);
+
+    if (filePath.endsWith('.gz')) {
+      const gunzip = createGunzip();
+      gunzip.on('error', fail);
+      src.pipe(gunzip).pipe(proc.stdin);
+    } else {
+      src.pipe(proc.stdin);
+    }
 
     proc.stdout.on('data', () => {});
     proc.stderr.on('data', d => err += d.toString());
-    proc.on('error', reject);
-    proc.on('close', code => code === 0 ? resolve() : reject(new Error(err.trim() || `psql code ${code}`)));
+    proc.on('error', fail);
+    proc.on('close', code => {
+      if (settled) return;
+      settled = true;
+      code === 0 ? resolve() : reject(new Error(err.trim() || `psql code ${code}`));
+    });
   });
 }
 

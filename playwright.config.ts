@@ -6,6 +6,8 @@ const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './tests',
+  globalSetup:    './tests/global-setup',
+  globalTeardown: './tests/global-teardown',
   timeout: 30_000,
   fullyParallel: false,
   retries: 0,

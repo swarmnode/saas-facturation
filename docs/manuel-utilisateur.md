@@ -589,6 +589,10 @@ Tous les documents s'ouvrent dans un éditeur visuel A4 qui reproduit l'aspect e
 
 Les totaux (HT, TVA par taux, TTC) sont recalculés en temps réel.
 
+### Champ Description masqué au survol (v3.2.10)
+
+Pour alléger l'affichage, le champ **Description** d'une ligne reste **masqué tant qu'il est vide**. Il **apparaît au survol de la ligne** (ou lors de la saisie), pour permettre de le compléter sans encombrer la vue. Dès qu'une description est saisie, le champ **reste affiché en permanence**, même hors survol.
+
 ### Insérer un article du catalogue
 
 Dans le champ **Désignation**, commencez à taper le nom — un menu de saisie semi-automatique filtre le catalogue. Cliquer sur un article pré-remplit désignation, description, prix et TVA.
@@ -846,6 +850,10 @@ Une fois encaissé, l'acompte est disponible pour être déduit lors du paiement
 
 Si un acompte est supérieur au montant de la facture à laquelle il est imputé, FacturPro crée un **acompte reliquat** immédiatement encaissé pour la différence. Ce reliquat porte la mention `Reliquat — AC-XXXX` et peut être utilisé sur une facture suivante.
 
+## Filtrer par statut (v3.2.10)
+
+Le sélecteur en haut de la liste filtre les acomptes par statut : **Tous les statuts**, **En attente**, **Encaissé**.
+
 ## Suivi dans la liste
 
 La liste des acomptes affiche :
@@ -861,6 +869,10 @@ La liste des acomptes affiche :
 # Bons de livraison
 
 Les BL documentent la remise des biens ou la réalisation des prestations.
+
+## Filtrer par statut (v3.2.10)
+
+Le sélecteur en haut de la liste filtre les BL par statut : **Tous les statuts**, **Brouillon**, **Émis**, **Livré**.
 
 ## Créer un BL
 
@@ -961,9 +973,17 @@ Le numéro `CMD-2026-0001` est attribué au premier enregistrement. **👁 Aper�
 
 > **Prix d'achat automatique** : en insérant un article du catalogue dans une ligne, c'est son **prix d'achat HT** (et non son prix de vente) qui est pré-rempli, s'il est renseigné dans la fiche article.
 
+### Envoyer la commande par email (v3.2.10)
+
+Le bouton **✉ Envoyer** — disponible sur la ligne de la liste et dans la barre d'outils de l'éditeur (commande déjà enregistrée) — ouvre une fenêtre de confirmation avec l'**email du fournisseur pré-rempli** (si renseigné dans l'annuaire **Fournisseurs**). Validez pour envoyer le PDF du bon de commande en pièce jointe.
+
+### Facturer une commande (v3.2.10)
+
+Tant qu'aucune facture d'achat n'est liée, le bouton **🧾 → Facture d'achat** — sur la ligne de la liste et dans la barre d'outils de l'éditeur — ouvre l'éditeur de **facture d'achat pré-rempli** avec le fournisseur, l'objet et les lignes de la commande. Complétez le **N° de facture fournisseur** puis enregistrez : la commande est automatiquement **liée** à la nouvelle facture d'achat.
+
 ### Chaînage avec une facture d'achat
 
-Le bouton **🔗** de la liste associe une commande à une facture d'achat. Ce chaînage est **non bloquant** : facultatif, modifiable à tout moment, sans incidence sur le scellement. Il aide à suivre le cycle commande → réception → facturation, sans imposer de contrainte d'ordre ni verrouiller les documents.
+Le bouton **🔗** de la liste associe manuellement une commande à une facture d'achat existante (le chaînage automatique via **🧾 → Facture d'achat** ci-dessus produit le même lien). Ce chaînage est **non bloquant** : facultatif, modifiable à tout moment, sans incidence sur le scellement. Il aide à suivre le cycle commande → réception → facturation, sans imposer de contrainte d'ordre ni verrouiller les documents.
 
 ## Factures d'achats
 

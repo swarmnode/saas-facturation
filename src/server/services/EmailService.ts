@@ -182,6 +182,43 @@ export class EmailService {
     return { previewUrl: test ? (nodemailer.getTestMessageUrl(info) || undefined) : undefined };
   }
 
+  // Bon de commande envoyé au fournisseur (PDF joint)
+  static async envoyerCommande(commandeId: number, emailDestinataire: string): Promise<{ previewUrl?: string }> {
+    const cr = await query('SELECT * FROM commandes_fournisseurs WHERE id = $1', [commandeId]);
+    const commande = cr.rows[0];
+    if (!commande) throw new Error('Commande introuvable');
+    const lr = await query('SELECT * FROM commandes_fournisseurs_lignes WHERE commande_id = $1 ORDER BY position', [commandeId]);
+    const er = await query('SELECT * FROM entreprise WHERE id = $1', [commande.entreprise_id]);
+    const entreprise = er.rows[0];
+    const fournisseur = commande.fournisseur_id
+      ? (await query('SELECT * FROM fournisseurs WHERE id = $1', [commande.fournisseur_id])).rows[0]
+      : null;
+
+    const pdfBuffer = await pdfFromStream(pass =>
+      FacturXService.genererCommandeStream({ ...commande, lignes: lr.rows }, entreprise,
+        fournisseur ?? { raison_sociale: commande.fournisseur_nom }, pass)
+    );
+
+    const { transporter, test } = await getTransporter(entreprise);
+    const info: SentMessageInfo = await transporter.sendMail({
+      from:    entreprise?.smtp_from || entreprise?.email || 'test@facturation.local',
+      to:      emailDestinataire,
+      subject: `Bon de commande ${commande.numero} — ${entreprise.raison_sociale}`,
+      text: [
+        `Bonjour,`, '',
+        `Veuillez trouver ci-joint notre bon de commande ${commande.numero}${commande.description ? ` (${commande.description})` : ''}.`,
+        commande.date_livraison_prevue ? `Livraison souhaitée : ${commande.date_livraison_prevue}` : '', '',
+        `Montant HT  : ${Number(commande.montant_ht).toFixed(2)} €`,
+        `Montant TTC : ${Number(commande.montant_ttc).toFixed(2)} €`, '',
+        'Cordialement,', entreprise.raison_sociale,
+        entreprise.telephone ? `Tél. : ${entreprise.telephone}` : '', entreprise.email,
+      ].filter(Boolean).join('\n'),
+      attachments: [{ filename: `${commande.numero}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }],
+    });
+
+    return { previewUrl: test ? (nodemailer.getTestMessageUrl(info) || undefined) : undefined };
+  }
+
   // Email générique (relances, etc.)
   static async envoyerEmail(opts: { to: string; subject: string; text: string; attachments?: any[]; entreprise_id?: number }): Promise<{ previewUrl?: string }> {
     const er = opts.entreprise_id

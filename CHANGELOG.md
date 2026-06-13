@@ -6,6 +6,43 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [Non publié]
 
 ### Ajouté
+- Feat: tests E2E autonomes avec utilisateur dédié
+
+Nouveaux utilitaires tests/e2e-utils.ts (apiLogin, uiLogin, ensureTestUser,
+disableTestUser) + global-setup/global-teardown Playwright : la suite crée
+et désactive son propre utilisateur e2e@facturpro.test, indépendant du
+compte admin de la base. 4 specs durables : smoke (parcours complet
+devis -> facture -> émission -> scellement), achats (commandes et factures
+fournisseurs, FEC, chaînage), editeur (sous-champs au survol, sauts de
+page, facture d'achat pré-remplie), filtres (statuts BL et acomptes).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: envoyer le bon de commande au fournisseur par email
+
+EmailService.envoyerCommande() génère le PDF du bon de commande et
+l'envoie en pièce jointe ; POST /api/commandes-fournisseurs/:id/envoyer-email.
+Bouton "Envoyer" (liste et éditeur) avec email du fournisseur pré-rempli
+depuis l'annuaire.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: facturer une commande fournisseur en un clic
+
+DocEditor.openFactureAchatDepuisCommande() ouvre l'éditeur de facture
+d'achat pré-rempli (fournisseur, objet, lignes) depuis une commande ; à
+l'enregistrement, la commande est automatiquement liée à la nouvelle
+facture d'achat (facture_fournisseur_id). Bouton "-> Facture d'achat"
+sur la liste et dans la barre d'outils de l'éditeur (tant qu'aucune
+facture n'est liée).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: filtre de statut sur les acomptes et les bons de livraison
+
+Harmonise le sélecteur de statut déjà présent sur devis/factures/commandes :
+bons de livraison (brouillon/émis/livré) et acomptes (en attente/encaissé).
+search.ts étend également la recherche aux commandes et factures
+fournisseurs.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Feat: bundler PostgreSQL portable dans l'installateur (remplace l'EDB one-click)
 
 L'installeur EDB (~300 Mo, 5-10 min) est remplacé par le ZIP binaries-only

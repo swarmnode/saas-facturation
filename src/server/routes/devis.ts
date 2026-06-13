@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { DevisService } from '../services/DevisService';
+import { Devis } from '../types/documents';
 import { paginateParams, buildPage } from '../utils/paginate';
 import { AvenantService } from '../services/AvenantService';
 import { FacturXService } from '../services/FacturXService';
@@ -36,7 +37,7 @@ router.post('/', requirePerm('devis:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-async function devisOuIntrouvable(req: any, res: any): Promise<any | null> {
+async function devisOuIntrouvable(req: any, res: any): Promise<Devis | null> {
   const d = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
   if (!d) res.status(404).json({ error: 'Introuvable' });
   return d;
@@ -60,7 +61,7 @@ router.post('/:id/envoyer', requirePerm('devis:w'), async (req, res, next) => {
       const result = await EmailService.envoyerDevis(id, email);
       previewUrl = result.previewUrl;
     }
-    res.json({ ...(devis as any), email_envoye: !!email, preview_url: previewUrl ?? null });
+    res.json({ ...devis!, email_envoye: !!email, preview_url: previewUrl ?? null });
   } catch(e) { next(e); }
 });
 
@@ -69,13 +70,13 @@ router.post('/:id/accepter', requirePerm('devis:w'), async (req, res, next) => {
     if (!await devisOuIntrouvable(req, res)) return;
     const devis = await DevisService.changerStatut(Number(req.params.id), 'accepte');
     // Passer le client de "prospect" à "client" si c'est encore un prospect
-    if ((devis as any)?.client_id) {
+    if (devis?.client_id) {
       await query(
         `UPDATE clients
             SET statut_rgpd = 'client',
                 date_derniere_activite = to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
           WHERE id = $1 AND statut_rgpd = 'prospect'`,
-        [(devis as any).client_id]
+        [devis.client_id]
       );
     }
     res.json(devis);
@@ -105,9 +106,9 @@ router.get('/:id/apercu', requirePerm('devis:r'), async (req, res, next) => {
     const devis = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(devis as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [devis.client_id]);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${(devis as any).numero}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="${devis.numero}.pdf"`);
     await FacturXService.genererDevisStream(devis, er.rows[0], cr.rows[0], res);
   } catch(e) { next(e); }
 });
@@ -118,7 +119,7 @@ router.get('/:id/eml', requirePerm('devis:r'), async (req, res, next) => {
     const devis = await DevisService.obtenir(id, req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(devis as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [devis.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
@@ -135,14 +136,14 @@ router.get('/:id/eml', requirePerm('devis:r'), async (req, res, next) => {
     const emailTo   = (req.query.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Devis ${(devis as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Devis ${devis.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint le devis ${(devis as any).numero}${(devis as any).objet ? ` (${(devis as any).objet})` : ''}.`,
+      `Veuillez trouver ci-joint le devis ${devis.numero}${devis.objet ? ` (${devis.objet})` : ''}.`,
       '',
-      `Montant HT  : ${Number((devis as any).montant_ht).toFixed(2)} €`,
-      `Montant TTC : ${Number((devis as any).montant_ttc).toFixed(2)} €`,
+      `Montant HT  : ${Number(devis.montant_ht).toFixed(2)} €`,
+      `Montant TTC : ${Number(devis.montant_ttc).toFixed(2)} €`,
       '',
       'Cordialement,',
       entreprise.raison_sociale,
@@ -157,14 +158,14 @@ router.get('/:id/eml', requirePerm('devis:r'), async (req, res, next) => {
       `Content-Type: multipart/mixed; boundary="${boundary}"`, ``,
       `--${boundary}`, `Content-Type: text/plain; charset=UTF-8`,
       `Content-Transfer-Encoding: quoted-printable`, ``, corps, ``,
-      `--${boundary}`, `Content-Type: application/pdf; name="${(devis as any).numero}.pdf"`,
+      `--${boundary}`, `Content-Type: application/pdf; name="${devis.numero}.pdf"`,
       `Content-Transfer-Encoding: base64`,
-      `Content-Disposition: attachment; filename="${(devis as any).numero}.pdf"`, ``,
+      `Content-Disposition: attachment; filename="${devis.numero}.pdf"`, ``,
       pdfB64.match(/.{1,76}/g)!.join('\r\n'), ``, `--${boundary}--`,
     ].join('\r\n');
 
     res.setHeader('Content-Type', 'message/rfc822');
-    res.setHeader('Content-Disposition', `attachment; filename="${(devis as any).numero}.eml"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${devis.numero}.eml"`);
     res.send(eml);
   } catch(e) { next(e); }
 });
@@ -175,12 +176,12 @@ router.post('/:id/mapi', requirePerm('devis:r'), async (req, res, next) => {
     const devis = await DevisService.obtenir(id, req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(devis as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [devis.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
     const { PassThrough } = await import('stream');
-    const tmpPdf = path.join(os.tmpdir(), `${(devis as any).numero}.pdf`);
+    const tmpPdf = path.join(os.tmpdir(), `${devis.numero}.pdf`);
     await new Promise<void>((resolve, reject) => {
       const pass = new PassThrough();
       const chunks: Buffer[] = [];
@@ -193,14 +194,14 @@ router.post('/:id/mapi', requirePerm('devis:r'), async (req, res, next) => {
     const emailTo   = (req.body?.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Devis ${(devis as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Devis ${devis.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint le devis ${(devis as any).numero}${(devis as any).objet ? ` (${(devis as any).objet})` : ''}.`,
+      `Veuillez trouver ci-joint le devis ${devis.numero}${devis.objet ? ` (${devis.objet})` : ''}.`,
       '',
-      `Montant HT  : ${Number((devis as any).montant_ht).toFixed(2)} €`,
-      `Montant TTC : ${Number((devis as any).montant_ttc).toFixed(2)} €`,
+      `Montant HT  : ${Number(devis.montant_ht).toFixed(2)} €`,
+      `Montant TTC : ${Number(devis.montant_ttc).toFixed(2)} €`,
       '',
       'Cordialement,',
       entreprise.raison_sociale,
@@ -282,12 +283,12 @@ router.post('/:id/envoyer-lien-signature', requirePerm('devis:w'), async (req, r
     const id = Number(req.params.id);
     const devis = await DevisService.obtenir(id, req.user!.entreprise_id);
     if (!devis) return res.status(404).json({ error: 'Introuvable' });
-    if ((devis as any).statut === 'signe') return res.status(400).json({ error: 'Devis déjà signé' });
+    if (devis.statut === 'signe') return res.status(400).json({ error: 'Devis déjà signé' });
 
-    const token = (devis as any).signature_token;
+    const token = devis.signature_token;
     if (!token) return res.status(400).json({ error: 'Token de signature absent — re-créez le devis' });
 
-    const cr = await query('SELECT email, prenom, nom, raison_sociale FROM clients WHERE id=$1', [(devis as any).client_id]);
+    const cr = await query('SELECT email, prenom, nom, raison_sociale FROM clients WHERE id=$1', [devis.client_id]);
     const client = cr.rows[0];
     if (!client?.email) return res.status(400).json({ error: 'Aucun email pour ce client' });
 
@@ -301,13 +302,13 @@ router.post('/:id/envoyer-lien-signature', requirePerm('devis:w'), async (req, r
     const { EmailService } = await import('../services/EmailService');
     await EmailService.envoyerEmail({
       to:      client.email,
-      subject: `Devis ${(devis as any).numero} — Signature électronique`,
+      subject: `Devis ${devis.numero} — Signature électronique`,
       text: [
         `Bonjour${clientNom ? ' ' + clientNom : ''},`,
         '',
-        `Veuillez trouver ci-joint le devis ${(devis as any).numero} pour votre signature électronique.`,
+        `Veuillez trouver ci-joint le devis ${devis.numero} pour votre signature électronique.`,
         '',
-        `Montant TTC : ${Number((devis as any).montant_ttc).toFixed(2)} €`,
+        `Montant TTC : ${Number(devis.montant_ttc).toFixed(2)} €`,
         '',
         `Pour signer ce devis, cliquez sur le lien suivant :`,
         lien,
@@ -340,7 +341,7 @@ router.get('/:id/avenants', requirePerm('devis:r'), async (req, res, next) => {
 router.get('/:id/pdf', requirePerm('devis:r'), async (req, res, next) => {
   try {
     const d = await DevisService.obtenir(Number(req.params.id), req.user!.entreprise_id);
-    const pdf_path = (d as any)?.pdf_path;
+    const pdf_path = d?.pdf_path;
     if (!pdf_path) return res.status(404).json({ error: 'PDF non généré' });
     const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });

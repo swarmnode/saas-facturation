@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { logAudit } from './audit';
 import { FactureService } from '../services/FactureService';
+import { Facture } from '../types/documents';
 import { paginateParams, buildPage } from '../utils/paginate';
 import { FecExportService } from '../services/FecExportService';
 import { ScelleService } from '../services/ScelleService';
@@ -53,7 +54,7 @@ router.get('/:id/avoirs-cumul', requirePerm('factures:r'), async (req, res, next
     const id = Number(req.params.id);
     const f  = await FactureService.obtenir(id, req.user!.entreprise_id);
     if (!f) return res.status(404).json({ error: 'Introuvable' });
-    const factureTtc  = Math.abs(parseFloat((f as any).montant_ttc));
+    const factureTtc  = Math.abs(Number(f.montant_ttc));
     const avoirsTtc   = await FactureService.getAvoirsCumul(id);
     const avoirsRes   = await (await import('../db/database')).query(`
       SELECT COUNT(*) AS nb, ARRAY_AGG(numero ORDER BY created_at) AS numeros
@@ -98,7 +99,7 @@ router.post('/:id/emettre', requirePerm('factures:w'), async (req, res, next) =>
     const f  = await FactureService.obtenir(id, req.user!.entreprise_id);
     if (!f) return res.status(404).json({ error: 'Introuvable' });
     const result = await FactureService.emettre(id);
-    await logAudit(req, 'emettre_facture', 'factures', id, { numero: (result as any)?.numero });
+    await logAudit(req, 'emettre_facture', 'factures', id, { numero: result?.numero });
     res.json(result);
   } catch(e) { next(e); }
 });
@@ -114,7 +115,7 @@ router.get('/:id/acomptes-disponibles', requirePerm('factures:r'), async (req, r
         AND a.statut = 'encaisse'
         AND NOT EXISTS (SELECT 1 FROM factures f WHERE f.acompte_id = a.id)
       ORDER BY a.created_at DESC
-    `, [(facture as any).client_id, req.user!.entreprise_id]);
+    `, [facture.client_id, req.user!.entreprise_id]);
     res.json(r.rows);
   } catch(e) { next(e); }
 });
@@ -137,7 +138,7 @@ router.post('/:id/payer', requirePerm('factures:w'), async (req, res, next) => {
 router.get('/:id/pdf', requirePerm('factures:r'), async (req, res, next) => {
   try {
     const f = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
-    const pdf_path = (f as any)?.pdf_path;
+    const pdf_path = f?.pdf_path;
     if (!pdf_path) return res.status(404).json({ error: 'PDF non généré' });
     const full = path.resolve(process.cwd(), 'storage', 'pdf', pdf_path);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'Fichier introuvable' });
@@ -157,8 +158,8 @@ router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) =
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
 
     // Joindre le PDF de la facture
-    const er = await query('SELECT * FROM entreprise WHERE id=$1', [(facture as any).entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id=$1', [(facture as any).client_id]);
+    const er = await query('SELECT * FROM entreprise WHERE id=$1', [facture.entreprise_id]);
+    const cr = await query('SELECT * FROM clients WHERE id=$1', [facture.client_id]);
     const { PassThrough } = await import('stream');
     const pass   = new PassThrough();
     const chunks: Buffer[] = [];
@@ -171,10 +172,10 @@ router.post('/:id/relancer', requirePerm('factures:w'), async (req, res, next) =
 
     const result = await EmailService.envoyerEmail({
       to:           email,
-      subject:      sujet || `Relance — ${(facture as any).numero}`,
+      subject:      sujet || `Relance — ${facture.numero}`,
       text:         corps || '',
-      attachments:  [{ filename: `${(facture as any).numero}.pdf`, content: pdfBuffer }],
-      entreprise_id: (facture as any).entreprise_id,
+      attachments:  [{ filename: `${facture.numero}.pdf`, content: pdfBuffer }],
+      entreprise_id: facture.entreprise_id,
     });
     res.json({ ok: true, preview_url: result?.previewUrl ?? null });
   } catch(e: any) { next(e); }
@@ -185,7 +186,7 @@ router.get('/:id/relance-courrier', requirePerm('factures:r'), async (req, res, 
   try {
     const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
-    const f  = facture as any;
+    const f  = facture;
     const er = await query('SELECT * FROM entreprise WHERE id=$1', [f.entreprise_id]);
     const cr = await query('SELECT * FROM clients WHERE id=$1', [f.client_id]);
     const ent = er.rows[0];
@@ -270,9 +271,9 @@ router.get('/:id/apercu', requirePerm('factures:r'), async (req, res, next) => {
     const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(facture as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [facture.client_id]);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${(facture as any).numero}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="${facture.numero}.pdf"`);
     await FacturXService.genererFactureStream(facture, er.rows[0], cr.rows[0], res);
   } catch(e) { next(e); }
 });
@@ -311,7 +312,7 @@ router.get('/:id/eml', requirePerm('factures:r'), async (req, res, next) => {
     const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(facture as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [facture.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
@@ -328,15 +329,15 @@ router.get('/:id/eml', requirePerm('factures:r'), async (req, res, next) => {
     const emailTo   = (req.query.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Facture ${(facture as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Facture ${facture.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint la facture ${(facture as any).numero}.`,
+      `Veuillez trouver ci-joint la facture ${facture.numero}.`,
       '',
-      `Montant HT  : ${Number((facture as any).montant_ht).toFixed(2)} €`,
-      `Montant TTC : ${Number((facture as any).montant_ttc).toFixed(2)} €`,
-      (facture as any).date_echeance ? `Échéance : ${(facture as any).date_echeance}` : '',
+      `Montant HT  : ${Number(facture.montant_ht).toFixed(2)} €`,
+      `Montant TTC : ${Number(facture.montant_ttc).toFixed(2)} €`,
+      facture.date_echeance ? `Échéance : ${facture.date_echeance}` : '',
       '',
       'Cordialement,',
       entreprise.raison_sociale,
@@ -351,14 +352,14 @@ router.get('/:id/eml', requirePerm('factures:r'), async (req, res, next) => {
       `Content-Type: multipart/mixed; boundary="${boundary}"`, ``,
       `--${boundary}`, `Content-Type: text/plain; charset=UTF-8`,
       `Content-Transfer-Encoding: quoted-printable`, ``, corps, ``,
-      `--${boundary}`, `Content-Type: application/pdf; name="${(facture as any).numero}.pdf"`,
+      `--${boundary}`, `Content-Type: application/pdf; name="${facture.numero}.pdf"`,
       `Content-Transfer-Encoding: base64`,
-      `Content-Disposition: attachment; filename="${(facture as any).numero}.pdf"`, ``,
+      `Content-Disposition: attachment; filename="${facture.numero}.pdf"`, ``,
       pdfB64.match(/.{1,76}/g)!.join('\r\n'), ``, `--${boundary}--`,
     ].join('\r\n');
 
     res.setHeader('Content-Type', 'message/rfc822');
-    res.setHeader('Content-Disposition', `attachment; filename="${(facture as any).numero}.eml"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${facture.numero}.eml"`);
     res.send(eml);
   } catch(e) { next(e); }
 });
@@ -368,12 +369,12 @@ router.post('/:id/mapi', requirePerm('factures:r'), async (req, res, next) => {
     const facture = await FactureService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!facture) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(facture as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [facture.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
     const { PassThrough } = await import('stream');
-    const tmpPdf = path.join(os.tmpdir(), `${(facture as any).numero}.pdf`);
+    const tmpPdf = path.join(os.tmpdir(), `${facture.numero}.pdf`);
     await new Promise<void>((resolve, reject) => {
       const pass = new PassThrough();
       const chunks: Buffer[] = [];
@@ -386,15 +387,15 @@ router.post('/:id/mapi', requirePerm('factures:r'), async (req, res, next) => {
     const emailTo   = (req.body?.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Facture ${(facture as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Facture ${facture.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint la facture ${(facture as any).numero}.`,
+      `Veuillez trouver ci-joint la facture ${facture.numero}.`,
       '',
-      `Montant HT  : ${Number((facture as any).montant_ht).toFixed(2)} €`,
-      `Montant TTC : ${Number((facture as any).montant_ttc).toFixed(2)} €`,
-      (facture as any).date_echeance ? `Échéance : ${(facture as any).date_echeance}` : '',
+      `Montant HT  : ${Number(facture.montant_ht).toFixed(2)} €`,
+      `Montant TTC : ${Number(facture.montant_ttc).toFixed(2)} €`,
+      facture.date_echeance ? `Échéance : ${facture.date_echeance}` : '',
       '',
       'Cordialement,',
       entreprise.raison_sociale,

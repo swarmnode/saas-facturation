@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { BonLivraisonService } from '../services/BonLivraisonService';
+import { BonLivraison } from '../types/documents';
 import { paginateParams, buildPage } from '../utils/paginate';
 import { FacturXService } from '../services/FacturXService';
 import { query } from '../db/database';
@@ -33,7 +34,7 @@ router.post('/', requirePerm('bl:w'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-async function blOuIntrouvable(req: any, res: any): Promise<any | null> {
+async function blOuIntrouvable(req: any, res: any): Promise<BonLivraison | null> {
   const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
   if (!bl) res.status(404).json({ error: 'Introuvable' });
   return bl;
@@ -73,11 +74,11 @@ router.get('/:id/apercu', requirePerm('bl:r'), async (req, res, next) => {
     const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(bl as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [bl.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${(bl as any).numero}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="${bl.numero}.pdf"`);
     await FacturXService.genererBLStream(bl, entreprise, client, res);
   } catch(e) { next(e); }
 });
@@ -99,7 +100,7 @@ router.get('/:id/eml', requirePerm('bl:r'), async (req, res, next) => {
     const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(bl as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [bl.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
@@ -116,13 +117,13 @@ router.get('/:id/eml', requirePerm('bl:r'), async (req, res, next) => {
     const emailTo   = (req.query.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Bon de livraison ${(bl as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Bon de livraison ${bl.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint le bon de livraison ${(bl as any).numero}.`,
-      (bl as any).date_livraison ? `Date de livraison : ${(bl as any).date_livraison}` : '',
-      (bl as any).lieu_livraison ? `Lieu : ${(bl as any).lieu_livraison}` : '',
+      `Veuillez trouver ci-joint le bon de livraison ${bl.numero}.`,
+      bl.date_livraison ? `Date de livraison : ${bl.date_livraison}` : '',
+      bl.lieu_livraison ? `Lieu : ${bl.lieu_livraison}` : '',
       '',
       'Cordialement,',
       entreprise.raison_sociale,
@@ -140,15 +141,15 @@ router.get('/:id/eml', requirePerm('bl:r'), async (req, res, next) => {
       `Content-Transfer-Encoding: quoted-printable`, ``,
       corps, ``,
       `--${boundary}`,
-      `Content-Type: application/pdf; name="${(bl as any).numero}.pdf"`,
+      `Content-Type: application/pdf; name="${bl.numero}.pdf"`,
       `Content-Transfer-Encoding: base64`,
-      `Content-Disposition: attachment; filename="${(bl as any).numero}.pdf"`, ``,
+      `Content-Disposition: attachment; filename="${bl.numero}.pdf"`, ``,
       pdfB64.match(/.{1,76}/g)!.join('\r\n'), ``,
       `--${boundary}--`,
     ].join('\r\n');
 
     res.setHeader('Content-Type', 'message/rfc822');
-    res.setHeader('Content-Disposition', `attachment; filename="${(bl as any).numero}.eml"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${bl.numero}.eml"`);
     res.send(eml);
   } catch(e) { next(e); }
 });
@@ -158,12 +159,12 @@ router.post('/:id/mapi', requirePerm('bl:r'), async (req, res, next) => {
     const bl = await BonLivraisonService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!bl) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(bl as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [bl.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
     const { PassThrough } = await import('stream');
-    const tmpPdf = path.join(os.tmpdir(), `${(bl as any).numero}.pdf`);
+    const tmpPdf = path.join(os.tmpdir(), `${bl.numero}.pdf`);
     await new Promise<void>((resolve, reject) => {
       const pass = new PassThrough();
       const chunks: Buffer[] = [];
@@ -176,13 +177,13 @@ router.post('/:id/mapi', requirePerm('bl:r'), async (req, res, next) => {
     const emailTo   = (req.body?.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Bon de livraison ${(bl as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Bon de livraison ${bl.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint le bon de livraison ${(bl as any).numero}.`,
-      (bl as any).date_livraison ? `Date de livraison : ${(bl as any).date_livraison}` : '',
-      (bl as any).lieu_livraison ? `Lieu : ${(bl as any).lieu_livraison}` : '',
+      `Veuillez trouver ci-joint le bon de livraison ${bl.numero}.`,
+      bl.date_livraison ? `Date de livraison : ${bl.date_livraison}` : '',
+      bl.lieu_livraison ? `Lieu : ${bl.lieu_livraison}` : '',
       '',
       'Cordialement,',
       entreprise.raison_sociale,

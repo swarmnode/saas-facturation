@@ -2,6 +2,7 @@ import { query } from '../db/database';
 import { NumerotationService } from './NumerotationService';
 import { ScelleService } from './ScelleService';
 import { ArchiveService } from './ArchiveService';
+import { Acompte } from '../types/documents';
 
 export class AcompteService {
   static async creer(input: {
@@ -33,7 +34,7 @@ export class AcompteService {
     return r.rows[0];
   }
 
-  static async obtenir(id: number, entreprise_id?: number) {
+  static async obtenir(id: number, entreprise_id?: number): Promise<Acompte | null> {
     const params: any[] = [id];
     const tenantFilter = entreprise_id
       ? `AND a.entreprise_id = $${params.push(entreprise_id)}`

@@ -63,9 +63,9 @@ router.get('/:id/apercu', requirePerm('acomptes:r'), async (req, res, next) => {
     const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(a as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [a.client_id]);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${(a as any).numero}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="${a.numero}.pdf"`);
     await FacturXService.genererAcompteStream(a, er.rows[0], cr.rows[0], res);
   } catch(e) { next(e); }
 });
@@ -75,7 +75,7 @@ router.get('/:id/eml', requirePerm('acomptes:r'), async (req, res, next) => {
     const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(a as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [a.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
@@ -92,14 +92,14 @@ router.get('/:id/eml', requirePerm('acomptes:r'), async (req, res, next) => {
     const emailTo   = (req.query.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Facture d'acompte ${(a as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Facture d'acompte ${a.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint la facture d'acompte ${(a as any).numero}.`,
+      `Veuillez trouver ci-joint la facture d'acompte ${a.numero}.`,
       '',
-      `Montant HT  : ${Number((a as any).montant_ht).toFixed(2)} €`,
-      `Montant TTC : ${Number((a as any).montant_ttc).toFixed(2)} €`,
+      `Montant HT  : ${Number(a.montant_ht).toFixed(2)} €`,
+      `Montant TTC : ${Number(a.montant_ttc).toFixed(2)} €`,
       '',
       'Cordialement,',
       entreprise.raison_sociale,
@@ -114,14 +114,14 @@ router.get('/:id/eml', requirePerm('acomptes:r'), async (req, res, next) => {
       `Content-Type: multipart/mixed; boundary="${boundary}"`, ``,
       `--${boundary}`, `Content-Type: text/plain; charset=UTF-8`,
       `Content-Transfer-Encoding: quoted-printable`, ``, corps, ``,
-      `--${boundary}`, `Content-Type: application/pdf; name="${(a as any).numero}.pdf"`,
+      `--${boundary}`, `Content-Type: application/pdf; name="${a.numero}.pdf"`,
       `Content-Transfer-Encoding: base64`,
-      `Content-Disposition: attachment; filename="${(a as any).numero}.pdf"`, ``,
+      `Content-Disposition: attachment; filename="${a.numero}.pdf"`, ``,
       pdfB64.match(/.{1,76}/g)!.join('\r\n'), ``, `--${boundary}--`,
     ].join('\r\n');
 
     res.setHeader('Content-Type', 'message/rfc822');
-    res.setHeader('Content-Disposition', `attachment; filename="${(a as any).numero}.eml"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${a.numero}.eml"`);
     res.send(eml);
   } catch(e) { next(e); }
 });
@@ -131,12 +131,12 @@ router.post('/:id/mapi', requirePerm('acomptes:r'), async (req, res, next) => {
     const a = await AcompteService.obtenir(Number(req.params.id), req.user!.entreprise_id);
     if (!a) return res.status(404).json({ error: 'Introuvable' });
     const er = await query('SELECT * FROM entreprise WHERE id = $1', [req.user!.entreprise_id]);
-    const cr = await query('SELECT * FROM clients WHERE id = $1', [(a as any).client_id]);
+    const cr = await query('SELECT * FROM clients WHERE id = $1', [a.client_id]);
     const entreprise = er.rows[0];
     const client     = cr.rows[0];
 
     const { PassThrough } = await import('stream');
-    const tmpPdf = path.join(os.tmpdir(), `${(a as any).numero}.pdf`);
+    const tmpPdf = path.join(os.tmpdir(), `${a.numero}.pdf`);
     await new Promise<void>((resolve, reject) => {
       const pass = new PassThrough();
       const chunks: Buffer[] = [];
@@ -149,14 +149,14 @@ router.post('/:id/mapi', requirePerm('acomptes:r'), async (req, res, next) => {
     const emailTo   = (req.body?.email as string) || client?.email || '';
     const clientNom = client?.type_client === 'professionnel'
       ? client.raison_sociale : `${client?.prenom ?? ''} ${client?.nom ?? ''}`.trim();
-    const sujet = `Facture d'acompte ${(a as any).numero} — ${entreprise.raison_sociale}`;
+    const sujet = `Facture d'acompte ${a.numero} — ${entreprise.raison_sociale}`;
     const corps = [
       `Bonjour${clientNom ? ' ' + clientNom : ''},`,
       '',
-      `Veuillez trouver ci-joint la facture d'acompte ${(a as any).numero}.`,
+      `Veuillez trouver ci-joint la facture d'acompte ${a.numero}.`,
       '',
-      `Montant HT  : ${Number((a as any).montant_ht).toFixed(2)} €`,
-      `Montant TTC : ${Number((a as any).montant_ttc).toFixed(2)} €`,
+      `Montant HT  : ${Number(a.montant_ht).toFixed(2)} €`,
+      `Montant TTC : ${Number(a.montant_ttc).toFixed(2)} €`,
       '',
       'Cordialement,',
       entreprise.raison_sociale,

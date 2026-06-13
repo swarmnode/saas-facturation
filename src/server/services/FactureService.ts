@@ -5,6 +5,7 @@ import { ArchiveService } from './ArchiveService';
 import { FacturXService } from './FacturXService';
 import { FecExportService } from './FecExportService';
 import { LettreService } from './LettreService';
+import { Facture } from '../types/documents';
 
 export interface FactureInput {
   client_id: number;
@@ -221,7 +222,7 @@ export class FactureService {
     });
   }
 
-  static async obtenir(id: number, entreprise_id?: number) {
+  static async obtenir(id: number, entreprise_id?: number): Promise<Facture | null> {
     const params: any[] = [id];
     const tenantFilter = entreprise_id
       ? `AND f.entreprise_id = $${params.push(entreprise_id)}`

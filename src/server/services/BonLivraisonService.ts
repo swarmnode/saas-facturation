@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../db/database';
 import { NumerotationService } from './NumerotationService';
+import { BonLivraison } from '../types/documents';
 
 export interface BLLigneInput {
   type?: 'ligne' | 'commentaire';
@@ -66,7 +67,7 @@ export class BonLivraisonService {
     return r.rows;
   }
 
-  static async obtenir(id: number, entreprise_id?: number) {
+  static async obtenir(id: number, entreprise_id?: number): Promise<BonLivraison | null> {
     const params: any[] = [id];
     const tenantFilter = entreprise_id
       ? `AND bl.entreprise_id = $${params.push(entreprise_id)}`

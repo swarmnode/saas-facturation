@@ -2,6 +2,7 @@ import { query, withTransaction } from '../db/database';
 import { NumerotationService } from './NumerotationService';
 import { ScelleService } from './ScelleService';
 import { ArchiveService } from './ArchiveService';
+import { Devis } from '../types/documents';
 
 export interface LigneInput {
   type?: 'ligne' | 'commentaire';
@@ -99,7 +100,7 @@ export class DevisService {
     return r.rows;
   }
 
-  static async obtenir(id: number, entreprise_id?: number) {
+  static async obtenir(id: number, entreprise_id?: number): Promise<Devis | null> {
     const params: any[] = [id];
     const tenantFilter = entreprise_id
       ? `AND d.entreprise_id = $${params.push(entreprise_id)}`

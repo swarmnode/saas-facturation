@@ -168,6 +168,15 @@ Chaque document ouvert s'affiche dans un **onglet persistant** en haut de l'écr
 | `Ctrl+S` | Enregistrer le document |
 | `Ctrl+P` | Imprimer (aperçu PDF) |
 
+## Recherche globale (v3.2.11)
+
+Le champ **🔍** en haut de l'écran a un double rôle :
+
+- Sur une liste ou un document ouvert, il **filtre instantanément les lignes affichées** (comportement inchangé).
+- À partir de **2 caractères**, il déclenche en plus une **recherche globale** dans toute votre société : devis, factures, bons de livraison, acomptes, clients, articles, commandes fournisseurs et factures d'achats.
+
+Les résultats apparaissent dans un menu déroulant, **regroupés par type** avec une icône, le libellé (numéro/nom) et une information complémentaire (montant, statut). Cliquez sur un résultat — ou naviguez avec les flèches **↑ / ↓** puis **Entrée** — pour ouvrir directement le document correspondant ou la fiche du client/article. **Échap** ou un clic en dehors referme le menu.
+
 ---
 
 # Configuration de l'entreprise

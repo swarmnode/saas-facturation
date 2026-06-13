@@ -6876,6 +6876,135 @@ function initTabFilter() {
   });
 }
 
+// ── Recherche globale ─────────────────────────────────────────────────────
+const SEARCH_TYPE_INFO = {
+  devis:                   { icon: '📝', label: 'Devis' },
+  factures:                { icon: '🧾', label: 'Factures' },
+  'bons-livraison':        { icon: '🚚', label: 'Bons de livraison' },
+  acomptes:                { icon: '💰', label: 'Acomptes' },
+  clients:                 { icon: '👤', label: 'Clients' },
+  articles:                { icon: '📦', label: 'Articles' },
+  'commandes-fournisseurs':  { icon: '📑', label: 'Commandes fournisseurs' },
+  'factures-fournisseurs':   { icon: '📥', label: "Factures d'achats" },
+};
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function closeSearchDropdown() {
+  const drop = document.getElementById('searchDropdown');
+  if (!drop) return;
+  drop.classList.remove('open');
+  drop.innerHTML = '';
+}
+
+async function openSearchResult(type, id) {
+  closeSearchDropdown();
+  const input = document.getElementById('searchInput');
+  if (input) input.blur();
+  switch (type) {
+    case 'devis':                    await DocEditor.openDevis(id);       break;
+    case 'factures':                 await DocEditor.openFacture(id);     break;
+    case 'bons-livraison':           await DocEditor.openBL(id);          break;
+    case 'acomptes':                 await DocEditor.openAcompte(id);     break;
+    case 'clients':                  await showClientMouvements(id);      break;
+    case 'articles':                 await showArticleFiche(id);          break;
+    case 'commandes-fournisseurs':   await DocEditor.openCommande(id);    break;
+    case 'factures-fournisseurs':    await DocEditor.openFactureAchat(id); break;
+  }
+}
+window.openSearchResult = openSearchResult;
+
+function renderSearchDropdown(results) {
+  const drop = document.getElementById('searchDropdown');
+  if (!drop) return;
+
+  if (results.length === 0) {
+    drop.innerHTML = '<div class="search-empty">Aucun résultat</div>';
+  } else {
+    let html = '';
+    let lastType = null;
+    for (const r of results) {
+      if (r.type !== lastType) {
+        const info = SEARCH_TYPE_INFO[r.type] || { icon: '•', label: r.type };
+        html += `<div class="search-group-label">${escapeHtml(info.label)}</div>`;
+        lastType = r.type;
+      }
+      const info = SEARCH_TYPE_INFO[r.type] || { icon: '•', label: r.type };
+      html += `<div class="search-item" data-type="${r.type}" data-id="${r.id}">
+        <span class="search-item-icon">${info.icon}</span>
+        <div class="search-item-body">
+          <div class="search-item-label">${escapeHtml(r.label)}</div>
+          <div class="search-item-sub">${escapeHtml(r.sub)}</div>
+        </div>
+      </div>`;
+    }
+    drop.innerHTML = html;
+    drop.querySelectorAll('.search-item').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        openSearchResult(el.dataset.type, Number(el.dataset.id));
+      });
+    });
+  }
+  drop.classList.add('open');
+}
+
+function initGlobalSearch() {
+  const input = document.getElementById('searchInput');
+  const drop  = document.getElementById('searchDropdown');
+  const wrap  = document.getElementById('searchWrap');
+  if (!input || !drop || !wrap) return;
+
+  let debounce = null;
+  let activeIndex = -1;
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    const q = input.value.trim();
+    activeIndex = -1;
+    if (q.length < 2) { closeSearchDropdown(); return; }
+    drop.innerHTML = '<div class="search-loading">Recherche…</div>';
+    drop.classList.add('open');
+    debounce = setTimeout(async () => {
+      try {
+        const results = await api.get(`/api/search?q=${encodeURIComponent(q)}`);
+        activeIndex = -1;
+        renderSearchDropdown(Array.isArray(results) ? results : []);
+      } catch (e) { closeSearchDropdown(); }
+    }, 250);
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value.trim().length >= 2 && drop.innerHTML) drop.classList.add('open');
+  });
+
+  input.addEventListener('keydown', e => {
+    const items = drop.querySelectorAll('.search-item');
+    if (e.key === 'ArrowDown' && items.length) {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+      items[activeIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp' && items.length) {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+      items[activeIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && activeIndex >= 0 && items[activeIndex]) {
+      e.preventDefault();
+      const el = items[activeIndex];
+      openSearchResult(el.dataset.type, Number(el.dataset.id));
+    } else if (e.key === 'Escape') {
+      closeSearchDropdown();
+    }
+  });
+
+  input.addEventListener('blur', () => setTimeout(closeSearchDropdown, 150));
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) closeSearchDropdown(); });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 async function initApp() {
   const token = localStorage.getItem('jwt');
@@ -6898,6 +7027,7 @@ async function initApp() {
   modal.init();
   modal2.init();
   initTabFilter();
+  initGlobalSearch();
   appliquerAideContextuelle();
   updateUserUI();
   api.get('/api/entreprise').then(e => { if (e?.logo_path) updateSidebarLogo(e.logo_path); });

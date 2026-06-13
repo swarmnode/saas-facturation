@@ -6,6 +6,16 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [Non publié]
 
 ### Ajouté
+- Feat: recherche globale dans la barre du haut
+
+Le champ de filtre de la barre supérieure déclenche désormais, à partir de
+2 caractères, une recherche dans toute la société (devis, factures, BL,
+acomptes, clients, articles, commandes fournisseurs, factures d'achats) via
+GET /api/search. Les résultats s'affichent dans un menu déroulant groupé par
+type (icône, libellé, montant/statut) ; clic ou navigation clavier
+(flèches + Entrée) ouvre directement le document ou la fiche correspondante.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Feat: bundler PostgreSQL portable dans l'installateur (remplace l'EDB one-click)
 
 L'installeur EDB (~300 Mo, 5-10 min) est remplacé par le ZIP binaries-only

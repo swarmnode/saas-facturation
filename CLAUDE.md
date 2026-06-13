@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# Ruflo Swarm Configuration
+- **Topology**: hierarchical
+- **Max Agents**: 8
+- **Strategy**: specialized
+- **Orchestrator**: active
+
 ## Commands
 
 ```powershell

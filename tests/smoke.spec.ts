@@ -1,36 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { apiLogin } from './e2e-utils';
 
 // Parcours de bout en bout : connexion -> client -> devis -> facture -> émission.
 // Vérifie au passage la chaîne de conformité critique (numérotation FAC-AAAA-NNNN,
 // scellement SHA-256, verrouillage post-émission).
+//
+// Connexion via l'utilisateur e2e dédié (créé par global-setup) — aucune
+// dépendance aux identifiants admin de la base.
 //
 // Note : chaque exécution émet une facture réelle, donc immuable et scellée
 // (voir compliance invariants dans CLAUDE.md). Ce test laisse des données
 // permanentes dans la base — à n'exécuter que sur un environnement de
 // développement, jamais sur une base de production.
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@localhost';
-const ADMIN_PASS = process.env.ADMIN_DEFAULT_PASS || 'Admin1234!';
-
 test('parcours complet : connexion -> client -> devis -> facture -> émission', async ({ request }) => {
-  // 1. Connexion (un super admin a accès à plusieurs sociétés -> sélection explicite)
-  let loginRes = await request.post('/api/auth/login', {
-    data: { email: ADMIN_EMAIL, password: ADMIN_PASS },
-  });
-  expect(loginRes.ok(), `échec de connexion (${loginRes.status()}): ${await loginRes.text()}`).toBeTruthy();
-  let body = await loginRes.json();
-  if (body.require_select) {
-    const entrepriseId = body.entreprises[0].id;
-    loginRes = await request.post('/api/auth/login', {
-      data: { email: ADMIN_EMAIL, password: ADMIN_PASS, entreprise_id: entrepriseId },
-    });
-    expect(loginRes.ok(), `échec de sélection de société (${loginRes.status()}): ${await loginRes.text()}`).toBeTruthy();
-    body = await loginRes.json();
-  }
-  const token = body.token;
-  expect(token).toBeTruthy();
-
-  const auth = { Authorization: `Bearer ${token}` };
+  // 1. Connexion avec l'utilisateur e2e
+  const { auth } = await apiLogin(request);
 
   // 2. Création d'un client
   const suffix = Date.now();

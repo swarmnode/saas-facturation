@@ -36,6 +36,20 @@ router.get('/:id/apercu', requirePerm('factures:r'), async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+// Envoi du bon de commande au fournisseur (PDF joint)
+router.post('/:id/envoyer-email', requirePerm('factures:w'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const c  = await CommandeFournisseurService.obtenir(id, req.user!.entreprise_id);
+    if (!c) return res.status(404).json({ error: 'Introuvable' });
+    const email = req.body?.email_client as string | undefined;
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+    const { EmailService } = await import('../services/EmailService');
+    const result = await EmailService.envoyerCommande(id, email);
+    res.json({ ok: true, preview_url: result.previewUrl ?? null });
+  } catch(e) { next(e); }
+});
+
 router.post('/', requirePerm('factures:w'), async (req, res, next) => {
   try {
     const b = req.body;

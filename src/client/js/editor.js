@@ -1119,6 +1119,14 @@ const DocEditor = (() => {
       insHelp(ins(mkBtn('🧾 → Facture', 'btn-outline', () => factureFromBL(id))), 'bl_facture');
     }
 
+    // Bon de commande enregistré : envoi au fournisseur + facture d'achat pré-remplie
+    if (type === 'commande' && id) {
+      ins(mkBtn('✉ Envoyer', 'btn-outline', () => window.envoyerCommande?.(id)));
+      if (!doc?.facture_fournisseur_id) {
+        ins(mkBtn('🧾 → Facture d\'achat', 'btn-outline', () => DocEditor.openFactureAchatDepuisCommande(id)));
+      }
+    }
+
     // Facture d'achat non payée : règlement depuis l'éditeur (FEC banque écrites)
     if (type === 'facture-achat' && id && doc?.statut === 'recue') {
       ins(mkBtn('💳 Payer', 'btn-primary', () => {
@@ -1266,6 +1274,13 @@ const DocEditor = (() => {
           : await api.post(`/api/${route}`, { ...data, entreprise_id: _entreprise.id });
         if (result?.error) { alert(result.error); return false; }
         if (el.dataset.docKey) clearDraft(el.dataset.docKey);
+        // Facture d'achat créée depuis une commande : chaînage automatique
+        // (non bloquant — modifiable ensuite via le bouton 🔗 de la liste)
+        if (type === 'facture-achat' && !id && result?.id && page.dataset.commandeOrigineId) {
+          await api.put(`/api/commandes-fournisseurs/${page.dataset.commandeOrigineId}`,
+            { facture_fournisseur_id: result.id }).catch(() => {});
+          delete page.dataset.commandeOrigineId;
+        }
         if (result?.id) {
           page.dataset.docId = result.id;
           // Promouvoir le tab : remplace le docKey 'new-...' par le vrai ID
@@ -1310,6 +1325,20 @@ const DocEditor = (() => {
       if (prefill.factureOrigine) {
         effectiveDoc = { ...prefill.factureOrigine, id:null, numero:null, statut:'brouillon', locked:0,
           facture_origine_id:prefill.factureOrigine.id, facture_origine_numero:prefill.factureOrigine.numero };
+      } else if (prefill.commandeOrigine) {
+        // Facture d'achat pré-remplie depuis un bon de commande (chaînage auto au 1er save)
+        const c = prefill.commandeOrigine;
+        effectiveDoc = {
+          fournisseur_id:  c.fournisseur_id,
+          fournisseur_nom: c.fournisseur_nom,
+          description:     c.description,
+          lignes: (c.lignes || []).map(l => l.type === 'commentaire'
+            ? { type: 'commentaire', designation: l.designation }
+            : { designation: l.designation, description: l.description,
+                quantite: l.quantite, unite: l.unite,
+                prix_unitaire_ht: l.prix_unitaire_ht, taux_tva_id: l.taux_tva_id,
+                remise_pct: l.remise_pct }),
+        };
       } else if (prefill.draft) {
         effectiveDoc = { ...prefill.draft, id:null, numero:null, locked:0 };
       } else if (prefill.client_id) {
@@ -1324,7 +1353,8 @@ const DocEditor = (() => {
       el.classList.add('e-editor-panel');
       el.dataset.docKey = docKey;
       el.innerHTML = buildDocHTML(type, entreprise, effectiveDoc);
-      if (prefill.factureOrigine) el.querySelector('.a4-page').dataset.factureOrigineId = prefill.factureOrigine.id;
+      if (prefill.factureOrigine)  el.querySelector('.a4-page').dataset.factureOrigineId  = prefill.factureOrigine.id;
+      if (prefill.commandeOrigine) el.querySelector('.a4-page').dataset.commandeOrigineId = prefill.commandeOrigine.id;
       initDoc(type, id, el, effectiveDoc);
     });
   }
@@ -1394,6 +1424,11 @@ const DocEditor = (() => {
     openAcompte: id                => openAcompte(id),
     openCommande:     (id=null)    => open('commande', id||null),
     openFactureAchat: (id=null)    => open('facture-achat', id||null),
+    openFactureAchatDepuisCommande: async commandeId => {
+      const c = await api.get(`/api/commandes-fournisseurs/${commandeId}`);
+      if (!c?.id) return;
+      return open('facture-achat', null, { commandeOrigine: c });
+    },
     restoreDraft:(type,docKey)     => { const d=loadDraft(docKey); if(!d)return; open(type,null,{docKey,draft:d}); },
   };
 })();

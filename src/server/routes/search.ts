@@ -69,7 +69,7 @@ router.get('/', async (req, res, next) => {
       return query(sql, [...baseParams, ...extraParams]);
     }
 
-    const [devis, factures, bls, acomptes, clients, articles] = await Promise.all([
+    const [devis, factures, bls, acomptes, clients, articles, commandes, facturesAchat] = await Promise.all([
       makeQuery(
         `SELECT d.id, d.numero, d.statut, d.montant_ttc, ${clientNom} AS client_nom`,
         'FROM devis d LEFT JOIN clients c ON c.id = d.client_id',
@@ -106,6 +106,18 @@ router.get('/', async (req, res, next) => {
         'entreprise_id = $1', [eid], articleFields,
         'ORDER BY designation', 5, true
       ),
+      makeQuery(
+        'SELECT cf.id, cf.numero, cf.statut, cf.montant_ttc, cf.fournisseur_nom',
+        'FROM commandes_fournisseurs cf',
+        'cf.entreprise_id = $1', [eid], ['cf.numero', 'cf.statut', 'cf.fournisseur_nom'],
+        'ORDER BY cf.date_commande DESC', 5
+      ),
+      makeQuery(
+        'SELECT ff.id, ff.numero, ff.statut, ff.montant_ttc, ff.fournisseur_nom',
+        'FROM factures_fournisseurs ff',
+        'ff.entreprise_id = $1', [eid], ['ff.numero', 'ff.statut', 'ff.fournisseur_nom'],
+        'ORDER BY ff.date_facture DESC', 5
+      ),
     ]);
 
     const fmt = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format;
@@ -125,6 +137,10 @@ router.get('/', async (req, res, next) => {
     }
     for (const a of articles.rows)
       results.push({ type: 'articles', label: `${a.reference} — ${a.designation}`, sub: `${fmt(a.prix_unitaire_ht)} HT`, id: a.id });
+    for (const c of commandes.rows)
+      results.push({ type: 'commandes-fournisseurs', label: `${c.numero} — ${c.fournisseur_nom ?? ''}`, sub: `${fmt(c.montant_ttc)} · ${c.statut}`, id: c.id });
+    for (const f of facturesAchat.rows)
+      results.push({ type: 'factures-fournisseurs', label: `${f.numero} — ${f.fournisseur_nom ?? ''}`, sub: `${fmt(f.montant_ttc)} · ${f.statut}`, id: f.id });
 
     res.json(results);
   } catch (e) { next(e); }

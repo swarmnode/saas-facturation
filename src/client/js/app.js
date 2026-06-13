@@ -258,7 +258,13 @@ const DOC_CONFIGS = {
   },
   acomptes: {
     api:      '/api/acomptes',
-    topbar:   () => `<button class="btn btn-primary" onclick="showAcompteForm()">+ Nouvel acompte</button>`,
+    topbar:   () => `
+      <select class="btn btn-outline" style="padding:5px 8px" onchange="setDocStatutFilter('acomptes',this.value)">
+        <option value="">Tous les statuts</option>
+        <option value="en_attente">En attente</option>
+        <option value="encaisse">Encaissé</option>
+      </select>
+      <button class="btn btn-primary" onclick="showAcompteForm()">+ Nouvel acompte</button>`,
     headers:  ['N°','Client','HT','TVA','TTC','Statut','Encaissé le'],
     sortKeys: ['numero','client_nom','montant_ht','montant_tva','montant_ttc','statut','date_encaissement'],
     rowOpen:  a => `DocEditor.openAcompte(${a.id})`,
@@ -283,7 +289,12 @@ const DOC_CONFIGS = {
     api:      '/api/bons-livraison',
     topbar:   () => {
       _selBL.clear();
-      return `<button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button><span class="help-icon" data-tooltip="${helpTexts.bl_statut.replace(/"/g,'&quot;')}" style="margin-left:14px">?</span><button id="btnFacturerSelBL" class="btn btn-success" style="margin-left:10px;opacity:0.5;pointer-events:none" disabled onclick="facturerSelectionBL()">🧾 Facturer la sélection (<span id="selCountBL">0</span>)</button>`;
+      return `<select class="btn btn-outline" style="padding:5px 8px"${helpAttr('bl_statut')} onchange="setDocStatutFilter('bons-livraison',this.value)">
+          <option value="">Tous les statuts</option>
+          <option value="brouillon">Brouillon</option>
+          <option value="emis">Émis</option>
+          <option value="livre">Livré</option>
+        </select><button class="btn btn-primary" onclick="DocEditor.openBL()">+ Nouveau BL</button><span class="help-icon" data-tooltip="${helpTexts.bl_statut.replace(/"/g,'&quot;')}" style="margin-left:14px">?</span><button id="btnFacturerSelBL" class="btn btn-success" style="margin-left:10px;opacity:0.5;pointer-events:none" disabled onclick="facturerSelectionBL()">🧾 Facturer la sélection (<span id="selCountBL">0</span>)</button>`;
     },
     headers:  ['','N°','Client','Date émission','Lieu','Statut'],
     sortKeys: ['','numero','client_nom','date_emission','lieu_livraison','statut'],
@@ -5196,6 +5207,37 @@ async function deleteFournisseurEntite(id) {
   tabMgr.openViewTab('fournisseurs');
 }
 
+// Envoi du bon de commande au fournisseur — modale partagée liste + éditeur,
+// email pré-rempli depuis la fiche fournisseur si la commande y est liée
+window.envoyerCommande = async (id) => {
+  const commande = await api.get(`/api/commandes-fournisseurs/${id}`);
+  if (!commande?.id) return;
+  let emailDefaut = '';
+  if (commande.fournisseur_id) {
+    const fournisseurs = await api.get('/api/fournisseurs') ?? [];
+    emailDefaut = fournisseurs.find(f => f.id === commande.fournisseur_id)?.email || '';
+  }
+  modal.show(`Envoyer ${commande.numero}`, `
+    <div class="form-group"><label>Email du fournisseur</label>
+      <input id="cmdEmailDest" type="email" value="${emailDefaut.replace(/"/g,'&quot;')}" placeholder="contact@fournisseur.fr"/></div>
+    <p style="color:var(--text-muted);font-size:13px">Le bon de commande PDF sera joint à l'email.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="modal.hide()">Annuler</button>
+      <button class="btn btn-primary" id="btnCmdEnvoyer">✉ Envoyer</button>
+    </div>`, body => {
+    body.querySelector('#btnCmdEnvoyer').onclick = async () => {
+      const email = body.querySelector('#cmdEmailDest').value.trim();
+      if (!email) { alert('Email requis'); return; }
+      const btn = body.querySelector('#btnCmdEnvoyer');
+      btn.disabled = true; btn.textContent = 'Envoi…';
+      const r = await api.post(`/api/commandes-fournisseurs/${id}/envoyer-email`, { email_client: email });
+      if (r?.error) { alert(r.error); btn.disabled = false; btn.textContent = '✉ Envoyer'; return; }
+      modal.hide();
+      if (r.preview_url) window.open(r.preview_url, '_blank'); // compte de test Ethereal
+    };
+  });
+};
+
 // ── Commandes fournisseurs (chaînage non bloquant avec les factures d'achats)
 async function renderCommandes(el) {
   let filtreStatut = 'all';
@@ -5226,6 +5268,8 @@ async function renderCommandes(el) {
         <td>${lien}</td>
         <td style="white-space:nowrap">
           <button class="btn-sm btn-outline" onclick="DocEditor.openCommande(${c.id})">Éditer</button>
+          <button class="btn-sm btn-outline" onclick="envoyerCommande(${c.id})" title="Envoyer le bon de commande au fournisseur">✉</button>
+          ${!c.facture_fournisseur_id ? `<button class="btn-sm btn-outline" onclick="DocEditor.openFactureAchatDepuisCommande(${c.id})" title="Créer la facture d'achat depuis cette commande">🧾</button>` : ''}
           <button class="btn-sm btn-outline" onclick="lierCommandeFacture(${c.id})" title="Facture d'achat liée (chaînage non bloquant)">🔗</button>
           <button class="btn-sm btn-danger" onclick="deleteCommande(${c.id})">Supprimer</button>
         </td>

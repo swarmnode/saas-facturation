@@ -51,6 +51,10 @@ export function getPool(): Pool {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL ?? 'postgresql://facturation:facturation@localhost:5432/facturation',
     });
+    // Sans ce handler, une erreur sur un client idle (ex. connexion coupée
+    // par l'administrateur PostgreSQL) est une 'error' non gérée qui fait
+    // planter tout le processus Node.
+    pool.on('error', err => console.error('[db] erreur pool PostgreSQL :', err));
   }
   return pool;
 }

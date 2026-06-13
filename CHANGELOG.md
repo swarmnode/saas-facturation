@@ -143,6 +143,13 @@ commandes et factures fournisseurs) via /api/search a partir de 2
 caracteres, avec menu deroulant groupe par type et navigation clavier.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: support HTTPS natif optionnel (HTTPS_ENABLED)
+
+Le serveur reste en HTTP par defaut. Si HTTPS_ENABLED=true, bascule sur
+https.createServer() avec un certificat fourni (TLS_CERT_PATH/TLS_KEY_PATH)
+ou un certificat auto-signe genere et persiste dans storage/tls/.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -328,6 +335,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Docs: ajouter entree CHANGELOG pour le fix du pool PostgreSQL
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: mettre a jour CLAUDE.md (decoupage frontend et tests E2E)
+
+Documente le decoupage de app.js en components.js/helpTexts.js et les
+prerequis (DATABASE_URL, e2e-utils) pour lancer la suite Playwright.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications
@@ -373,6 +387,17 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.10
 - Chore: bump v3.2.11
 - Chore: bump v3.2.12
+
+
+### Refactoring
+- Refactor: decouper app.js par domaine et typer les retours de services documents
+
+- Eclate js/app.js (7000+ lignes) en 9 modules par vue (core, bootstrap, dashboard,
+  clients, ventes, articles-acomptes, achats, parametres, utilisateurs), charges
+  comme scripts classiques partageant le scope global.
+- Ajoute src/server/types/documents.ts (Devis, Facture, Acompte, BonLivraison +
+  lignes) et type obtenir() dans les 4 services correspondants ; supprime tous
+  les casts (x as any) dans devis.ts, factures.ts, acomptes.ts, bons-livraison.ts.
 
 
 ## [3.0.0] — 2026-06-07

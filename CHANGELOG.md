@@ -390,6 +390,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: documenter release.ps1 dans CLAUDE.md
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: documenter la verification mensuelle de sauvegarde dans le manuel
+
+Ajoute la section "Verification de restauration" (bouton de la page
+Parametres > Sauvegarde, migration 030) ; docx regenere via pandoc.
 
 
 ### Modifications
@@ -439,6 +444,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: ajouter la config swarm Ruflo dans CLAUDE.md
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Chore: bump v3.3.1
 
 
 ### Refactoring

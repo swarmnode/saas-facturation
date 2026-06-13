@@ -1004,7 +1004,29 @@ async function renderBackupAuto(el) {
             </tbody>
           </table></div>`
       }
-    </div>`;
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:20px 0"/>
+
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:10px">Vérification de restauration</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">
+      Restaure la dernière sauvegarde dans une base temporaire (<code>facturation_verify</code>) et compte
+      les factures, pour garantir qu'elle est réellement utilisable en cas de besoin. Exécutée
+      automatiquement le 1er de chaque mois à 3h.
+    </p>
+    <div id="backupVerifResult" style="margin-bottom:10px">
+      ${cfg.derniere_verif_date
+        ? `<p style="font-size:13px">Dernière vérification : ${new Date(cfg.derniere_verif_date).toLocaleString('fr-FR')} — `
+          + (cfg.derniere_verif_ok
+            ? `<span style="color:#16a34a">OK (${cfg.derniere_verif_nb_factures ?? 0} facture(s))</span>`
+            : `<span style="color:#e74c3c">Échec<span id="backupVerifErreur"></span></span>`)
+          + `</p>`
+        : `<p style="color:var(--text-muted);font-size:13px">Aucune vérification effectuée.</p>`}
+    </div>
+    <button type="button" class="btn btn-secondary" id="backupVerifBtn">🔎 Vérifier la dernière sauvegarde</button>`;
+
+  const verifErreurEl = el.querySelector('#backupVerifErreur');
+  if (verifErreurEl && cfg.derniere_verif_erreur) verifErreurEl.textContent = ' : ' + cfg.derniere_verif_erreur;
 
   el.querySelector('#backupAutoForm').onsubmit = async e => {
     e.preventDefault();
@@ -1032,6 +1054,18 @@ async function renderBackupAuto(el) {
       setTimeout(() => { alertEl.innerHTML = ''; renderBackupAuto(el); }, 3000);
     } else {
       alertEl.innerHTML = `<div class="alert alert-danger" style="margin-top:8px">${r?.error || 'Erreur'}</div>`;
+    }
+  };
+
+  el.querySelector('#backupVerifBtn').onclick = async () => {
+    const btn = el.querySelector('#backupVerifBtn');
+    btn.disabled = true; btn.textContent = 'Vérification en cours…';
+    const r = await api.post('/api/backup/verifier', {});
+    if (r?.error) {
+      btn.disabled = false; btn.textContent = '🔎 Vérifier la dernière sauvegarde';
+      el.querySelector('#backupVerifResult').innerHTML = `<div class="alert alert-danger">${r.error}</div>`;
+    } else {
+      renderBackupAuto(el);
     }
   };
 }

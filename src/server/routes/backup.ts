@@ -7,7 +7,7 @@ import os from 'os';
 import fs from 'fs';
 import { authenticate, requireSuperAdmin, requirePerm } from '../middleware/auth';
 import { query } from '../db/database';
-import { runBackup, listBackups, loadAndSchedule } from '../services/BackupScheduler';
+import { runBackup, listBackups, loadAndSchedule, verifyLastBackup } from '../services/BackupScheduler';
 import { exporterSociete, restaurerSociete, RestoreMode } from '../services/SocieteBackupService';
 
 const router = Router();
@@ -131,6 +131,23 @@ router.post('/lancer', requireSuperAdmin, async (_req, res, next) => {
       total -= f.size;
     }
     res.json({ ok: true, fichier: path.basename(fp) });
+  } catch (e) { next(e); }
+});
+
+// Vérifie que la dernière sauvegarde est restaurable (base temporaire facturation_verify)
+router.post('/verifier', requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const r = await query('SELECT destination FROM backup_config WHERE id=1');
+    const destination = r.rows[0]?.destination;
+    if (!destination) return res.status(400).json({ error: 'Destination non configurée' });
+
+    const result = await verifyLastBackup(destination);
+    await query(`
+      UPDATE backup_config SET derniere_verif_date=NOW(), derniere_verif_ok=$1,
+        derniere_verif_nb_factures=$2, derniere_verif_erreur=$3 WHERE id=1
+    `, [result.ok ? 1 : 0, result.nbFactures ?? null, result.erreur ?? null]);
+
+    res.json(result);
   } catch (e) { next(e); }
 });
 

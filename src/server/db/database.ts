@@ -42,6 +42,7 @@ const MIGRATIONS = [
   'migration_027_acompte_facture.sql',
   'migration_028_article_id_lignes.sql',
   'migration_029_achats_lignes.sql',
+  'migration_030_backup_verif.sql',
 ];
 
 let pool: Pool;

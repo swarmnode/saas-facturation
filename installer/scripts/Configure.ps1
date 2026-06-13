@@ -162,6 +162,11 @@ Log "Creation du role et de la base de donnees..."
 $r = Exec-Psql "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='facturpro') THEN CREATE ROLE facturpro WITH LOGIN PASSWORD 'facturpro'; END IF; END `$`$;"
 Log "psql CREATE ROLE : $r"
 
+# CREATEDB requis pour la verification mensuelle des sauvegardes (base
+# temporaire facturation_verify creee/supprimee par BackupScheduler)
+$r = Exec-Psql "ALTER ROLE facturpro CREATEDB;"
+Log "psql ALTER ROLE CREATEDB : $r"
+
 $r = Exec-Psql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='facturpro' AND pid <> pg_backend_pid();"
 Log "psql TERMINATE : $r"
 

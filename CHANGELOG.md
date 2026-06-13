@@ -146,6 +146,15 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
+- Fix: gérer les erreurs du pool PostgreSQL pour éviter un crash du serveur
+
+Un client idle dont la connexion est coupée par l'administrateur PostgreSQL
+émettait une 'error' non gérée sur le Pool, ce qui faisait planter tout le
+processus Node (observé en production sur le service FacturPro, 2 jours
+sans redémarrage automatique malgré la config NSSM). Ajout d'un handler
+`pool.on('error', ...)` qui journalise l'erreur sans interrompre le serveur.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: stabiliser la topbar et améliorer les boutons Factures
 
 Topbar — mise en page :

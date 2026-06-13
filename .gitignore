@@ -40,3 +40,4 @@ Sauvegardes/
 updates/
 FacturPro-Patch.zip
 storage/jwt_secret.key
+storage/tls/

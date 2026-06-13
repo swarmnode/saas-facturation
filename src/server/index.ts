@@ -4,8 +4,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import dotenv from 'dotenv';
+import https from 'https';
 import { initDb } from './db/database';
 import { ensureJwtSecret } from './utils/secret';
+import { getHttpsOptions } from './utils/tls';
 import { errorHandler } from './middleware/errorHandler';
 import { authenticate } from './middleware/auth';
 import authRouter         from './routes/auth';
@@ -170,9 +172,16 @@ initDb()
   .then(async () => {
     await loadAndSchedule();
     await initRelanceScheduler();
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`✓ Serveur démarré sur http://0.0.0.0:${PORT}`);
-    });
+    const httpsOptions = await getHttpsOptions();
+    if (httpsOptions) {
+      https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+        console.log(`✓ Serveur démarré sur https://0.0.0.0:${PORT}`);
+      });
+    } else {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✓ Serveur démarré sur http://0.0.0.0:${PORT}`);
+      });
+    }
   })
   .catch((err) => {
     console.error('Erreur initialisation base de données :', err);

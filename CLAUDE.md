@@ -28,10 +28,13 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 
 **JWT secret**: if `JWT_SECRET` is not set in `.env`, a random secret is generated at first startup and persisted to `storage/jwt_secret.key` (`src/server/utils/secret.ts`). There is no hardcoded fallback — never reintroduce one.
 
+**HTTPS**: disabled by default (plain HTTP via `app.listen`). Set `HTTPS_ENABLED=true` to switch to `https.createServer()` (`src/server/utils/tls.ts`, `getHttpsOptions()`). Certificate resolution order: `TLS_CERT_PATH`/`TLS_KEY_PATH` env vars (bring your own cert) → `storage/tls/cert.pem`/`key.pem` if already generated → otherwise a self-signed 10-year cert is generated via `selfsigned` (SAN: `localhost`, `os.hostname()`, `127.0.0.1`, `::1`) and persisted to `storage/tls/`. Self-signed certs trigger a browser warning on first access — expected for LAN deployments without a real CA.
+
 **Database layer**: `src/server/db/database.ts`
 - Exports `query()`, `getPool()`, and `withTransaction<T>(fn)` (use for multi-step atomic operations).
 - `initDb()` runs `schema.sql` then each migration in order; called once at startup before the server listens.
 - PostgreSQL timestamps are parsed to ISO strings via `types.setTypeParser`.
+- `getPool()` attaches a `pool.on('error', ...)` handler — required so an idle client dropped by the PG server (e.g. admin-killed connection) doesn't crash the whole Node process with an unhandled error.
 
 **Adding a migration**: create `src/server/db/migration_NNN_name.sql` (must be idempotent: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) **and** register it explicitly in `initDb()` in `database.ts`. Migrations currently present: 001–008, 010–029 (009 is intentionally absent — do not reuse that number). Notable schema additions by migration:
 - 004: `articles.stock` (nullable = unmanaged) + `numero_serie` on devis/facture line items
@@ -102,6 +105,7 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
   - **Heavy** (`FacturPro-Setup.exe` asset, fallback): downloaded to `os.tmpdir()`, then scheduled via Windows `schtasks /create /sc ONCE /ru SYSTEM` to run `/VERYSILENT /NORESTART` 30 seconds later (lets the HTTP response return first); archived to `updates/FacturPro-Setup-<version>.exe`, logged to `logs/update-install.log`.
 - `commentaires` — CRUD on `commentaires_predefinis` (per-company catalogue of reusable comment texts for document line items, see migration 025).
 - `maintenance` (`is_super_admin` only) — POST `/api/maintenance/vacuum` (`{ full?: boolean }`, runs `VACUUM` or `VACUUM (FULL)` outside a transaction via a dedicated pool client), `/analyze` (`ANALYZE`), `/reindex` (`REINDEX DATABASE`); each logs to `audit_log` via `logAudit()`.
+- `search` — GET `/api/search?q=` powers the topbar global search (triggers from 2 chars). Splits `q` into whitespace tokens (AND-matched, each token ILIKE'd across the relevant columns) and runs parallel queries across devis, factures, bons-livraison, acomptes, clients, articles, commandes-fournisseurs and factures-fournisseurs, scoped to `entreprise_id`. Returns a flat array of `{ type, label, sub, id }` grouped client-side by `type` for the dropdown.
 
 **FEC multi-tenant filter**: `FecExportService.exporterCSV()` filters by `entreprise_id` via EXISTS subqueries on both `factures` and `factures_fournisseurs` — entries without either FK are excluded.
 

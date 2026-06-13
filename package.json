@@ -26,6 +26,7 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.18.0",
     "pg": "^8.21.0",
+    "selfsigned": "^5.5.0",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
@@ -44,5 +45,3 @@
     "typescript": "^6.0.3"
   }
 }
-
-

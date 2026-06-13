@@ -146,15 +146,6 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
-- Fix: gérer les erreurs du pool PostgreSQL pour éviter un crash du serveur
-
-Un client idle dont la connexion est coupée par l'administrateur PostgreSQL
-émettait une 'error' non gérée sur le Pool, ce qui faisait planter tout le
-processus Node (observé en production sur le service FacturPro, 2 jours
-sans redémarrage automatique malgré la config NSSM). Ajout d'un handler
-`pool.on('error', ...)` qui journalise l'erreur sans interrompre le serveur.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Fix: stabiliser la topbar et améliorer les boutons Factures
 
 Topbar — mise en page :
@@ -228,6 +219,13 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
   invalide en PG, 500 systematique) ; AcompteService.lister parametre
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+- Fix: gerer les erreurs du pool PostgreSQL pour eviter un crash du serveur
+
+Un client idle dont la connexion est coupee par l'administrateur PG
+emettait une 'error' non geree sur le Pool, ce qui faisait planter
+tout le processus Node (observe en prod sur le service FacturPro).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -326,6 +324,10 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
+- Docs: ajouter entree CHANGELOG pour le fix du pool PostgreSQL
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Modifications
@@ -370,6 +372,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.9
 - Chore: bump v3.2.10
 - Chore: bump v3.2.11
+- Chore: bump v3.2.12
 
 
 ## [3.0.0] — 2026-06-07

@@ -358,6 +358,7 @@ prerequis (DATABASE_URL, e2e-utils) pour lancer la suite Playwright.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -403,6 +404,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.10
 - Chore: bump v3.2.11
 - Chore: bump v3.2.12
+- Chore: bump v3.3.0
 
 
 ### Refactoring

@@ -275,6 +275,24 @@ n'est applique que pour les fichiers .gz, et un helper fail() rejette
 une seule fois en tuant le process psql.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: installer les dependances npm manquantes apres un patch leger
+
+Le zip de patch leger ne contient que dist/ et package.json. Si une
+release ajoute une dependance npm (cas de selfsigned pour le HTTPS
+optionnel), le process plante au redemarrage avec MODULE_NOT_FOUND.
+applyLightPatch lance maintenant npm install --omit=dev apres
+l'extraction.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: tolerer les commandes restrict/unrestrict dans la verification de sauvegarde
+
+pg_dump >= 17.6 entoure son dump de \restrict/\unrestrict. Si le psql
+de restauration est plus ancien, ON_ERROR_STOP=1 fait echouer la
+verification mensuelle ("commande \restrict invalide"). Ces lignes
+sont de pures meta-commandes cote client sans effet sur les donnees :
+restoreDumpInto les filtre desormais avant de les transmettre a psql.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -395,6 +413,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Ajoute la section "Verification de restauration" (bouton de la page
 Parametres > Sauvegarde, migration 030) ; docx regenere via pandoc.
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -445,6 +464,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Chore: bump v3.3.1
+- Chore: bump v3.3.2
 
 
 ### Refactoring

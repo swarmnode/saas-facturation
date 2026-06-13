@@ -142,6 +142,16 @@ function applyLightPatch(zipPath: string, version: string): void {
         const rawPkg = fs.readFileSync(path.join(INSTALL_DIR, 'package.json'), 'utf-8').replace(/^﻿/, '');
         log(`Version apres patch: ${JSON.parse(rawPkg).version}`);
       } catch {}
+      // Le zip ne contient pas node_modules : si la release a ajoute une dependance,
+      // le process crashera au demarrage (MODULE_NOT_FOUND) sans cette etape.
+      try {
+        const npmCmd = path.join(path.dirname(process.execPath), 'npm.cmd');
+        log(`npm install --omit=dev (${npmCmd})`);
+        execFileSync(npmCmd, ['install', '--omit=dev'], { cwd: INSTALL_DIR, stdio: 'pipe', shell: true });
+        log('npm install OK');
+      } catch (e: any) {
+        log(`ERREUR npm install: ${e?.message ?? e}`);
+      }
     } catch (e: any) {
       log(`ERREUR Expand-Archive: ${e?.message ?? e}`);
     }

@@ -265,6 +265,16 @@ base de donnees" et passait inapercu sous forme d'erreur brute psql.
 Trouve en testant la verification en local.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: eviter un crash du process lors de la verification de sauvegarde
+
+restoreDumpInto() pipait toujours via createGunzip() sans gestion
+d'erreur ; un dump non-gzip (.sql) provoquait un evenement 'error'
+non gere sur le flux Gunzip, qui plantait tout le process Node (aurait
+plante le serveur de prod lors de la verification mensuelle). Gunzip
+n'est applique que pour les fichiers .gz, et un helper fail() rejette
+une seule fois en tuant le process psql.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Documentation
@@ -377,6 +387,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -423,6 +434,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.11
 - Chore: bump v3.2.12
 - Chore: bump v3.3.0
+- Chore: ajouter la config swarm Ruflo dans CLAUDE.md
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Refactoring

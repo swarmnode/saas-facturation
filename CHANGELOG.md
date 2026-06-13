@@ -150,6 +150,21 @@ https.createServer() avec un certificat fourni (TLS_CERT_PATH/TLS_KEY_PATH)
 ou un certificat auto-signe genere et persiste dans storage/tls/.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: verification mensuelle de restauration des sauvegardes
+
+Ajoute verifyLastBackup() (BackupScheduler) qui restaure le dernier
+dump dans une base temporaire facturation_verify et compte les
+factures pour garantir que les sauvegardes sont effectivement
+restaurables. Planifie automatiquement le 1er du mois a 3h, declenche
+aussi a la demande via POST /api/backup/verifier (super_admin) avec
+affichage du resultat dans Parametres > Sauvegarde auto.
+
+Inclut egalement storage/jwt_secret.key dans chaque sauvegarde pour
+preserver les sessions JWT apres restauration sur une nouvelle
+machine, et accorde CREATEDB au role facturpro dans l'installeur
+(requis pour facturation_verify).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -342,6 +357,7 @@ Documente le decoupage de app.js en components.js/helpTexts.js et les
 prerequis (DATABASE_URL, e2e-utils) pour lancer la suite Playwright.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications

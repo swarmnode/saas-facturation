@@ -3,6 +3,7 @@ import { ScheduledTask } from 'node-cron';
 import { spawn } from 'child_process';
 import { createGzip, createGunzip } from 'zlib';
 import { createWriteStream } from 'fs';
+import { Transform } from 'stream';
 import path from 'path';
 import fs from 'fs';
 import { query } from '../db/database';
@@ -141,6 +142,33 @@ function runPsqlCommand(targetDb: string, sql: string): Promise<string> {
   });
 }
 
+// pg_dump >= 17.6 entoure son dump de \restrict/\unrestrict (durcissement contre
+// l'injection de meta-commandes via les donnees). Si le psql de restauration est plus
+// ancien, ces lignes provoquent "commande \restrict invalide" sous ON_ERROR_STOP=1.
+// Ce sont de pures meta-commandes cote client, sans effet sur les donnees : on les filtre.
+function filterRestrictCommands(): Transform {
+  let buffer = Buffer.alloc(0);
+  const isRestrictLine = (line: Buffer) => /^\\(un)?restrict\b/.test(line.toString('utf-8'));
+  return new Transform({
+    transform(chunk, _enc, cb) {
+      buffer = Buffer.concat([buffer, chunk]);
+      const kept: Buffer[] = [];
+      let idx;
+      while ((idx = buffer.indexOf(0x0A)) !== -1) {
+        const line = buffer.subarray(0, idx + 1);
+        buffer = buffer.subarray(idx + 1);
+        if (!isRestrictLine(line)) kept.push(line);
+      }
+      if (kept.length) this.push(Buffer.concat(kept));
+      cb();
+    },
+    flush(cb) {
+      if (buffer.length && !isRestrictLine(buffer)) this.push(buffer);
+      cb();
+    },
+  });
+}
+
 // Restaure un dump .sql ou .sql.gz dans la base indiquée via psql.
 function restoreDumpInto(targetDb: string, filePath: string): Promise<void> {
   const { user, pass, host, port } = pgConn();
@@ -160,13 +188,14 @@ function restoreDumpInto(targetDb: string, filePath: string): Promise<void> {
 
     const src = fs.createReadStream(filePath);
     src.on('error', fail);
+    const filter = filterRestrictCommands();
 
     if (filePath.endsWith('.gz')) {
       const gunzip = createGunzip();
       gunzip.on('error', fail);
-      src.pipe(gunzip).pipe(proc.stdin);
+      src.pipe(gunzip).pipe(filter).pipe(proc.stdin);
     } else {
-      src.pipe(proc.stdin);
+      src.pipe(filter).pipe(proc.stdin);
     }
 
     proc.stdout.on('data', () => {});

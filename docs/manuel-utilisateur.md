@@ -1308,6 +1308,17 @@ gunzip sauvegarde.sql.gz
 psql -U facturpro -d facturpro -f sauvegarde.sql
 ```
 
+## Vérification de restauration
+
+Pour garantir qu'une sauvegarde est réellement utilisable en cas de besoin, FacturPro la restaure automatiquement dans une base temporaire (`facturation_verify`) et compte les factures qu'elle contient. Cette vérification s'exécute :
+
+- **automatiquement** le 1er de chaque mois à 3h ;
+- **à la demande**, via le bouton **🔎 Vérifier la dernière sauvegarde** (section *Vérification de restauration* de **Paramètres > Sauvegarde**).
+
+Le résultat (date, succès/échec, nombre de factures, message d'erreur éventuel) est affiché dans cette même section.
+
+> Réservé au super-administrateur. Nécessite que le rôle PostgreSQL de l'application dispose du droit `CREATEDB` (`ALTER ROLE <utilisateur> CREATEDB;`), sinon la vérification renvoie une erreur explicite.
+
 ## Sauvegarder et restaurer une société
 
 ![Sauvegarde de société](screenshots/26-sauvegarde-societe.png)

@@ -192,7 +192,7 @@ export async function verifyLastBackup(destination: string): Promise<VerifyResul
     try {
       await runPsqlCommand(ADMIN_DB, `CREATE DATABASE ${VERIFY_DB};`);
     } catch (e: any) {
-      if (/permission denied/i.test(e.message)) {
+      if (/permission denied|droit refusé/i.test(e.message)) {
         throw new Error(`Vérification impossible : le rôle PostgreSQL "${pgConn().user}" n'a pas le privilège CREATEDB. Exécutez "ALTER ROLE ${pgConn().user} CREATEDB;" avec un compte superutilisateur, puis relancez la vérification.`);
       }
       throw e;

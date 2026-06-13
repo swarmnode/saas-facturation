@@ -28,6 +28,12 @@ Admin default on first start: `admin@localhost` / `Admin1234!` (override with `A
 # Then compile installer\FacturPro.iss with Inno Setup 6+ -> FacturPro-Setup.exe
 ```
 
+### Release
+```powershell
+.\release.ps1 3.2.0   # bump package.json, build, zip dist as FacturPro-Patch.zip, tag, push, gh release
+```
+Must run from `main` with a clean working tree. Release notes are pulled from the `## [Non publié]` section of `CHANGELOG.md` (maintained by the CI git-cliff bot via `docs: update CHANGELOG.md [skip ci]` commits) and passed to `gh release create --notes-file`. Requires `gh` CLI (see `reference_tools_paths.md` in user memory for its absolute path).
+
 ## Architecture
 
 **Entry point**: `src/server/index.ts` — Express app. All routes are under `/api/*` and protected by the `authenticate` JWT middleware, except `/api/auth`. Uses `helmet` (CSP disabled — SPA has inline scripts) and `express-rate-limit` on `/api/auth/login` (10 req / 15 min window, bypassed for loopback addresses). CORS is **disabled by default** (same-origin SPA); set `CORS_ORIGIN` (comma-separated list) in `.env` to allow cross-origin callers.

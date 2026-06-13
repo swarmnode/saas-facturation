@@ -6,16 +6,6 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [Non publié]
 
 ### Ajouté
-- Feat: recherche globale dans la barre du haut
-
-Le champ de filtre de la barre supérieure déclenche désormais, à partir de
-2 caractères, une recherche dans toute la société (devis, factures, BL,
-acomptes, clients, articles, commandes fournisseurs, factures d'achats) via
-GET /api/search. Les résultats s'affichent dans un menu déroulant groupé par
-type (icône, libellé, montant/statut) ; clic ou navigation clavier
-(flèches + Entrée) ouvre directement le document ou la fiche correspondante.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Feat: bundler PostgreSQL portable dans l'installateur (remplace l'EDB one-click)
 
 L'installeur EDB (~300 Mo, 5-10 min) est remplacé par le ZIP binaries-only
@@ -143,6 +133,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Filtre de statut sur acomptes et bons de livraison ; recherche globale
   etendue aux commandes/factures fournisseurs (search.ts)
 - Manuel utilisateur a jour (sous-champs au survol, filtres, envoi, facturation)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: recherche globale dans la barre du haut
+
+Le champ de filtre de la topbar declenche desormais une recherche
+cross-documents (devis, factures, BL, acomptes, clients, articles,
+commandes et factures fournisseurs) via /api/search a partir de 2
+caracteres, avec menu deroulant groupe par type et navigation clavier.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -318,6 +316,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -361,6 +360,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.8
 - Chore: bump v3.2.9
 - Chore: bump v3.2.10
+- Chore: bump v3.2.11
 
 
 ## [3.0.0] — 2026-06-07

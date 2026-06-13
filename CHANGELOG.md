@@ -6,43 +6,6 @@ Versionnage : `MAJEUR.MINEUR.BUILD` (BUILD = nombre de commits sur `main`).
 ## [Non publié]
 
 ### Ajouté
-- Feat: tests E2E autonomes avec utilisateur dédié
-
-Nouveaux utilitaires tests/e2e-utils.ts (apiLogin, uiLogin, ensureTestUser,
-disableTestUser) + global-setup/global-teardown Playwright : la suite crée
-et désactive son propre utilisateur e2e@facturpro.test, indépendant du
-compte admin de la base. 4 specs durables : smoke (parcours complet
-devis -> facture -> émission -> scellement), achats (commandes et factures
-fournisseurs, FEC, chaînage), editeur (sous-champs au survol, sauts de
-page, facture d'achat pré-remplie), filtres (statuts BL et acomptes).
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: envoyer le bon de commande au fournisseur par email
-
-EmailService.envoyerCommande() génère le PDF du bon de commande et
-l'envoie en pièce jointe ; POST /api/commandes-fournisseurs/:id/envoyer-email.
-Bouton "Envoyer" (liste et éditeur) avec email du fournisseur pré-rempli
-depuis l'annuaire.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: facturer une commande fournisseur en un clic
-
-DocEditor.openFactureAchatDepuisCommande() ouvre l'éditeur de facture
-d'achat pré-rempli (fournisseur, objet, lignes) depuis une commande ; à
-l'enregistrement, la commande est automatiquement liée à la nouvelle
-facture d'achat (facture_fournisseur_id). Bouton "-> Facture d'achat"
-sur la liste et dans la barre d'outils de l'éditeur (tant qu'aucune
-facture n'est liée).
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-- Feat: filtre de statut sur les acomptes et les bons de livraison
-
-Harmonise le sélecteur de statut déjà présent sur devis/factures/commandes :
-bons de livraison (brouillon/émis/livré) et acomptes (en attente/encaissé).
-search.ts étend également la recherche aux commandes et factures
-fournisseurs.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Feat: bundler PostgreSQL portable dans l'installateur (remplace l'EDB one-click)
 
 L'installeur EDB (~300 Mo, 5-10 min) est remplacé par le ZIP binaries-only
@@ -160,6 +123,18 @@ Teste : API (totaux, PDF, regeneration FEC 401 294->360, suppression) +
 Playwright (ouverture editeurs, saisie, numerotation CMD, capture verifiee)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+- Feat: tests E2E autonomes, envoi/facturation commandes fournisseurs, filtres statut
+
+- tests/e2e-utils.ts + global-setup/global-teardown : suite Playwright avec
+  utilisateur dedie e2e@facturpro.test (independant du compte admin)
+- 4 specs durables : smoke, achats, editeur, filtres (7/7 OK)
+- Envoi du bon de commande au fournisseur par email (EmailService.envoyerCommande)
+- Facturation d'une commande en un clic, editeur pre-rempli + chainage auto
+- Filtre de statut sur acomptes et bons de livraison ; recherche globale
+  etendue aux commandes/factures fournisseurs (search.ts)
+- Manuel utilisateur a jour (sous-champs au survol, filtres, envoi, facturation)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -332,6 +307,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Docs: update CHANGELOG.md [skip ci]
+- Docs: update CHANGELOG.md [skip ci]
 
 
 ### Modifications
@@ -374,6 +350,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Chore: bump v3.2.7
 - Chore: bump v3.2.8
 - Chore: bump v3.2.9
+- Chore: bump v3.2.10
 
 
 ## [3.0.0] — 2026-06-07

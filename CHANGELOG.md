@@ -165,6 +165,14 @@ machine, et accorde CREATEDB au role facturpro dans l'installeur
 (requis pour facturation_verify).
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Feat: notes de release extraites du CHANGELOG dans release.ps1
+
+Remplace le texte generique "voir CHANGELOG.md" par la section
+[Non publie] (deja maintenue par le bot CI git-cliff), ecrite dans
+un fichier temporaire UTF-8 sans BOM et passee a gh release create
+via --notes-file.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 
 ### Corrigé
@@ -246,6 +254,15 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 Un client idle dont la connexion est coupee par l'administrateur PG
 emettait une 'error' non geree sur le Pool, ce qui faisait planter
 tout le processus Node (observe en prod sur le service FacturPro).
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Fix: detecter le message d'erreur CREATEDB localise en francais
+
+verifyLastBackup() ne reconnaissait que "permission denied" (anglais)
+pour afficher l'instruction ALTER ROLE ... CREATEDB ; sur un serveur
+PostgreSQL en francais, le message est "droit refuse pour creer une
+base de donnees" et passait inapercu sous forme d'erreur brute psql.
+Trouve en testant la verification en local.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
@@ -357,6 +374,7 @@ Documente le decoupage de app.js en components.js/helpTexts.js et les
 prerequis (DATABASE_URL, e2e-utils) pour lancer la suite Playwright.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+- Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 - Docs: update CHANGELOG.md [skip ci]
 
